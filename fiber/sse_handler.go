@@ -115,8 +115,8 @@ func (h *sseHandler) riteSnapshot(ctx context.Context, w *bufio.Writer) {
 		if err != nil {
 			continue
 		}
-		fmt.Fprintf(w, "data: %s\n\n", data) //nolint:errcheck
-		w.Flush()                            //nolint:errcheck
+		fmt.Fprintf(w, "data: %s\n\n", data) //nolint:errcheck,gosec
+		w.Flush()                            //nolint:errcheck,gosec
 	}
 }
 
@@ -133,7 +133,7 @@ func (h *sseHandler) vigilSnapshot(ctx context.Context, w *bufio.Writer) {
 		if err != nil {
 			continue
 		}
-		fmt.Fprintf(w, "data: %s\n\n", data) //nolint:errcheck
-		w.Flush()                            //nolint:errcheck
+		fmt.Fprintf(w, "data: %s\n\n", data) //nolint:errcheck,gosec
+		w.Flush()                            //nolint:errcheck,gosec
 	}
 }

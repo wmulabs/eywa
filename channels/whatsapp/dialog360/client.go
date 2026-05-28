@@ -259,7 +259,7 @@ func (c *Dialog360Client) DownloadMedia(ctx context.Context, mediaID string) (da
 	if err != nil {
 		return nil, "", eywa.NewInfrastructureError("failed to get media info", err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	if toolErr := eywa.FromHTTPResponse(resp); toolErr != nil {
 		return nil, "", toolErr

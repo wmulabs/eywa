@@ -66,7 +66,10 @@ func (s *LoreStore) migrate(ctx context.Context) error {
 		CREATE INDEX IF NOT EXISTS idx_eywa_lore_chunks_lore_id
 			ON eywa_lore_chunks (lore_id);
 	`, s.dim))
-	return err
+	if err != nil {
+		return fmt.Errorf("migrate lore schema: %w", err)
+	}
+	return nil
 }
 
 // Upsert inserts or replaces LoreChunks. Chunks with no embedding are still stored
@@ -95,14 +98,17 @@ func (s *LoreStore) Upsert(ctx context.Context, chunks []eywa.LoreChunk) error {
 	}
 
 	br := s.pool.SendBatch(ctx, batch)
-	defer br.Close()
+	defer br.Close() //nolint:errcheck
 
 	for range chunks {
 		if _, err := br.Exec(); err != nil {
-			return fmt.Errorf("pgvector: upsert chunk: %w", err)
+			return fmt.Errorf("delete lore chunks: %w", err)
 		}
 	}
-	return br.Close()
+	if err := br.Close(); err != nil {
+		return fmt.Errorf("close batch results: %w", err)
+	}
+	return nil
 }
 
 // Search returns at most topK chunks from loreID whose cosine similarity to query is
@@ -147,7 +153,10 @@ func (s *LoreStore) Search(ctx context.Context, loreID string, query []float32, 
 		}
 		result = append(result, c)
 	}
-	return result, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("scan lore search results: %w", err)
+	}
+	return result, nil
 }
 
 // Delete removes all chunks belonging to loreID.
@@ -189,7 +198,7 @@ func vectorFromString(s string) ([]float32, error) {
 	for i, p := range parts {
 		f, err := strconv.ParseFloat(strings.TrimSpace(p), 32)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("parse score: %w", err)
 		}
 		out[i] = float32(f)
 	}

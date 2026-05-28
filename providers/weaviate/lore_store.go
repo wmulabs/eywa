@@ -153,7 +153,10 @@ func (s *LoreStore) upsertOne(ctx context.Context, c eywa.LoreChunk) error {
 			WithProperties(props).
 			WithVector(c.Embedding).
 			Do(ctx)
-		return err
+		if err != nil {
+			return fmt.Errorf("create weaviate object: %w", err)
+		}
+		return nil
 	}
 
 	if err := insert(); err != nil {
@@ -241,7 +244,10 @@ func (s *LoreStore) deleteByChunkID(ctx context.Context, chunkID string) error {
 		WithClassName(s.className).
 		WithWhere(where).
 		Do(ctx)
-	return err
+	if err != nil {
+		return fmt.Errorf("delete weaviate objects: %w", err)
+	}
+	return nil
 }
 
 // parseSearchResults extracts LoreChunks from the Weaviate GraphQL Get response.
