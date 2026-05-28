@@ -1,10 +1,11 @@
 module github.com/wmulabs/eywa/fiber
 
-go 1.25.10
+go 1.26.2
 
 require (
 	github.com/gofiber/fiber/v2 v2.52.12
 	github.com/google/uuid v1.6.0
+	github.com/valyala/fasthttp v1.51.0
 	github.com/wmulabs/eywa v0.0.0
 	go.opentelemetry.io/otel v1.43.0
 	go.opentelemetry.io/otel/trace v1.43.0
@@ -25,7 +26,6 @@ require (
 	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/tinylib/msgp v1.2.5 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
-	github.com/valyala/fasthttp v1.51.0 // indirect
 	github.com/valyala/tcplisten v1.0.0 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
 	golang.org/x/crypto v0.51.0 // indirect

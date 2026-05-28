@@ -1,6 +1,6 @@
 module github.com/wmulabs/eywa/providers/qdrant
 
-go 1.25.10
+go 1.26.2
 
 require (
 	github.com/qdrant/go-client v1.13.0

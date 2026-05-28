@@ -1,8 +1,9 @@
 module github.com/wmulabs/eywa/redis
 
-go 1.25.10
+go 1.26.2
 
 require (
+	github.com/alicebob/miniredis/v2 v2.38.0
 	github.com/go-redis/redis_rate/v10 v10.0.1
 	github.com/go-redsync/redsync/v4 v4.16.0
 	github.com/redis/go-redis/extra/redisotel/v9 v9.19.0
@@ -13,7 +14,6 @@ require (
 )
 
 require (
-	github.com/alicebob/miniredis/v2 v2.38.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
