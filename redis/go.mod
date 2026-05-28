@@ -1,6 +1,6 @@
 module github.com/wmulabs/eywa/redis
 
-go 1.25.0
+go 1.25.5
 
 require (
 	github.com/go-redis/redis_rate/v10 v10.0.1

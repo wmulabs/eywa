@@ -1,6 +1,6 @@
 module github.com/wmulabs/eywa/gcp/gemini
 
-go 1.25.0
+go 1.25.5
 
 require (
 	github.com/wmulabs/eywa v0.0.0

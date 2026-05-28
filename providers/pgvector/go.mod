@@ -1,6 +1,6 @@
 module github.com/wmulabs/eywa/providers/pgvector
 
-go 1.25.0
+go 1.25.5
 
 require (
 	github.com/jackc/pgx/v5 v5.7.2
