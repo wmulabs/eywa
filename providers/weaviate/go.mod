@@ -3,7 +3,7 @@ module github.com/wmulabs/eywa/providers/weaviate
 go 1.26.3
 
 require (
-	github.com/weaviate/weaviate v1.37.2
+	github.com/weaviate/weaviate v1.37.6
 	github.com/weaviate/weaviate-go-client/v5 v5.7.3
 	github.com/wmulabs/eywa v0.0.0
 )
