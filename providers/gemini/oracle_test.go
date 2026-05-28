@@ -1,12 +1,30 @@
 package gemini
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"google.golang.org/genai"
 
 	eywa "github.com/wmulabs/eywa"
 )
+
+// skipIfNoGCP skips the test when no GCP Application Default Credentials are
+// discoverable. Vertex AI constructor tests require real ADC because the genai
+// client resolves credentials at construction time.
+func skipIfNoGCP(t *testing.T) {
+	t.Helper()
+	if os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") != "" {
+		return
+	}
+	home, _ := os.UserHomeDir()
+	adc := filepath.Join(home, ".config", "gcloud", "application_default_credentials.json")
+	if _, err := os.Stat(adc); err == nil {
+		return
+	}
+	t.Skip("no GCP credentials: set GOOGLE_APPLICATION_CREDENTIALS or run `gcloud auth application-default login`")
+}
 
 // newOracle creates an oracle with a fake key (no real API calls made).
 func newOracle(t *testing.T) *GeminiOracle {
@@ -49,7 +67,7 @@ func TestNewOracleWithConfig_EmptyAPIKey_UsesGeminiBackend(t *testing.T) {
 }
 
 func TestNewOracleWithConfig_WithProject_UsesVertexBackend(t *testing.T) {
-	// Project set → Vertex AI backend (no ADC needed for client creation)
+	skipIfNoGCP(t)
 	p, err := NewOracleWithConfig(Config{Project: "my-project", Location: "us-central1"})
 	if err != nil || p == nil {
 		t.Fatalf("unexpected: err=%v", err)
@@ -57,6 +75,7 @@ func TestNewOracleWithConfig_WithProject_UsesVertexBackend(t *testing.T) {
 }
 
 func TestNewVertexOracle_ReturnsNonNil(t *testing.T) {
+	skipIfNoGCP(t)
 	p, err := NewVertexOracle(t.Context(), "my-project", "us-central1")
 	if err != nil || p == nil {
 		t.Fatalf("unexpected: err=%v", err)
