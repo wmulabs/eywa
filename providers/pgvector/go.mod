@@ -3,7 +3,7 @@ module github.com/wmulabs/eywa/providers/pgvector
 go 1.26.3
 
 require (
-	github.com/jackc/pgx/v5 v5.7.2
+	github.com/jackc/pgx/v5 v5.9.2
 	github.com/wmulabs/eywa v0.0.0
 )
 
