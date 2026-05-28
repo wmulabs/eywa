@@ -79,7 +79,7 @@ func (c *Dialog360Client) SendMessage(ctx context.Context, phone, message string
 	if err != nil {
 		return eywa.NewInfrastructureError("failed to send request", err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	return c.errorFrom(resp)
 }
@@ -106,7 +106,7 @@ func (c *Dialog360Client) SendTemplateMessage(ctx context.Context, phone string,
 	if err != nil {
 		return eywa.NewInfrastructureError("failed to send template request", err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	return c.errorFrom(resp)
 }
@@ -288,7 +288,7 @@ func (c *Dialog360Client) DownloadMedia(ctx context.Context, mediaID string) (da
 	if err != nil {
 		return nil, "", eywa.NewInfrastructureError("failed to download media", err)
 	}
-	defer downloadResp.Body.Close()
+	defer downloadResp.Body.Close() //nolint:errcheck
 
 	if toolErr := eywa.FromHTTPResponse(downloadResp); toolErr != nil {
 		return nil, "", toolErr
