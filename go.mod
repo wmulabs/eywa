@@ -1,6 +1,6 @@
 module github.com/wmulabs/eywa
 
-go 1.26.2
+go 1.26.3
 
 require (
 	github.com/golang-jwt/jwt/v5 v5.3.1

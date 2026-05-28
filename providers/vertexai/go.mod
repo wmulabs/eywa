@@ -1,6 +1,6 @@
 module github.com/wmulabs/eywa/providers/vertexai
 
-go 1.26.2
+go 1.26.3
 
 require github.com/wmulabs/eywa/providers/gemini v0.0.0
 

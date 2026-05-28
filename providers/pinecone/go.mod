@@ -1,6 +1,6 @@
 module github.com/wmulabs/eywa/providers/pinecone
 
-go 1.26.2
+go 1.26.3
 
 require (
 	github.com/pinecone-io/go-pinecone/v3 v3.1.0
