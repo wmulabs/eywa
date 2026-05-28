@@ -85,7 +85,7 @@ func formatChunks(lores []entities.Lore, chunks []entities.LoreChunk) string {
 		if name == "" {
 			name = chunk.LoreID
 		}
-		sb.WriteString(fmt.Sprintf("<lore name=%q>\n%s\n</lore>\n", name, chunk.Content))
+		fmt.Fprintf(&sb, "<lore name=%q>\n%s\n</lore>\n", name, chunk.Content)
 	}
 	return strings.TrimSpace(sb.String())
 }

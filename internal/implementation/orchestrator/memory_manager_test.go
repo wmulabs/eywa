@@ -7,6 +7,7 @@ import (
 
 	"github.com/wmulabs/eywa/internal/domain/entities"
 	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
 )
 
 // --- stubs ---
@@ -58,7 +59,7 @@ func (r *stubEchoRepo) CountBySubjectKey(_ context.Context, _ string) (int64, er
 }
 
 func noopTracer() trace.Tracer {
-	return trace.NewNoopTracerProvider().Tracer("test")
+	return noop.NewTracerProvider().Tracer("test")
 }
 
 func newTestMemoryManager(t *testing.T, memRepo *stubMemoryRepo, echoRepo *stubEchoRepo) *DefaultMemoryManager {

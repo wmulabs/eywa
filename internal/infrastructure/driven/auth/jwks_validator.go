@@ -56,7 +56,7 @@ func (v *JWKSValidator) fetchKeys(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("fetch jwks: %w", err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	var jwks jwksResponse
 	if err := json.NewDecoder(io.LimitReader(resp.Body, 1*1024*1024)).Decode(&jwks); err != nil {

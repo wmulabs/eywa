@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"sync"
 
@@ -63,7 +64,7 @@ func (c *ConfigCache) LoadAll(ctx context.Context) error {
 	}
 	links, err := c.linkRepo.FindAll(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("load links: %w", err)
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -77,7 +78,7 @@ func (c *ConfigCache) LoadAll(ctx context.Context) error {
 func (c *ConfigCache) SaveLink(ctx context.Context, link *entities.Link) error {
 	if c.linkRepo != nil {
 		if err := c.linkRepo.Save(ctx, link); err != nil {
-			return err
+			return fmt.Errorf("save link: %w", err)
 		}
 	}
 	c.mu.Lock()
@@ -95,7 +96,7 @@ func (c *ConfigCache) SaveLink(ctx context.Context, link *entities.Link) error {
 func (c *ConfigCache) DeleteLink(ctx context.Context, eventType string) error {
 	if c.linkRepo != nil {
 		if err := c.linkRepo.Delete(ctx, eventType); err != nil {
-			return err
+			return fmt.Errorf("delete link: %w", err)
 		}
 	}
 	c.mu.Lock()

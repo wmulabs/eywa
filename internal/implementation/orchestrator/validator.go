@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"regexp"
 	"strings"
 	"unicode"
@@ -109,7 +110,7 @@ func (v *EventValidator) validateInputGuard(message string) error {
 func (v *EventValidator) estimateContextSize(context map[string]any) (int, error) {
 	data, err := json.Marshal(context)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("marshal context: %w", err)
 	}
 	return len(data), nil
 }

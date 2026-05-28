@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/wmulabs/eywa/internal/domain/entities"
 	"github.com/wmulabs/eywa/internal/domain/ports"
@@ -35,5 +36,8 @@ func (m *DefaultMessageManager) Append(ctx context.Context, message entities.Ech
 	ctx, span := m.tracer.Start(ctx, "MessageManager/Append")
 	defer span.End()
 
-	return m.messageRepo.Append(ctx, message)
+	if err := m.messageRepo.Append(ctx, message); err != nil {
+		return fmt.Errorf("append message: %w", err)
+	}
+	return nil
 }

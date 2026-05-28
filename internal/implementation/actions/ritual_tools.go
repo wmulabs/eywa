@@ -237,7 +237,7 @@ func (t *CancelRitualTool) Execute(ctx context.Context, args map[string]any) (st
 	id := args["task_id"].(string)
 
 	if err := t.manager.Cancel(ctx, id, session.MemoryKey); err != nil {
-		return "", err
+		return "", fmt.Errorf("cancel ritual: %w", err)
 	}
 
 	return `{"cancelled":true}`, nil

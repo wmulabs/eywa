@@ -78,29 +78,46 @@ func (a *OperatorAuth) Validate(_ context.Context, token string) (*ports.AuthCla
 }
 
 func (a *OperatorAuth) CreateOperator(ctx context.Context, op *entities.Operator) error {
-	return a.repo.Create(ctx, op)
+	if err := a.repo.Create(ctx, op); err != nil {
+		return fmt.Errorf("create operator: %w", err)
+	}
+	return nil
 }
 
 func (a *OperatorAuth) ListOperators(ctx context.Context, page, limit int) ([]*entities.Operator, int64, error) {
-	return a.repo.List(ctx, page, limit)
+	ops, total, err := a.repo.List(ctx, page, limit)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list operators: %w", err)
+	}
+	return ops, total, nil
 }
 
 func (a *OperatorAuth) FindOperatorByID(ctx context.Context, id string) (*entities.Operator, error) {
-	return a.repo.FindByID(ctx, id)
+	op, err := a.repo.FindByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("find operator: %w", err)
+	}
+	return op, nil
 }
 
 func (a *OperatorAuth) UpdateOperator(ctx context.Context, op *entities.Operator) error {
-	return a.repo.Update(ctx, op)
+	if err := a.repo.Update(ctx, op); err != nil {
+		return fmt.Errorf("update operator: %w", err)
+	}
+	return nil
 }
 
 func (a *OperatorAuth) DeactivateOperator(ctx context.Context, id string) error {
-	return a.repo.Deactivate(ctx, id)
+	if err := a.repo.Deactivate(ctx, id); err != nil {
+		return fmt.Errorf("deactivate operator: %w", err)
+	}
+	return nil
 }
 
 func HashPassword(password string) (string, error) {
 	h, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("hash password: %w", err)
 	}
 	return string(h), nil
 }

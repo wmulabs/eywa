@@ -15,6 +15,7 @@ import (
 	"github.com/wmulabs/eywa/internal/implementation/scouts"
 	"github.com/wmulabs/eywa/internal/infrastructure/driven/dbg"
 	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -606,7 +607,7 @@ func (b *WeaveBuilder) Build() (*Weave, error) {
 	dbg.SetLogger(b.logger)
 
 	if b.tracer == nil {
-		b.tracer = trace.NewNoopTracerProvider().Tracer("eywa")
+		b.tracer = noop.NewTracerProvider().Tracer("eywa")
 	}
 
 	if b.appInfo.Name == "" {
@@ -710,7 +711,9 @@ func (b *WeaveBuilder) Build() (*Weave, error) {
 		}
 		for _, ch := range b.channels {
 			engine.RegisterReceptor(ch.Name, ch.Receptor)
-			engine.voiceRegistry.Register(ch.Voice)
+			if err := engine.voiceRegistry.Register(ch.Voice); err != nil {
+				return nil, fmt.Errorf("register voice for channel %q: %w", ch.Name, err)
+			}
 		}
 	}
 

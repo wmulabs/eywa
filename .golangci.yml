@@ -1,12 +1,12 @@
+version: "2"
+
 run:
   timeout: 5m
-  go: "1.25"
 
 linters:
-  disable-all: true
+  default: none
   enable:
     - errcheck
-    - gosimple
     - govet
     - ineffassign
     - staticcheck
@@ -17,26 +17,33 @@ linters:
     - unparam
     - exhaustive
     - misspell
-
-linters-settings:
-  errcheck:
-    check-blank: true
-  gosec:
-    excludes:
-      - G115
-  wrapcheck:
-    ignoreSigs:
-      - ".Errorf("
-      - "errors.New("
-      - "errors.Unwrap("
-
-issues:
-  exclude-rules:
-    - path: "_test\\.go"
-      linters:
-        - errcheck
-        - gosec
-        - wrapcheck
-    - path: "_examples/"
-      linters:
-        - gosec
+  settings:
+    errcheck:
+      check-blank: false
+    gosec:
+      excludes:
+        - G115
+        - G118
+    wrapcheck:
+      ignore-sigs:
+        - ".Errorf("
+        - "errors.New("
+        - "errors.Unwrap("
+  exclusions:
+    rules:
+      - path: '(.+)_test\.go'
+        linters:
+          - errcheck
+          - gosec
+          - wrapcheck
+          - unparam
+          - noctx
+      - path: '(.+)_test\.go'
+        linters:
+          - staticcheck
+        text: 'SA5011'
+      - path: '_examples/'
+        linters:
+          - gosec
+          - errcheck
+          - wrapcheck

@@ -52,7 +52,8 @@ func isMediaSupported(t entities.ArtifactType, provider ports.Oracle, model stri
 		return provider.SupportsImages(model)
 	case entities.ArtifactTypeDocument:
 		return provider.SupportsDocuments(model)
-	default:
+	case entities.ArtifactTypeVideo:
 		return false
 	}
+	return false
 }

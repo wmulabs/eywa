@@ -130,7 +130,7 @@ func (s *LLMArchivist) getProvider() (ports.Oracle, error) {
 			"provider", s.provider,
 			"model", s.model,
 			"error", err)
-		return nil, err
+		return nil, fmt.Errorf("get oracle provider: %w", err)
 	}
 	return provider, nil
 }
@@ -149,7 +149,7 @@ func (s *LLMArchivist) buildPrompt(messages []entities.Thread) string {
 		default:
 			label = promptLabelUser
 		}
-		sb.WriteString(fmt.Sprintf("[%s]: %s\n\n", label, msg.Content))
+		fmt.Fprintf(&sb, "[%s]: %s\n\n", label, msg.Content)
 	}
 
 	sb.WriteString("---\nProvide a concise summary of the above conversation.")

@@ -78,7 +78,10 @@ func (s *MediaProcessingStep) Execute(ctx context.Context, state *ProcessingStat
 	}
 	usage, err := s.processor.Process(ctx, state.Event)
 	state.MediaTokensUsed = usage
-	return err
+	if err != nil {
+		return fmt.Errorf("process media: %w", err)
+	}
+	return nil
 }
 
 func buildVaultKey(memoryKey string, att *entities.Artifact) string {

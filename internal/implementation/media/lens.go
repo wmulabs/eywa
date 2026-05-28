@@ -35,8 +35,9 @@ func (p *Processor) Process(ctx context.Context, event *entities.Pulse) (ports.O
 	p.notifyVideoNotSupported(event)
 	p.notifyDownloadFailed(event)
 
+	p.extractDocuments(ctx, event)
+
 	var total ports.OracleUsage
-	total.Add(p.extractDocuments(ctx, event))
 	total.Add(p.transcribeAudio(ctx, event))
 	total.Add(p.analyzeImages(ctx, event))
 
@@ -69,12 +70,11 @@ func (p *Processor) notifyDownloadFailed(event *entities.Pulse) {
 	}
 }
 
-func (p *Processor) extractDocuments(ctx context.Context, event *entities.Pulse) ports.OracleUsage {
+func (p *Processor) extractDocuments(ctx context.Context, event *entities.Pulse) {
 	if p.documentExtractor == nil {
-		return ports.OracleUsage{}
+		return
 	}
 
-	var total ports.OracleUsage
 	for _, att := range event.Attachments {
 		if att.Type != entities.ArtifactTypeDocument || len(att.Data) == 0 {
 			continue
@@ -97,7 +97,6 @@ func (p *Processor) extractDocuments(ctx context.Context, event *entities.Pulse)
 			p.logger.Infow("document extracted", "event_id", event.ID, "media_id", att.MediaID, "chars", len(text))
 		}
 	}
-	return total
 }
 
 func (p *Processor) transcribeAudio(ctx context.Context, event *entities.Pulse) ports.OracleUsage {

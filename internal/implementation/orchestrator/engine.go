@@ -260,9 +260,7 @@ func (e *Weave) IngestLore(ctx context.Context, ingestion entities.LoreIngestion
 
 	rawChunks := helpers.SplitTextIntoChunks(text, chunkSize, overlap)
 	texts := make([]string, len(rawChunks))
-	for i, c := range rawChunks {
-		texts[i] = c
-	}
+	copy(texts, rawChunks)
 
 	embeddings, err := e.loreEmbedder.Embed(ctx, texts)
 	if err != nil {
@@ -281,21 +279,30 @@ func (e *Weave) IngestLore(ctx context.Context, ingestion entities.LoreIngestion
 		}
 	}
 
-	return e.loreStore.Upsert(ctx, chunks)
+	if err := e.loreStore.Upsert(ctx, chunks); err != nil {
+		return fmt.Errorf("upsert lore chunks: %w", err)
+	}
+	return nil
 }
 
 func (e *Weave) DeleteLore(ctx context.Context, loreID string) error {
 	if e.loreStore == nil {
 		return fmt.Errorf("lore store not configured")
 	}
-	return e.loreStore.Delete(ctx, loreID)
+	if err := e.loreStore.Delete(ctx, loreID); err != nil {
+		return fmt.Errorf("delete lore: %w", err)
+	}
+	return nil
 }
 
 func (e *Weave) RegisterAction(action ports.Action) error {
 	if accessor, ok := e.actionExecutor.(registryAccessor); ok {
 		registry := accessor.GetRegistry()
 		if registry != nil {
-			return registry.Register(action)
+			if err := registry.Register(action); err != nil {
+				return fmt.Errorf("register action: %w", err)
+			}
+			return nil
 		}
 	}
 	return fmt.Errorf("action executor does not support dynamic registration")
@@ -916,7 +923,10 @@ func (e *Weave) logInteraction(
 		TokenUsage: tokenUsage,
 	}
 
-	return e.interactionLogRepo.LogInteraction(ctx, interactionLog)
+	if err := e.interactionLogRepo.LogInteraction(ctx, interactionLog); err != nil {
+		return fmt.Errorf("log interaction: %w", err)
+	}
+	return nil
 }
 
 // statusFromError maps OrchestrationError codes to audit-log status strings.

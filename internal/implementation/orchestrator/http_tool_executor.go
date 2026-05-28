@@ -102,7 +102,7 @@ func (e *HTTPToolExecutor) execute(ctx context.Context, resolvedURL string, args
 	if err != nil {
 		return "", domainerrors.NewInfrastructureError(err.Error())
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	limit := int64(e.definition.MaxResponseBytes)
 	if limit <= 0 {
@@ -159,7 +159,7 @@ func (e *HTTPToolExecutor) test(ctx context.Context, resolvedURL string, args ma
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	limit := int64(e.definition.MaxResponseBytes)
 	if limit <= 0 {

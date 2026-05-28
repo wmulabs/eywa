@@ -10,7 +10,7 @@ import (
 	"github.com/wmulabs/eywa/internal/domain/ports"
 	"github.com/wmulabs/eywa/internal/implementation/actions"
 	"github.com/wmulabs/eywa/internal/implementation/registries"
-	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/zap"
 )
 
@@ -312,7 +312,7 @@ func TestWeaveBuilder_WithLogger(t *testing.T) {
 
 func TestWeaveBuilder_WithTracer(t *testing.T) {
 	b := NewWeaveBuilder(context.Background())
-	tracer := trace.NewNoopTracerProvider().Tracer("test")
+	tracer := noop.NewTracerProvider().Tracer("test")
 	got := b.WithTracer(tracer)
 	if got != b {
 		t.Error("expected fluent builder")

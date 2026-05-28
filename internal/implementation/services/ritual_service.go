@@ -107,7 +107,10 @@ func (s *RitualService) Cancel(ctx context.Context, id, memoryKey string) error 
 	}
 
 	now := helpers.NowUTC()
-	return s.repo.UpdateStatus(ctx, id, entities.RitualCancelled, now)
+	if err := s.repo.UpdateStatus(ctx, id, entities.RitualCancelled, now); err != nil {
+		return fmt.Errorf("cancel ritual: %w", err)
+	}
+	return nil
 }
 
 func (s *RitualService) MarkRunning(ctx context.Context, id string) error {
@@ -119,10 +122,15 @@ func (s *RitualService) MarkRunning(ctx context.Context, id string) error {
 	switch task.Status {
 	case entities.RitualExecuted, entities.RitualFailed, entities.RitualCancelled:
 		return fmt.Errorf("task %s is %q: %w", id, task.Status, domainerrors.ErrRitualTerminal)
+	case entities.RitualPending, entities.RitualRunning:
+		// proceed to mark running
 	}
 
 	now := helpers.NowUTC()
-	return s.repo.UpdateRunning(ctx, id, now)
+	if err := s.repo.UpdateRunning(ctx, id, now); err != nil {
+		return fmt.Errorf("mark ritual running: %w", err)
+	}
+	return nil
 }
 
 func (s *RitualService) MarkExecuted(ctx context.Context, id string) error {
@@ -137,7 +145,7 @@ func (s *RitualService) MarkExecuted(ctx context.Context, id string) error {
 
 	now := helpers.NowUTC()
 	if err := s.repo.UpdateStatus(ctx, id, entities.RitualExecuted, now); err != nil {
-		return err
+		return fmt.Errorf("mark ritual executed: %w", err)
 	}
 
 	if task.Recurrence != nil {
@@ -158,15 +166,26 @@ func (s *RitualService) MarkFailed(ctx context.Context, id string, reason string
 	}
 
 	now := helpers.NowUTC()
-	return s.repo.UpdateFailed(ctx, id, now, reason)
+	if err := s.repo.UpdateFailed(ctx, id, now, reason); err != nil {
+		return fmt.Errorf("mark ritual failed: %w", err)
+	}
+	return nil
 }
 
 func (s *RitualService) ListPendingByMemoryKey(ctx context.Context, memoryKey string, limit, offset int) ([]*entities.Ritual, error) {
-	return s.repo.FindPendingByMemoryKey(ctx, memoryKey, limit, offset)
+	rituals, err := s.repo.FindPendingByMemoryKey(ctx, memoryKey, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("list pending rituals: %w", err)
+	}
+	return rituals, nil
 }
 
 func (s *RitualService) CountByMemoryKey(ctx context.Context, memoryKey string) (int64, error) {
-	return s.repo.CountByMemoryKey(ctx, memoryKey)
+	count, err := s.repo.CountByMemoryKey(ctx, memoryKey)
+	if err != nil {
+		return 0, fmt.Errorf("count rituals: %w", err)
+	}
+	return count, nil
 }
 
 // Failures are logged but not propagated — the current execution already succeeded.

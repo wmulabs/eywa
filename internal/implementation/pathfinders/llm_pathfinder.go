@@ -133,7 +133,7 @@ func (c *LLMPathfinder) getOracle() (ports.Oracle, error) {
 		provider, err = c.llmFactory.GetProviderForModel(c.internalSpirit.ModelConfig.Model)
 		if err != nil {
 			c.logger.Errorw("failed to get LLM provider", "provider", c.internalSpirit.ModelConfig.Provider, "model", c.internalSpirit.ModelConfig.Model, "error", err)
-			return nil, err
+			return nil, fmt.Errorf("get oracle provider: %w", err)
 		}
 	}
 	return provider, nil
@@ -156,7 +156,7 @@ func (c *LLMPathfinder) callLLM(ctx context.Context, provider ports.Oracle, prom
 	response, err := provider.GenerateResponse(ctx, request)
 	if err != nil {
 		c.logger.Errorw("LLM routing failed", "error", err)
-		return nil, err
+		return nil, fmt.Errorf("oracle generate response: %w", err)
 	}
 
 	return response, nil
@@ -171,7 +171,7 @@ func (c *LLMPathfinder) fetchSpiritDescriptions(ctx context.Context, spiritNames
 	spirits, err := c.spiritRepo.FindActiveByNames(ctx, spiritNames)
 	if err != nil {
 		c.logger.Errorw("failed to fetch Spirits in bulk", "spirit_names", spiritNames, "error", err)
-		return nil, err
+		return nil, fmt.Errorf("fetch spirit descriptions: %w", err)
 	}
 
 	c.addMissingSpirits(spirits, spiritNames)
@@ -241,12 +241,12 @@ func (c *LLMPathfinder) writeEventMetadata(sb *strings.Builder, metadata map[str
 func (c *LLMPathfinder) writeAvailableSpirits(sb *strings.Builder, spirits map[string]*entities.Spirit) {
 	sb.WriteString("## Available Spirits\n\n")
 	for name, spirit := range spirits {
-		sb.WriteString(fmt.Sprintf("### %s\n", name))
+		fmt.Fprintf(sb, "### %s\n", name)
 		if spirit.Description != "" {
-			sb.WriteString(fmt.Sprintf("Description: %s\n", spirit.Description))
+			fmt.Fprintf(sb, "Description: %s\n", spirit.Description)
 		}
 		if spirit.Specialization != "" {
-			sb.WriteString(fmt.Sprintf("Specialization: %s\n", spirit.Specialization))
+			fmt.Fprintf(sb, "Specialization: %s\n", spirit.Specialization)
 		}
 		sb.WriteString("\n")
 	}

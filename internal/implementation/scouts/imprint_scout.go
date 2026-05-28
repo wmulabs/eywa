@@ -47,7 +47,7 @@ func formatImprints(imprints []entities.Imprint) string {
 	var sb strings.Builder
 	sb.WriteString("<user_memory>\n")
 	for _, imp := range imprints {
-		sb.WriteString(fmt.Sprintf("- [%s] %s\n", imp.Category, imp.Fact))
+		fmt.Fprintf(&sb, "- [%s] %s\n", imp.Category, imp.Fact)
 	}
 	sb.WriteString("</user_memory>")
 	return sb.String()

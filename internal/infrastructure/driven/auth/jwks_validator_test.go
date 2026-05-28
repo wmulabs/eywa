@@ -70,11 +70,11 @@ func TestRsaPublicKeyFromJWK_Valid(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if pub.N.Cmp(key.PublicKey.N) != 0 {
+	if pub.N.Cmp(key.N) != 0 {
 		t.Error("recovered key N does not match")
 	}
-	if pub.E != key.PublicKey.E {
-		t.Errorf("recovered key E %d != %d", pub.E, key.PublicKey.E)
+	if pub.E != key.E {
+		t.Errorf("recovered key E %d != %d", pub.E, key.E)
 	}
 }
 

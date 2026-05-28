@@ -13,7 +13,7 @@ import (
 )
 
 func LoadTrialSuite(path string) (entities.TrialSuite, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		return entities.TrialSuite{}, fmt.Errorf("read trial suite: %w", err)
 	}

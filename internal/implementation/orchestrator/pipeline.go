@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/wmulabs/eywa/internal/domain/entities"
@@ -145,7 +146,7 @@ func (p *Pipeline) executeStep(ctx context.Context, step ProcessingStep, state *
 		if ctx.Err() == context.DeadlineExceeded {
 			return ErrTimeoutExceeded(step.Name())
 		}
-		return err
+		return fmt.Errorf("%s: %w", step.Name(), err)
 	}
 
 	p.logger.Debugw("pipeline step completed",

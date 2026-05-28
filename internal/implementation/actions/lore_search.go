@@ -95,7 +95,7 @@ func (a *SearchLoreAction) Execute(ctx context.Context, args map[string]any) (st
 
 	var sb strings.Builder
 	for i, chunk := range chunks {
-		sb.WriteString(fmt.Sprintf("[%d] %s\n", i+1, chunk.Content))
+		fmt.Fprintf(&sb, "[%d] %s\n", i+1, chunk.Content)
 	}
 	return strings.TrimSpace(sb.String()), nil
 }

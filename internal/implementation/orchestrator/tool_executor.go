@@ -202,7 +202,11 @@ func (t *DefaultActionExecutor) executeOne(ctx context.Context, call ports.Oracl
 }
 
 func (t *DefaultActionExecutor) GetAction(name string) (ports.Action, error) {
-	return t.actionRegistry.Get(name)
+	action, err := t.actionRegistry.Get(name)
+	if err != nil {
+		return nil, fmt.Errorf("get action %q: %w", name, err)
+	}
+	return action, nil
 }
 
 // GetRegistry satisfies the registryAccessor interface, exposing the ActionRegistry

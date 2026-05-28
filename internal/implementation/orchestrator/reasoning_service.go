@@ -360,7 +360,7 @@ func (r *ReasoningService) callLLM(
 	if closingHint != "" {
 		systemPrompt += closingHint
 	}
-	return provider.GenerateResponse(ctx, &ports.OracleRequest{
+	resp, err := provider.GenerateResponse(ctx, &ports.OracleRequest{
 		Model:        req.Spirit.ModelConfig.Model,
 		SystemPrompt: systemPrompt,
 		Messages:     messages,
@@ -370,6 +370,10 @@ func (r *ReasoningService) callLLM(
 		UseTools:     len(actions) > 0,
 		Attachments:  media.ConvertToLLMAttachments(req.Event.Attachments, provider, req.Spirit.ModelConfig.Model),
 	})
+	if err != nil {
+		return nil, fmt.Errorf("oracle generate response: %w", err)
+	}
+	return resp, nil
 }
 
 // processActionCalls executes all Action calls and appends results to the working context.

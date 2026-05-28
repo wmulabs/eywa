@@ -95,7 +95,7 @@ func (s *DefaultMemoryManager) GetOrCreate(ctx context.Context, memoryKey, subje
 		}
 
 		if err := s.memoryRepo.SaveMemory(ctx, key, session); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("initialize memory: %w", err)
 		}
 
 		s.logger.Infow("memory initialized",
@@ -132,7 +132,7 @@ func (s *DefaultMemoryManager) RebuildForTopic(ctx context.Context, memoryKey, s
 
 	key := buildRedisKey(memoryKey, subjectKey)
 	if err := s.memoryRepo.SaveMemory(ctx, key, session); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("rebuild memory: %w", err)
 	}
 
 	return session, nil
@@ -198,7 +198,10 @@ func (s *DefaultMemoryManager) Save(ctx context.Context, session *entities.Memor
 
 	key := buildRedisKey(session.MemoryKey, session.SubjectKey)
 
-	return s.memoryRepo.SaveMemory(ctx, key, session)
+	if err := s.memoryRepo.SaveMemory(ctx, key, session); err != nil {
+		return fmt.Errorf("save memory: %w", err)
+	}
+	return nil
 }
 
 func toChatMessages(messages []*entities.Echo) []entities.Thread {

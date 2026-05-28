@@ -32,10 +32,7 @@ func (r *TrialRunner) Run(ctx context.Context, suite entities.TrialSuite) (entit
 	passed := 0
 
 	for _, tc := range suite.Cases {
-		result, err := r.runCase(ctx, tc)
-		if err != nil {
-			return report, fmt.Errorf("case %q failed with error: %w", tc.ID, err)
-		}
+		result := r.runCase(ctx, tc)
 		report.Results = append(report.Results, result)
 		if result.Passed {
 			passed++
@@ -49,7 +46,7 @@ func (r *TrialRunner) Run(ctx context.Context, suite entities.TrialSuite) (entit
 	return report, nil
 }
 
-func (r *TrialRunner) runCase(ctx context.Context, tc entities.TrialCase) (entities.TrialResult, error) {
+func (r *TrialRunner) runCase(ctx context.Context, tc entities.TrialCase) entities.TrialResult {
 	sessionKey := entities.MemoryKey{Channel: "trial", User: tc.ID}
 	pulse := entities.NewPulse(sessionKey).
 		WithEventType(tc.EventType).
@@ -70,7 +67,7 @@ func (r *TrialRunner) runCase(ctx context.Context, tc entities.TrialCase) (entit
 			Passed:     false,
 			Failures:   []string{fmt.Sprintf("processing error: %v", err)},
 			DurationMs: durationMs,
-		}, nil
+		}
 	}
 
 	resp.ProcessingTimeMs = durationMs
@@ -104,5 +101,5 @@ func (r *TrialRunner) runCase(ctx context.Context, tc entities.TrialCase) (entit
 		Failures:   failures,
 		Response:   *resp,
 		DurationMs: durationMs,
-	}, nil
+	}
 }

@@ -136,7 +136,7 @@ func toString(v any) string {
 func (s *NotificationStep) callOracle(ctx context.Context, state *ProcessingState) (string, error) {
 	provider, err := s.oracleFactory.GetProvider(state.Spirit.ModelConfig.Provider)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("get oracle provider: %w", err)
 	}
 
 	req := ports.OracleRequest{
@@ -153,7 +153,7 @@ func (s *NotificationStep) callOracle(ctx context.Context, state *ProcessingStat
 
 	resp, err := provider.GenerateResponse(ctx, &req)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("generate oracle response: %w", err)
 	}
 
 	if state.ReasoningResult == nil {

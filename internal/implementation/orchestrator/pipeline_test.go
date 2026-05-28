@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/wmulabs/eywa/internal/domain/entities"
-	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/zap"
 )
 
@@ -28,7 +28,7 @@ func (s *testStep) Execute(_ context.Context, _ *ProcessingState) error {
 
 func newTestPipeline() *Pipeline {
 	logger, _ := zap.NewDevelopment()
-	return NewPipeline(logger.Sugar(), trace.NewNoopTracerProvider().Tracer("test"))
+	return NewPipeline(logger.Sugar(), noop.NewTracerProvider().Tracer("test"))
 }
 
 func minimalState() *ProcessingState {

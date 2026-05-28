@@ -2,6 +2,7 @@
 package netutil
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/url"
@@ -27,7 +28,8 @@ func ValidateURL(rawURL string) error {
 	if hostname == "" {
 		return fmt.Errorf("URL has no host")
 	}
-	addrs, err := net.LookupHost(hostname)
+	// Use background context: SSRF validation must not be skipped due to a cancelled caller context.
+	addrs, err := net.DefaultResolver.LookupHost(context.Background(), hostname)
 	if err != nil {
 		// Cannot resolve — let the http.Client handle the failure.
 		return nil

@@ -127,7 +127,7 @@ func (r *actionRegistry) Execute(ctx context.Context, actionName string, args ma
 }
 
 func (r *actionRegistry) GetActionDefinitions(ctx context.Context, actionNames []string) ([]entities.ActionDefinition, error) {
-	ctx, span := tracer.GetTracer().Start(ctx, "ActionRegistry/GetActionDefinitions")
+	_, span := tracer.GetTracer().Start(ctx, "ActionRegistry/GetActionDefinitions")
 	defer span.End()
 
 	log := r.logger

@@ -394,11 +394,6 @@ func TestReasoningService_Execute_SummonCall_MissingArgs(t *testing.T) {
 
 // --- executeAllActions: orchestrator with summonService and valid summon call ---
 
-type stubSummonService struct {
-	response string
-	err      error
-}
-
 func TestReasoningService_Execute_SummonCall_WithSummonService(t *testing.T) {
 	summonCall := ports.OracleToolCall{
 		Name:      "summon_spirit",

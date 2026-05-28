@@ -25,7 +25,10 @@ func (s *ValidationStep) Name() string           { return "Validation" }
 func (s *ValidationStep) Timeout() time.Duration { return s.timeout }
 
 func (s *ValidationStep) Execute(ctx context.Context, state *ProcessingState) error {
-	return s.validator.Validate(ctx, state.Event)
+	if err := s.validator.Validate(ctx, state.Event); err != nil {
+		return fmt.Errorf("validate event: %w", err)
+	}
+	return nil
 }
 
 // RateLimitStep rejects requests that exceed the configured rate for a session.
