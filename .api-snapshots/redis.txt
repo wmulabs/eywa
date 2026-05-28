@@ -1,6 +1,17 @@
 package redis // import "github.com/wmulabs/eywa/redis"
 
 
+VARIABLES
+
+var (
+	// ErrBondLockNotFound is returned when ReleaseLock or ExtendLock is called
+	// for a key that has no active lock (e.g., the lock already expired or was released).
+	ErrBondLockNotFound = errors.New("bond: lock not found")
+
+	// ErrBondExtendFailed is returned when extending an active lock fails.
+	ErrBondExtendFailed = errors.New("bond: failed to extend lock")
+)
+
 FUNCTIONS
 
 func NewBondManager(client *redis.Client) eywa.Bond
@@ -90,6 +101,7 @@ func (r *RedisRepository) DisconnectRedisDB(ctx context.Context)
 func (r *RedisRepository) GetClient() *redis.Client
 
 func (r *RedisRepository) GetRedisClient() *redis.Client
+    Deprecated: Use GetClient instead.
 
 type VigilRepository struct {
 	// Has unexported fields.
