@@ -7,8 +7,8 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/valyala/fasthttp v1.51.0
 	github.com/wmulabs/eywa v0.0.0
-	go.opentelemetry.io/otel v1.43.0
-	go.opentelemetry.io/otel/trace v1.43.0
+	go.opentelemetry.io/otel v1.44.0
+	go.opentelemetry.io/otel/trace v1.44.0
 	go.uber.org/zap v1.27.1
 )
 
