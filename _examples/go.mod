@@ -3,7 +3,7 @@ module github.com/wmulabs/eywa/examples
 go 1.26.3
 
 require (
-	github.com/gofiber/fiber/v2 v2.52.12
+	github.com/gofiber/fiber/v2 v2.52.13
 	github.com/wmulabs/eywa v0.0.0
 	github.com/wmulabs/eywa/fiber v0.0.0
 	github.com/wmulabs/eywa/mcp v0.0.0
