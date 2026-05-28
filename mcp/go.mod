@@ -1,6 +1,6 @@
 module github.com/wmulabs/eywa/mcp
 
-go 1.25.5
+go 1.25.10
 
 require github.com/wmulabs/eywa v0.0.0
 

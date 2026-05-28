@@ -1,6 +1,6 @@
 module github.com/wmulabs/eywa/examples
 
-go 1.25.5
+go 1.25.10
 
 require (
 	github.com/gofiber/fiber/v2 v2.52.12

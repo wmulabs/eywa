@@ -1,6 +1,6 @@
 module github.com/wmulabs/eywa/providers/anthropic
 
-go 1.25.5
+go 1.25.10
 
 require (
 	github.com/anthropics/anthropic-sdk-go v1.42.0
