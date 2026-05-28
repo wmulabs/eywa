@@ -1,0 +1,42 @@
+run:
+  timeout: 5m
+  go: "1.25"
+
+linters:
+  disable-all: true
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - gosec
+    - noctx
+    - wrapcheck
+    - unparam
+    - exhaustive
+    - misspell
+
+linters-settings:
+  errcheck:
+    check-blank: true
+  gosec:
+    excludes:
+      - G115
+  wrapcheck:
+    ignoreSigs:
+      - ".Errorf("
+      - "errors.New("
+      - "errors.Unwrap("
+
+issues:
+  exclude-rules:
+    - path: "_test\\.go"
+      linters:
+        - errcheck
+        - gosec
+        - wrapcheck
+    - path: "_examples/"
+      linters:
+        - gosec

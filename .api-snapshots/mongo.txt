@@ -1,0 +1,284 @@
+package mongo // import "github.com/wmulabs/eywa/mongo"
+
+
+FUNCTIONS
+
+func NewImprintRepository(db *mongo.Database) eywa.ImprintRepository
+func NewLedgerRepository(db *mongo.Database) eywa.LedgerRepository
+func NewLoreRepository(db *mongo.Database) eywa.LoreRepository
+func NewLoreStore(db *mongo.Database) eywa.LoreStore
+func NewRitualRepository(database *mongo.Database) eywa.RitualRepository
+func NewSpiritRepository(db *mongo.Database) eywa.SpiritRepository
+
+TYPES
+
+type ChronicleRepository struct {
+	// Has unexported fields.
+}
+    ChronicleRepository persists interaction audit records to MongoDB.
+
+    Immutability note: Chronicle records are append-only by application
+    convention — this repository exposes no Update or Delete methods. However,
+    MongoDB itself does not enforce write protection; records can be modified
+    or deleted by any process with direct database write access. For compliance
+    use cases (GDPR, HIPAA, SOC2) that require a legally-binding audit trail,
+    supplement with an external append-only log service or enable MongoDB Atlas
+    audit log streaming to object storage.
+
+func NewChronicleRepository(database *mongo.Database) *ChronicleRepository
+
+func (r *ChronicleRepository) AggregateActions(ctx context.Context, spiritName string, from, to time.Time) ([]eywa.ActionStats, error)
+
+func (r *ChronicleRepository) AggregateSpirits(ctx context.Context, from, to time.Time) ([]eywa.SpiritStats, error)
+
+func (r *ChronicleRepository) AggregateTokens(ctx context.Context, spiritName string, from, to time.Time, granularity string) ([]eywa.TokenSeries, error)
+
+func (r *ChronicleRepository) FindByEventKey(ctx context.Context, eventKey string) ([]*eywa.Chronicle, error)
+
+func (r *ChronicleRepository) FindByID(ctx context.Context, id string) (*eywa.Chronicle, error)
+
+func (r *ChronicleRepository) FindByMemoryKey(ctx context.Context, memoryKey string) ([]*eywa.Chronicle, error)
+
+func (r *ChronicleRepository) FindByTimeRange(ctx context.Context, start, end time.Time) ([]*eywa.Chronicle, error)
+
+func (r *ChronicleRepository) List(ctx context.Context, opts eywa.ChronicleListOptions) ([]*eywa.Chronicle, int64, error)
+
+func (r *ChronicleRepository) LogInteraction(ctx context.Context, log *eywa.Chronicle) error
+
+type EchoRepository struct {
+	// Has unexported fields.
+}
+
+func NewEchoRepository(database *mongo.Database) *EchoRepository
+
+func (r *EchoRepository) Append(ctx context.Context, message eywa.Echo) error
+
+func (r *EchoRepository) CountByMemoryKey(ctx context.Context, memoryKey string) (int64, error)
+
+func (r *EchoRepository) CountByMemoryKeyAndSubject(ctx context.Context, memoryKey, subjectKey string) (int64, error)
+
+func (r *EchoRepository) CountBySubjectKey(ctx context.Context, subjectKey string) (int64, error)
+
+func (r *EchoRepository) FindByMemoryKey(ctx context.Context, memoryKey string, limit, offset int) ([]*eywa.Echo, error)
+
+func (r *EchoRepository) FindByMemoryKeyAndSubject(ctx context.Context, memoryKey, subjectKey string, limit, offset int) ([]*eywa.Echo, error)
+
+func (r *EchoRepository) FindByMemoryKeyBefore(ctx context.Context, memoryKey, beforeID string, limit int) ([]*eywa.Echo, error)
+    FindByMemoryKeyBefore returns user-facing messages for memoryKey with IDs
+    before beforeID, sorted newest-first. Pass empty beforeID to get the most
+    recent messages.
+
+func (r *EchoRepository) FindBySubjectKey(ctx context.Context, subjectKey string, limit, offset int) ([]*eywa.Echo, error)
+
+func (r *EchoRepository) FindRecentByMemoryKey(ctx context.Context, memoryKey string, limit int) ([]*eywa.Echo, error)
+
+func (r *EchoRepository) FindRecentByMemoryKeyAndSubject(ctx context.Context, memoryKey, subjectKey string, limit int) ([]*eywa.Echo, error)
+
+func (r *EchoRepository) ListSessions(ctx context.Context, opts eywa.SessionListOptions) ([]*eywa.SessionSummary, int64, error)
+    ListSessions aggregates user-facing messages to one SessionSummary per
+    memory_key. SpiritName filtering is not supported (Echo documents do not
+    carry spirit_name).
+
+type HTTPToolRepository struct {
+	// Has unexported fields.
+}
+
+func NewHTTPToolRepository(database *mongodriver.Database) *HTTPToolRepository
+
+func (r *HTTPToolRepository) Delete(ctx context.Context, id string) error
+
+func (r *HTTPToolRepository) FindByID(ctx context.Context, id string) (*eywa.HTTPTool, error)
+
+func (r *HTTPToolRepository) FindBySpiritID(ctx context.Context, spiritID string) ([]eywa.HTTPTool, error)
+
+func (r *HTTPToolRepository) List(ctx context.Context) ([]eywa.HTTPTool, error)
+
+func (r *HTTPToolRepository) Save(ctx context.Context, tool eywa.HTTPTool) error
+
+func (r *HTTPToolRepository) Update(ctx context.Context, tool eywa.HTTPTool) error
+
+type ImprintRepository struct {
+	// Has unexported fields.
+}
+
+func (r *ImprintRepository) Delete(ctx context.Context, id string) error
+
+func (r *ImprintRepository) GetByUserKey(ctx context.Context, userKey string, spiritName string) ([]eywa.Imprint, error)
+
+func (r *ImprintRepository) List(ctx context.Context, opts eywa.ImprintListOptions) ([]eywa.Imprint, int64, error)
+
+func (r *ImprintRepository) Prune(ctx context.Context, userKey string, spiritName string, maxCount int) error
+
+func (r *ImprintRepository) Save(ctx context.Context, imprint eywa.Imprint) error
+
+type LedgerRepository struct {
+	// Has unexported fields.
+}
+
+func (r *LedgerRepository) GetBudget(ctx context.Context, spiritName string) (eywa.TokenBudget, error)
+
+func (r *LedgerRepository) GetMonthUsage(ctx context.Context, spiritName string, month string) (eywa.LedgerEntry, error)
+
+func (r *LedgerRepository) IncrementUsage(ctx context.Context, spiritName string, tokens int64, costUSD float64) error
+
+func (r *LedgerRepository) SetBudget(ctx context.Context, budget eywa.TokenBudget) error
+
+type LinkRepository struct {
+	// Has unexported fields.
+}
+
+func NewLinkRepository(database *mongodriver.Database) *LinkRepository
+
+func (r *LinkRepository) Delete(ctx context.Context, eventType string) error
+
+func (r *LinkRepository) FindAll(ctx context.Context) ([]*eywa.Link, error)
+
+func (r *LinkRepository) FindByKey(ctx context.Context, eventType string) (*eywa.Link, error)
+
+func (r *LinkRepository) Save(ctx context.Context, link *eywa.Link) error
+
+type LoreRepository struct {
+	// Has unexported fields.
+}
+
+func (r *LoreRepository) Create(ctx context.Context, lore eywa.Lore) error
+
+func (r *LoreRepository) Delete(ctx context.Context, id string) error
+
+func (r *LoreRepository) GetByID(ctx context.Context, id string) (eywa.Lore, error)
+
+func (r *LoreRepository) GetByIDs(ctx context.Context, ids []string) ([]eywa.Lore, error)
+
+func (r *LoreRepository) GetByName(ctx context.Context, name string) (eywa.Lore, error)
+
+func (r *LoreRepository) GetBySpiritID(ctx context.Context, spiritID string) ([]eywa.Lore, error)
+
+func (r *LoreRepository) Update(ctx context.Context, lore eywa.Lore) error
+
+type LoreStore struct {
+	// Has unexported fields.
+}
+    LoreStore implements LoreStore via MongoDB Atlas $vectorSearch on the
+    lore_chunks collection. Requires an Atlas Vector Search index named
+    "lore_embedding_index" on the embedding field.
+
+func (s *LoreStore) Delete(ctx context.Context, loreID string) error
+
+func (s *LoreStore) Search(ctx context.Context, loreID string, queryVec []float32, topK int, minScore float64) ([]eywa.LoreChunk, error)
+
+func (s *LoreStore) Upsert(ctx context.Context, chunks []eywa.LoreChunk) error
+
+type MongoConnection struct {
+	// Has unexported fields.
+}
+
+func NewMongoConnection(ctx context.Context, mongoUrl string, database string, appName string) (*MongoConnection, error)
+
+func (m *MongoConnection) DisconnectMongoDB(ctx context.Context)
+
+func (m *MongoConnection) GetDatabase() *mongo.Database
+
+type OperatorRepository struct {
+	// Has unexported fields.
+}
+
+func NewOperatorRepository(database *mongodriver.Database) *OperatorRepository
+
+func (r *OperatorRepository) Create(ctx context.Context, op *eywa.Operator) error
+
+func (r *OperatorRepository) Deactivate(ctx context.Context, id string) error
+
+func (r *OperatorRepository) FindByEmail(ctx context.Context, email string) (*eywa.Operator, error)
+
+func (r *OperatorRepository) FindByID(ctx context.Context, id string) (*eywa.Operator, error)
+
+func (r *OperatorRepository) List(ctx context.Context, page, limit int) ([]*eywa.Operator, int64, error)
+
+func (r *OperatorRepository) Update(ctx context.Context, op *eywa.Operator) error
+
+type RiteRepository struct {
+	// Has unexported fields.
+}
+
+func NewRiteRepository(database *mongodriver.Database) *RiteRepository
+
+func (r *RiteRepository) Create(ctx context.Context, rite *eywa.Rite) error
+
+func (r *RiteRepository) Decide(ctx context.Context, id, operatorID string, status eywa.RiteStatus) error
+
+func (r *RiteRepository) FindByID(ctx context.Context, id string) (*eywa.Rite, error)
+
+func (r *RiteRepository) List(ctx context.Context, opts eywa.RiteListOptions) ([]*eywa.Rite, int64, error)
+
+type RitualRepository struct {
+	// Has unexported fields.
+}
+
+func (r *RitualRepository) CountByMemoryKey(ctx context.Context, memoryKey string) (int64, error)
+
+func (r *RitualRepository) FindByID(ctx context.Context, id string) (*eywa.Ritual, error)
+
+func (r *RitualRepository) FindPendingByMemoryKey(ctx context.Context, memoryKey string, limit, offset int) ([]*eywa.Ritual, error)
+
+func (r *RitualRepository) Save(ctx context.Context, task *eywa.Ritual) error
+
+func (r *RitualRepository) UpdateFailed(ctx context.Context, id string, ts time.Time, reason string) error
+
+func (r *RitualRepository) UpdateKeeperTaskID(ctx context.Context, id string, keeperTaskID string) error
+
+func (r *RitualRepository) UpdateRunning(ctx context.Context, id string, ts time.Time) error
+
+func (r *RitualRepository) UpdateStatus(ctx context.Context, id string, status eywa.RitualStatus, ts time.Time) error
+
+type SpiritRepository struct {
+	// Has unexported fields.
+}
+    Versioned Spirit storage — each Update inserts a new version rather than
+    overwriting.
+
+func (r *SpiritRepository) Activate(ctx context.Context, spiritName string, version int) error
+    Activate sets only the requested version to active — deactivates all
+    other versions of the same Spirit. Both operations run inside a session
+    transaction to prevent a window where no version is active.
+
+func (r *SpiritRepository) CountActive(ctx context.Context) (int64, error)
+
+func (r *SpiritRepository) Create(ctx context.Context, spirit *eywa.Spirit) error
+
+func (r *SpiritRepository) Deactivate(ctx context.Context, id string) error
+
+func (r *SpiritRepository) FindActiveByName(ctx context.Context, spiritName string) (*eywa.Spirit, error)
+
+func (r *SpiritRepository) FindActiveByNames(ctx context.Context, spiritNames []string) (map[string]*eywa.Spirit, error)
+    FindActiveByNames fetches multiple Spirits in a single query — avoids N+1
+    round trips.
+
+func (r *SpiritRepository) FindByID(ctx context.Context, id string) (*eywa.Spirit, error)
+
+func (r *SpiritRepository) FindVersionHistory(ctx context.Context, spiritName string) ([]*eywa.Spirit, error)
+
+func (r *SpiritRepository) GetVersion(ctx context.Context, spiritName string, version int) (*eywa.Spirit, error)
+
+func (r *SpiritRepository) ListActive(ctx context.Context, limit, offset int) ([]*eywa.Spirit, error)
+
+func (r *SpiritRepository) ListAll(ctx context.Context) ([]*eywa.Spirit, error)
+
+func (r *SpiritRepository) RestoreVersion(ctx context.Context, id string) error
+    RestoreVersion promotes a specific version to active, deactivating all
+    other versions of the same Spirit. Both operations run inside a session
+    transaction to prevent a window where no version is active.
+
+func (r *SpiritRepository) Update(ctx context.Context, spiritName string, spirit *eywa.Spirit, changeLog string) (*eywa.Spirit, error)
+    Update deactivates the current active version and inserts a new one with an
+    incremented version number.
+
+type WeaveConfigRepository struct {
+	// Has unexported fields.
+}
+
+func NewWeaveConfigRepository(database *mongodriver.Database) *WeaveConfigRepository
+
+func (r *WeaveConfigRepository) Find(ctx context.Context) (*eywa.WeaveConfig, error)
+
+func (r *WeaveConfigRepository) Save(ctx context.Context, config *eywa.WeaveConfig) error
+

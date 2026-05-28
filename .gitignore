@@ -1,0 +1,51 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/
+dist/
+
+# Go build artifacts
+*.test
+*.out
+coverage.html
+coverage.txt
+
+# Go module cache (local replace directives are fine, vendor is not)
+vendor/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Logs
+*.log
+
+# Test binary
+*.test
+
+# Air (live reload)
+tmp/
+
+.specs/
+
+# Claude Code
+.claude/
+docs/superpowers/
+
+# Git worktrees
+.worktrees/

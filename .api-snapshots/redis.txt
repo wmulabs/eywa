@@ -1,0 +1,111 @@
+package redis // import "github.com/wmulabs/eywa/redis"
+
+
+FUNCTIONS
+
+func NewBondManager(client *redis.Client) eywa.Bond
+func NewInbox(client *redis.Client, ttl time.Duration) eywa.Inbox
+    NewInbox creates a new inbox backed by the provided Redis client. ttl
+    controls how long buffered messages are retained (recommended: 10s).
+
+func NewLimiter(client *redis.Client, maxRequests int, window time.Duration) eywa.Limiter
+    NewLimiter creates a rate limiter that allows up to maxRequests per window
+    per key. Example: NewLimiter(client, 60, time.Minute) → 60 req/min per key.
+
+func NewMemoryRepository(client *redis.Client, serviceName, environment string, memoryTTLSeconds int, tracer trace.Tracer) eywa.MemoryRepository
+
+TYPES
+
+type BondManager struct {
+	// Has unexported fields.
+}
+    Mutexes are stored by key so ReleaseLock and ExtendLock can target the same
+    instance. The global mu protects the entries map only — it is never held
+    during Redis I/O.
+
+func (r *BondManager) AcquireLock(ctx context.Context, key string, ttl time.Duration) (bool, error)
+    The lock expires automatically; call ReleaseLock to release it early.
+
+func (r *BondManager) ExtendLock(ctx context.Context, key string, ttl time.Duration) error
+
+func (r *BondManager) ReleaseLock(ctx context.Context, key string) error
+    ReleaseLock uses the stored mutex instance for a clean unlock. If the lock
+    has already expired or was never acquired, returns nil.
+
+type InboxManager struct {
+	// Has unexported fields.
+}
+    InboxManager implements eywa.Inbox using Redis lists. Messages are appended
+    via RPUSH with a sliding TTL. PopAll reads and deletes the list atomically
+    in a single pipeline to avoid partial reads.
+
+func (r *InboxManager) PopAll(ctx context.Context, memoryKey string) ([]string, error)
+    PopAll atomically reads all messages and deletes the inbox key. Returns an
+    empty slice when the inbox is empty or the key does not exist.
+
+func (r *InboxManager) Push(ctx context.Context, memoryKey string, message string) error
+    Push appends message to the memory inbox and refreshes the TTL.
+
+type MemoryRepository struct {
+	// Has unexported fields.
+}
+
+func (r *MemoryRepository) DeleteMemory(ctx context.Context, key string) error
+
+func (r *MemoryRepository) GetMemory(ctx context.Context, key string) (*eywa.Memory, error)
+
+func (r *MemoryRepository) SaveMemory(ctx context.Context, key string, memory *eywa.Memory) error
+
+type RateLimiter struct {
+	// Has unexported fields.
+}
+    RateLimiter implements a GCRA (token bucket) rate limiter backed by Redis.
+    On Redis failure it fails open — traffic is never blocked due to
+    infrastructure issues.
+
+func (r *RateLimiter) Allow(ctx context.Context, key string) (bool, error)
+
+type RedisPubSub struct {
+	// Has unexported fields.
+}
+
+func NewRedisPubSub(client *redis.Client) *RedisPubSub
+
+func (r *RedisPubSub) Publish(ctx context.Context, channel, message string) error
+
+func (r *RedisPubSub) Subscribe(ctx context.Context, channel string, handler func(msg string)) error
+    Subscribe blocks until ctx is cancelled, calling handler for each received
+    message.
+
+type RedisRepository struct {
+	// Has unexported fields.
+}
+
+func NewRedisConnection(ctx context.Context, redisUrl string, basePath string) (*RedisRepository, error)
+
+func (r *RedisRepository) CachePath(s []string) string
+
+func (r *RedisRepository) DisconnectRedisDB(ctx context.Context)
+
+func (r *RedisRepository) GetClient() *redis.Client
+
+func (r *RedisRepository) GetRedisClient() *redis.Client
+
+type VigilRepository struct {
+	// Has unexported fields.
+}
+
+func NewVigilRepository(client *redis.Client, serviceName, environment string) *VigilRepository
+
+func (r *VigilRepository) Acquire(ctx context.Context, memoryKey, operatorID string, ttl time.Duration) error
+
+func (r *VigilRepository) Get(ctx context.Context, memoryKey string) (*eywa.Vigil, error)
+
+func (r *VigilRepository) ListAll(ctx context.Context) ([]*eywa.Vigil, error)
+    ListAll scans Redis for all active vigil keys under this service/environment
+    prefix.
+
+func (r *VigilRepository) Refresh(ctx context.Context, memoryKey string, ttl time.Duration) error
+
+func (r *VigilRepository) Release(ctx context.Context, memoryKey string) error
+

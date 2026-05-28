@@ -1,0 +1,54 @@
+name: Bug Report
+description: Report a bug in Eywa
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please fill in as much detail as possible.
+  - type: input
+    id: eywa-version
+    attributes:
+      label: Eywa version
+      placeholder: "e.g. v1.0.0 or github.com/wmulabs/eywa v1.0.0"
+    validations:
+      required: true
+  - type: input
+    id: go-version
+    attributes:
+      label: Go version
+      placeholder: "e.g. go1.25.0"
+    validations:
+      required: true
+  - type: input
+    id: sub-module
+    attributes:
+      label: Sub-module affected (if applicable)
+      placeholder: "e.g. fiber, mongo, providers/openai"
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear description of what the bug is.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Minimal code or steps to reproduce the bug.
+      render: go
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true

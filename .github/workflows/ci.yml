@@ -1,0 +1,267 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Run tests with coverage
+        run: |
+          go test \
+            . \
+            ./internal/... \
+            -coverprofile=coverage.out \
+            -covermode=atomic \
+            -race
+
+      - name: Check coverage threshold (80%)
+        run: |
+          COVERAGE=$(go tool cover -func=coverage.out | grep '^total:' | awk '{print $3}' | sed 's/%//')
+          echo "Coverage: ${COVERAGE}%"
+          if [ "$(echo "$COVERAGE < 80" | bc -l)" = "1" ]; then
+            echo "Coverage ${COVERAGE}% is below the 80% threshold"
+            exit 1
+          fi
+
+      - name: Run fiber tests with coverage
+        run: |
+          cd fiber && go test \
+            ./... \
+            -coverprofile=../coverage-fiber.out \
+            -covermode=atomic \
+            -race
+
+      - name: Check fiber coverage threshold (70%)
+        run: |
+          COVERAGE=$(go tool cover -func=coverage-fiber.out | grep '^total:' | awk '{print $3}' | sed 's/%//')
+          echo "Fiber Coverage: ${COVERAGE}%"
+          if [ "$(echo "$COVERAGE < 70" | bc -l)" = "1" ]; then
+            echo "Fiber coverage ${COVERAGE}% is below the 70% threshold"
+            exit 1
+          fi
+
+      - name: Run mongo tests with coverage
+        run: |
+          cd mongo && go test \
+            ./... \
+            -coverprofile=../coverage-mongo.out \
+            -covermode=atomic \
+            -race
+
+      - name: Check mongo coverage threshold (70%)
+        run: |
+          COVERAGE=$(go tool cover -func=coverage-mongo.out | grep '^total:' | awk '{print $3}' | sed 's/%//')
+          echo "Mongo Coverage: ${COVERAGE}%"
+          if [ "$(echo "$COVERAGE < 70" | bc -l)" = "1" ]; then
+            echo "Mongo coverage ${COVERAGE}% is below the 70% threshold"
+            exit 1
+          fi
+
+      - name: Run redis tests with coverage
+        run: |
+          cd redis && go test \
+            ./... \
+            -coverprofile=../coverage-redis.out \
+            -covermode=atomic \
+            -race
+
+      - name: Check redis coverage threshold (70%)
+        run: |
+          COVERAGE=$(go tool cover -func=coverage-redis.out | grep '^total:' | awk '{print $3}' | sed 's/%//')
+          echo "Redis Coverage: ${COVERAGE}%"
+          if [ "$(echo "$COVERAGE < 70" | bc -l)" = "1" ]; then
+            echo "Redis coverage ${COVERAGE}% is below the 70% threshold"
+            exit 1
+          fi
+
+      - name: Run channels/whatsapp tests with coverage
+        run: |
+          cd channels/whatsapp && go test \
+            ./... \
+            -coverprofile=../../coverage-channels.out \
+            -covermode=atomic \
+            -race
+
+      - name: Run providers/anthropic tests
+        run: cd providers/anthropic && go test ./... -coverprofile=../../coverage-providers-anthropic.out -covermode=atomic -race
+
+      - name: Run providers/openai tests
+        run: cd providers/openai && go test ./... -coverprofile=../../coverage-providers-openai.out -covermode=atomic -race
+
+      - name: Run providers/gemini tests
+        run: cd providers/gemini && go test ./... -coverprofile=../../coverage-providers-gemini.out -covermode=atomic -race
+
+      - name: Run providers/bedrock tests
+        run: cd providers/bedrock && go test ./... -coverprofile=../../coverage-providers-bedrock.out -covermode=atomic -race
+
+      - name: Run providers/weaviate tests
+        run: cd providers/weaviate && go test ./... -coverprofile=../../coverage-providers-weaviate.out -covermode=atomic -race
+
+      - name: Run providers/qdrant tests
+        run: cd providers/qdrant && go test ./... -coverprofile=../../coverage-providers-qdrant.out -covermode=atomic -race
+
+      - name: Run providers/pgvector tests
+        run: cd providers/pgvector && go test ./... -coverprofile=../../coverage-providers-pgvector.out -covermode=atomic -race
+
+      - name: Run providers/pinecone tests
+        run: cd providers/pinecone && go test ./... -coverprofile=../../coverage-providers-pinecone.out -covermode=atomic -race
+
+      - name: Run gcp/cloudtasks tests
+        run: cd gcp/cloudtasks && go test ./... -coverprofile=../../coverage-gcp-cloudtasks.out -covermode=atomic -race
+
+      - name: Run gcp/gcs tests
+        run: cd gcp/gcs && go test ./... -coverprofile=../../coverage-gcp-gcs.out -covermode=atomic -race
+
+      - name: Run gcp/gemini tests
+        run: cd gcp/gemini && go test ./... -coverprofile=../../coverage-gcp-gemini.out -covermode=atomic -race
+
+      - name: Run mcp tests
+        run: cd mcp && go test ./... -coverprofile=../coverage-mcp.out -covermode=atomic -race
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: >-
+            coverage.out,
+            coverage-fiber.out,
+            coverage-mongo.out,
+            coverage-redis.out,
+            coverage-channels.out,
+            coverage-providers-anthropic.out,
+            coverage-providers-openai.out,
+            coverage-providers-gemini.out,
+            coverage-providers-bedrock.out,
+            coverage-providers-weaviate.out,
+            coverage-providers-qdrant.out,
+            coverage-providers-pgvector.out,
+            coverage-providers-pinecone.out,
+            coverage-gcp-cloudtasks.out,
+            coverage-gcp-gcs.out,
+            coverage-gcp-gemini.out,
+            coverage-mcp.out
+          fail_ci_if_error: false
+
+  examples:
+    name: Build Examples
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: _examples/go.mod
+          cache: true
+
+      - name: Build all examples
+        run: cd _examples && go build ./...
+
+  vet:
+    name: Vet
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: gofmt check
+        run: |
+          files=$(gofmt -l .)
+          if [ -n "$files" ]; then
+            echo "gofmt violations:"
+            echo "$files"
+            exit 1
+          fi
+
+      - name: govulncheck
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+
+      - name: Govulncheck sub-modules
+        run: |
+          for mod in fiber mongo redis mcp \
+            channels/whatsapp \
+            providers/anthropic providers/openai providers/gemini \
+            providers/bedrock providers/vertexai providers/weaviate \
+            providers/pgvector providers/pinecone providers/qdrant \
+            gcp/cloudtasks gcp/gcs gcp/gemini; do
+            echo "==> govulncheck $mod"
+            (cd "$mod" && govulncheck ./...)
+          done
+
+      - name: API stability check
+        run: |
+          go doc -all github.com/wmulabs/eywa > /tmp/api_current.txt
+          if ! diff -u .api-snapshot.txt /tmp/api_current.txt; then
+            echo ""
+            echo "Public API surface has changed. If this is intentional:"
+            echo "  go doc -all github.com/wmulabs/eywa > .api-snapshot.txt"
+            echo "  git add .api-snapshot.txt && git commit -m 'docs: update API snapshot'"
+            echo ""
+            echo "Review CONTRIBUTING.md to determine if this requires a MINOR or MAJOR version bump."
+            exit 1
+          fi
+
+      - name: API stability check sub-modules
+        run: |
+          for mod in fiber mongo redis mcp; do
+            echo "==> API snapshot check: $mod"
+            (cd "$mod" && go doc -all .) > /tmp/api_current_${mod}.txt
+            if ! diff -u ".api-snapshots/${mod}.txt" "/tmp/api_current_${mod}.txt"; then
+              echo ""
+              echo "Public API surface of '$mod' has changed. If this is intentional:"
+              echo "  (cd $mod && go doc -all .) > .api-snapshots/${mod}.txt"
+              echo "  git add .api-snapshots/${mod}.txt && git commit -m 'docs: update $mod API snapshot'"
+              echo ""
+              echo "Review CONTRIBUTING.md to determine if this requires a MINOR or MAJOR version bump."
+              exit 1
+            fi
+          done
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.64.0
+          args: --timeout=5m
+
+      - name: Lint sub-modules
+        run: |
+          SUBMODULES="channels/whatsapp fiber gcp/cloudtasks gcp/gcs gcp/gemini mcp mongo providers/anthropic providers/bedrock providers/gemini providers/openai providers/pgvector providers/pinecone providers/qdrant providers/vertexai providers/weaviate redis"
+          for mod in $SUBMODULES; do
+            echo "=== Linting $mod ==="
+            (cd "$mod" && golangci-lint run ./... --timeout 5m) || exit 1
+          done
