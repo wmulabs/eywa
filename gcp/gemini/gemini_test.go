@@ -2,11 +2,28 @@ package gemini
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
 	eywa "github.com/wmulabs/eywa"
 	"google.golang.org/genai"
 )
+
+// skipIfNoGCP skips the test when no GCP Application Default Credentials are
+// discoverable. Constructors that call genai.NewClient resolve ADC at build time.
+func skipIfNoGCP(t *testing.T) {
+	t.Helper()
+	if os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") != "" {
+		return
+	}
+	home, _ := os.UserHomeDir()
+	adc := filepath.Join(home, ".config", "gcloud", "application_default_credentials.json")
+	if _, err := os.Stat(adc); err == nil {
+		return
+	}
+	t.Skip("no GCP credentials: set GOOGLE_APPLICATION_CREDENTIALS or run `gcloud auth application-default login`")
+}
 
 // --- extractTextAndUsage ---
 
@@ -135,7 +152,8 @@ func TestTranscribe_EmptyAudioData_ReturnsError(t *testing.T) {
 }
 
 func TestNewGeminiAudioTranscriber_EmptyModel_SetsDefault(t *testing.T) {
-	tr, err := NewGeminiAudioTranscriber("test-key", "")
+	skipIfNoGCP(t)
+	tr, err := NewGeminiAudioTranscriber(t.Context(), "test-key", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -145,7 +163,8 @@ func TestNewGeminiAudioTranscriber_EmptyModel_SetsDefault(t *testing.T) {
 }
 
 func TestNewGeminiAudioTranscriber_CustomModel(t *testing.T) {
-	tr, err := NewGeminiAudioTranscriber("test-key", "gemini-2.5-flash")
+	skipIfNoGCP(t)
+	tr, err := NewGeminiAudioTranscriber(t.Context(), "test-key", "gemini-2.5-flash")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -165,7 +184,8 @@ func TestAnalyze_EmptyImageData_ReturnsError(t *testing.T) {
 }
 
 func TestNewGeminiImageAnalyzer_EmptyModel_SetsDefault(t *testing.T) {
-	a, err := NewGeminiImageAnalyzer("test-key", "")
+	skipIfNoGCP(t)
+	a, err := NewGeminiImageAnalyzer(t.Context(), "test-key", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -175,7 +195,8 @@ func TestNewGeminiImageAnalyzer_EmptyModel_SetsDefault(t *testing.T) {
 }
 
 func TestNewGeminiImageAnalyzer_CustomModel(t *testing.T) {
-	a, err := NewGeminiImageAnalyzer("test-key", "gemini-2.5-pro")
+	skipIfNoGCP(t)
+	a, err := NewGeminiImageAnalyzer(t.Context(), "test-key", "gemini-2.5-pro")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
