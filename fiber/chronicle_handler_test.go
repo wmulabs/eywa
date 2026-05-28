@@ -359,7 +359,9 @@ func TestChronicleHandler_AggregateTokens_NilResult_Returns200WithEmptyData(t *t
 	if resp.StatusCode != 200 {
 		t.Fatalf("want 200, got %d", resp.StatusCode)
 	}
-	var body struct{ Data []any `json:"data"` }
+	var body struct {
+		Data []any `json:"data"`
+	}
 	json.NewDecoder(resp.Body).Decode(&body)
 	if body.Data == nil {
 		t.Error("data must not be null when tokens is nil")
@@ -398,7 +400,9 @@ func TestChronicleHandler_AggregateSpirits_NilResult_Returns200WithEmptyData(t *
 	if resp.StatusCode != 200 {
 		t.Fatalf("want 200, got %d", resp.StatusCode)
 	}
-	var body struct{ Data []any `json:"data"` }
+	var body struct {
+		Data []any `json:"data"`
+	}
 	json.NewDecoder(resp.Body).Decode(&body)
 	if body.Data == nil {
 		t.Error("data must not be null when spirits is nil")
@@ -415,7 +419,9 @@ func TestChronicleHandler_AggregateActions_EmptyResult_Returns200(t *testing.T) 
 	if resp.StatusCode != 200 {
 		t.Errorf("want 200, got %d", resp.StatusCode)
 	}
-	var body struct{ Data []any `json:"data"` }
+	var body struct {
+		Data []any `json:"data"`
+	}
 	json.NewDecoder(resp.Body).Decode(&body)
 	if body.Data == nil {
 		t.Error("data must not be null")

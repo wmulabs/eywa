@@ -15,7 +15,7 @@ type stubVoice struct{ name string }
 
 var _ ports.Voice = (*stubVoice)(nil)
 
-func (v *stubVoice) GetName() string { return v.name }
+func (v *stubVoice) GetName() string         { return v.name }
 func (v *stubVoice) ShouldAutoRespond() bool { return false }
 func (v *stubVoice) SendResponse(_ context.Context, _ *entities.Pulse, _ string) error {
 	return nil
@@ -26,8 +26,8 @@ type stubRouter struct{ name string }
 
 var _ ports.LogicRouter = (*stubRouter)(nil)
 
-func (r *stubRouter) GetName() string                                      { return r.name }
-func (r *stubRouter) Route(_ context.Context, _ *entities.Pulse) string    { return "" }
+func (r *stubRouter) GetName() string                                   { return r.name }
+func (r *stubRouter) Route(_ context.Context, _ *entities.Pulse) string { return "" }
 
 type stubPathfinder struct{ name string }
 
@@ -42,24 +42,26 @@ type stubConduit struct{ name string }
 
 var _ ports.Conduit = (*stubConduit)(nil)
 
-func (c *stubConduit) GetName() string                                                    { return c.name }
-func (c *stubConduit) Connect(_ context.Context) error                                    { return nil }
-func (c *stubConduit) ListTools(_ context.Context) ([]entities.ActionDefinition, error)   { return nil, nil }
+func (c *stubConduit) GetName() string                 { return c.name }
+func (c *stubConduit) Connect(_ context.Context) error { return nil }
+func (c *stubConduit) ListTools(_ context.Context) ([]entities.ActionDefinition, error) {
+	return nil, nil
+}
 func (c *stubConduit) Call(_ context.Context, _ string, _ map[string]any) (string, error) {
 	return "", nil
 }
 func (c *stubConduit) Close() error { return nil }
 
 type stubScout struct {
-	name        string
-	applicable  bool
-	harvestErr  error
-	harvested   bool
+	name       string
+	applicable bool
+	harvestErr error
+	harvested  bool
 }
 
 var _ ports.Scout = (*stubScout)(nil)
 
-func (s *stubScout) GetName() string              { return s.name }
+func (s *stubScout) GetName() string                     { return s.name }
 func (s *stubScout) IsApplicable(_ *entities.Pulse) bool { return s.applicable }
 func (s *stubScout) Harvest(_ context.Context, _ *entities.Pulse) error {
 	s.harvested = true
@@ -76,12 +78,12 @@ type stubAction struct {
 
 var _ ports.Action = (*stubAction)(nil)
 
-func (a *stubAction) GetName() string                              { return a.name }
-func (a *stubAction) GetDescription() string                       { return a.description }
-func (a *stubAction) GetParameters() map[string]any        { return map[string]any{} }
-func (a *stubAction) IsCritical() bool                             { return false }
-func (a *stubAction) GetCategory() ports.ActionCategory            { return ports.ActionGeneral }
-func (a *stubAction) Validate(_ map[string]any) error      { return a.validateErr }
+func (a *stubAction) GetName() string                   { return a.name }
+func (a *stubAction) GetDescription() string            { return a.description }
+func (a *stubAction) GetParameters() map[string]any     { return map[string]any{} }
+func (a *stubAction) IsCritical() bool                  { return false }
+func (a *stubAction) GetCategory() ports.ActionCategory { return ports.ActionGeneral }
+func (a *stubAction) Validate(_ map[string]any) error   { return a.validateErr }
 func (a *stubAction) Execute(_ context.Context, _ map[string]any) (string, error) {
 	return a.result, a.execErr
 }
@@ -397,12 +399,15 @@ func TestScoutRegistry_Harvest_MemoryKeyChanged_UpdatesMetadata(t *testing.T) {
 	}
 }
 
-type memoryKeyChangingScout struct{ name string; newKey string }
+type memoryKeyChangingScout struct {
+	name   string
+	newKey string
+}
 
 var _ ports.Scout = (*memoryKeyChangingScout)(nil)
 
-func (s *memoryKeyChangingScout) GetName() string                              { return s.name }
-func (s *memoryKeyChangingScout) IsApplicable(_ *entities.Pulse) bool          { return true }
+func (s *memoryKeyChangingScout) GetName() string                     { return s.name }
+func (s *memoryKeyChangingScout) IsApplicable(_ *entities.Pulse) bool { return true }
 func (s *memoryKeyChangingScout) Harvest(_ context.Context, event *entities.Pulse) error {
 	event.MemoryKey = s.newKey
 	return nil

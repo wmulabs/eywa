@@ -255,7 +255,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
-          version: v1.64.0
+          version: latest
           args: --timeout=5m
 
       - name: Lint sub-modules

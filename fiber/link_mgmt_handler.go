@@ -23,17 +23,17 @@ type guardDTO struct {
 }
 
 type linkDTO struct {
-	EventType            string                 `json:"event_type"`
-	InboundConverterName string                 `json:"inbound_converter_name"`
-	RequireScouts        []string               `json:"require_scouts"`
-	PathfinderName       string                 `json:"pathfinder_name"`
-	AllowedSpirits       []string               `json:"allowed_spirits"`
-	DefaultSpirit        string                 `json:"default_spirit"`
-	VoiceName            string                 `json:"voice_name"`
-	ChannelName          string                 `json:"channel_name"`
-	IngestionTimeoutMs   int64                  `json:"ingestion_timeout_ms"`
-	ProcessingTimeoutMs  int64                  `json:"processing_timeout_ms"`
-	Guards               []guardDTO             `json:"guards"`
+	EventType            string         `json:"event_type"`
+	InboundConverterName string         `json:"inbound_converter_name"`
+	RequireScouts        []string       `json:"require_scouts"`
+	PathfinderName       string         `json:"pathfinder_name"`
+	AllowedSpirits       []string       `json:"allowed_spirits"`
+	DefaultSpirit        string         `json:"default_spirit"`
+	VoiceName            string         `json:"voice_name"`
+	ChannelName          string         `json:"channel_name"`
+	IngestionTimeoutMs   int64          `json:"ingestion_timeout_ms"`
+	ProcessingTimeoutMs  int64          `json:"processing_timeout_ms"`
+	Guards               []guardDTO     `json:"guards"`
 	Metadata             map[string]any `json:"metadata"`
 }
 

@@ -8,10 +8,10 @@ type Thread struct {
 	Content   string    `json:"content" bson:"content"`
 	Timestamp time.Time `json:"timestamp" bson:"timestamp"`
 	// IsUserFacing controls whether the message is persisted to MongoDB and replayed on Memory reconstruction.
-	IsUserFacing bool                   `json:"is_user_facing" bson:"is_user_facing"`
-	ToolCallID   string                 `json:"tool_call_id,omitempty" bson:"tool_call_id,omitempty"`
-	ImageURLs    []string               `json:"image_urls,omitempty" bson:"image_urls,omitempty"`
-	AudioURLs    []string               `json:"audio_urls,omitempty" bson:"audio_urls,omitempty"`
+	IsUserFacing bool           `json:"is_user_facing" bson:"is_user_facing"`
+	ToolCallID   string         `json:"tool_call_id,omitempty" bson:"tool_call_id,omitempty"`
+	ImageURLs    []string       `json:"image_urls,omitempty" bson:"image_urls,omitempty"`
+	AudioURLs    []string       `json:"audio_urls,omitempty" bson:"audio_urls,omitempty"`
 	Metadata     map[string]any `json:"metadata,omitempty" bson:"metadata,omitempty"`
 }
 
@@ -19,10 +19,10 @@ type Thread struct {
 // The composite key creates isolated memory spaces per (user, topic) pair,
 // reconstructed from MongoDB on cache miss.
 type Memory struct {
-	MemoryKey       string                 `json:"memory_key"`
-	SubjectKey      string                 `json:"subject_key"`
-	Threads         []Thread               `json:"threads"`
-	Summary         string                 `json:"summary"`
+	MemoryKey       string         `json:"memory_key"`
+	SubjectKey      string         `json:"subject_key"`
+	Threads         []Thread       `json:"threads"`
+	Summary         string         `json:"summary"`
 	TopicFacts      map[string]any `json:"topic_facts"`
-	LastInteraction time.Time              `json:"last_interaction"`
+	LastInteraction time.Time      `json:"last_interaction"`
 }

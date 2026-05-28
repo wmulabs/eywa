@@ -14,11 +14,11 @@ import (
 // --- stubs ---
 
 type stubLedgerRepo struct {
-	budget    entities.TokenBudget
-	budgetErr error
-	usage     entities.LedgerEntry
-	usageErr  error
-	incrementErr error
+	budget          entities.TokenBudget
+	budgetErr       error
+	usage           entities.LedgerEntry
+	usageErr        error
+	incrementErr    error
 	incrementCalled bool
 }
 
@@ -344,7 +344,7 @@ func TestCostEnforcementStep_BudgetExceeded_Downgrade_NoModel(t *testing.T) {
 		budget: entities.TokenBudget{
 			MonthlyTokenLimit: 100,
 			OnExceed:          "downgrade",
-			DowngradeModel: entities.SpiritModel{Model: ""}, // empty → no-op
+			DowngradeModel:    entities.SpiritModel{Model: ""}, // empty → no-op
 		},
 		usage: entities.LedgerEntry{TokensUsed: 200},
 	}

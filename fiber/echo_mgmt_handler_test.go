@@ -348,7 +348,9 @@ func TestEchoMgmtHandler_ListSessions_NilSessions_Returns200EmptySlice(t *testin
 	if resp.StatusCode != 200 {
 		t.Errorf("want 200, got %d", resp.StatusCode)
 	}
-	var body struct{ Items []any `json:"items"` }
+	var body struct {
+		Items []any `json:"items"`
+	}
 	json.NewDecoder(resp.Body).Decode(&body)
 	if body.Items == nil {
 		t.Error("items must not be null")

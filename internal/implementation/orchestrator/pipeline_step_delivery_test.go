@@ -13,16 +13,16 @@ import (
 // --- stubs ---
 
 type stubVoice struct {
-	name          string
-	autoRespond   bool
-	sendErr       error
-	sendCalled    bool
+	name        string
+	autoRespond bool
+	sendErr     error
+	sendCalled  bool
 }
 
 var _ ports.Voice = (*stubVoice)(nil)
 
-func (v *stubVoice) GetName() string                             { return v.name }
-func (v *stubVoice) ShouldAutoRespond() bool                     { return v.autoRespond }
+func (v *stubVoice) GetName() string         { return v.name }
+func (v *stubVoice) ShouldAutoRespond() bool { return v.autoRespond }
 func (v *stubVoice) SendResponse(_ context.Context, _ *entities.Pulse, _ string) error {
 	v.sendCalled = true
 	return v.sendErr
@@ -32,13 +32,13 @@ func (v *stubVoice) GetChannelMetadata(_ *entities.Pulse) map[string]any {
 }
 
 type stubVoiceRegistry struct {
-	voice ports.Voice
+	voice  ports.Voice
 	getErr error
 }
 
 var _ ports.VoiceRegistry = (*stubVoiceRegistry)(nil)
 
-func (r *stubVoiceRegistry) Register(_ ports.Voice) error { panic("not implemented") }
+func (r *stubVoiceRegistry) Register(_ ports.Voice) error            { panic("not implemented") }
 func (r *stubVoiceRegistry) RegisterMultiple(_ ...ports.Voice) error { panic("not implemented") }
 func (r *stubVoiceRegistry) Get(_ string) (ports.Voice, error) {
 	if r.getErr != nil {
@@ -46,7 +46,7 @@ func (r *stubVoiceRegistry) Get(_ string) (ports.Voice, error) {
 	}
 	return r.voice, nil
 }
-func (r *stubVoiceRegistry) Has(_ string) bool { panic("not implemented") }
+func (r *stubVoiceRegistry) Has(_ string) bool   { panic("not implemented") }
 func (r *stubVoiceRegistry) List() []ports.Voice { panic("not implemented") }
 
 func deliveryState(voiceName, response string, delivered bool) *ProcessingState {

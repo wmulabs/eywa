@@ -262,7 +262,7 @@ func TestConvert_ImageMessage_DownloadError(t *testing.T) {
 	payload := buildWebhook([]map[string]any{
 		{
 			"id": "wamid-img", "from": "+5511999999999", "timestamp": "123",
-			"type": "image",
+			"type":  "image",
 			"image": map[string]any{"id": "media-123", "mime_type": "image/jpeg"},
 		},
 	})
@@ -282,7 +282,7 @@ func TestConvert_AudioMessage(t *testing.T) {
 	payload := buildWebhook([]map[string]any{
 		{
 			"id": "wamid-audio", "from": "+5511999999999", "timestamp": "123",
-			"type": "audio",
+			"type":  "audio",
 			"audio": map[string]any{"id": "audio-123", "mime_type": "audio/ogg"},
 		},
 	})
@@ -301,7 +301,7 @@ func TestConvert_VideoMessage_WithCaption(t *testing.T) {
 	payload := buildWebhook([]map[string]any{
 		{
 			"id": "wamid-vid", "from": "+5511999999999", "timestamp": "123",
-			"type": "video",
+			"type":  "video",
 			"video": map[string]any{"id": "vid-123", "mime_type": "video/mp4", "caption": "My video"},
 		},
 	})

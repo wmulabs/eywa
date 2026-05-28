@@ -25,18 +25,18 @@ type ActionResult struct {
 // End-user communication happens via Actions (e.g. send_whatsapp_message);
 // this struct tracks processing status for the caller.
 type Response struct {
-	Status            ResponseStatus         `json:"status"`
-	EventID           string                 `json:"event_id"`
-	MemoryKey         string                 `json:"memory_key"`
-	SpiritUsed        string                 `json:"spirit_used,omitempty"`
-	ActionsExecuted   []string               `json:"actions_executed,omitempty"`
-	ActionResults     []ActionResult         `json:"action_results,omitempty"`
-	Message           string                 `json:"message"`
-	FinalResponse     string                 `json:"final_response,omitempty"`
-	Error             string                 `json:"error,omitempty"`
-	ProcessingTimeMs  int64                  `json:"processing_time_ms,omitempty"`
-	Timestamp         time.Time              `json:"timestamp"`
-	ResponseDelivered bool                   `json:"response_delivered"`
+	Status            ResponseStatus `json:"status"`
+	EventID           string         `json:"event_id"`
+	MemoryKey         string         `json:"memory_key"`
+	SpiritUsed        string         `json:"spirit_used,omitempty"`
+	ActionsExecuted   []string       `json:"actions_executed,omitempty"`
+	ActionResults     []ActionResult `json:"action_results,omitempty"`
+	Message           string         `json:"message"`
+	FinalResponse     string         `json:"final_response,omitempty"`
+	Error             string         `json:"error,omitempty"`
+	ProcessingTimeMs  int64          `json:"processing_time_ms,omitempty"`
+	Timestamp         time.Time      `json:"timestamp"`
+	ResponseDelivered bool           `json:"response_delivered"`
 	Metadata          map[string]any `json:"metadata,omitempty"`
 }
 

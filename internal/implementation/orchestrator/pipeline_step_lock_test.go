@@ -14,9 +14,9 @@ import (
 // --- stubs ---
 
 type stubBond struct {
-	acquired    bool
-	acquireErr  error
-	releaseErr  error
+	acquired   bool
+	acquireErr error
+	releaseErr error
 }
 
 var _ ports.Bond = (*stubBond)(nil)

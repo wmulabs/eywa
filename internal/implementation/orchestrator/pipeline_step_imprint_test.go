@@ -46,12 +46,12 @@ type stubOracle struct {
 
 var _ ports.Oracle = (*stubOracle)(nil)
 
-func (o *stubOracle) GetName() string                { return "stub" }
-func (o *stubOracle) GetAvailableModels() []string   { return nil }
-func (o *stubOracle) IsAvailable() bool              { return true }
-func (o *stubOracle) GetConfig() map[string]any { return nil }
-func (o *stubOracle) SupportsImages(_ string) bool   { return false }
-func (o *stubOracle) SupportsAudio(_ string) bool    { return false }
+func (o *stubOracle) GetName() string                 { return "stub" }
+func (o *stubOracle) GetAvailableModels() []string    { return nil }
+func (o *stubOracle) IsAvailable() bool               { return true }
+func (o *stubOracle) GetConfig() map[string]any       { return nil }
+func (o *stubOracle) SupportsImages(_ string) bool    { return false }
+func (o *stubOracle) SupportsAudio(_ string) bool     { return false }
 func (o *stubOracle) SupportsDocuments(_ string) bool { return false }
 func (o *stubOracle) GenerateResponse(_ context.Context, _ *ports.OracleRequest) (*ports.OracleResponse, error) {
 	return o.resp, o.err
@@ -69,9 +69,9 @@ func (f *stubOracleFactory) GetProvider(_ string) (ports.Oracle, error) {
 	return f.oracle, f.err
 }
 func (f *stubOracleFactory) GetDefaultProvider() (ports.Oracle, error) { return f.oracle, f.err }
-func (f *stubOracleFactory) SetDefaultProvider(_ string) error          { return nil }
-func (f *stubOracleFactory) ListProviders() []string                    { return nil }
-func (f *stubOracleFactory) ListAvailableProviders() []string           { return nil }
+func (f *stubOracleFactory) SetDefaultProvider(_ string) error         { return nil }
+func (f *stubOracleFactory) ListProviders() []string                   { return nil }
+func (f *stubOracleFactory) ListAvailableProviders() []string          { return nil }
 func (f *stubOracleFactory) GetProviderForModel(_ string) (ports.Oracle, error) {
 	return f.oracle, f.err
 }
@@ -84,8 +84,8 @@ func TestImprintExtractionStep_Execute_Disabled_NoOp(t *testing.T) {
 	cfg := ImprintExtractionConfig{Enabled: false}
 	step := NewImprintExtractionStep(repo, factory, cfg, time.Second, testLogger(t))
 	state := &ProcessingState{
-		Event:   &entities.Pulse{ContactPhone: "+1234", UserMessage: "hello"},
-		Spirit:  &entities.Spirit{Type: entities.SpiritTypeConversational},
+		Event:    &entities.Pulse{ContactPhone: "+1234", UserMessage: "hello"},
+		Spirit:   &entities.Spirit{Type: entities.SpiritTypeConversational},
 		Response: "response",
 	}
 	if err := step.Execute(context.Background(), state); err != nil {
@@ -97,8 +97,8 @@ func TestImprintExtractionStep_Execute_NilRepo_NoOp(t *testing.T) {
 	cfg := ImprintExtractionConfig{Enabled: true}
 	step := NewImprintExtractionStep(nil, &stubOracleFactory{}, cfg, time.Second, testLogger(t))
 	state := &ProcessingState{
-		Event:   &entities.Pulse{ContactPhone: "+1234", UserMessage: "hello"},
-		Spirit:  &entities.Spirit{Type: entities.SpiritTypeConversational},
+		Event:    &entities.Pulse{ContactPhone: "+1234", UserMessage: "hello"},
+		Spirit:   &entities.Spirit{Type: entities.SpiritTypeConversational},
 		Response: "response",
 	}
 	if err := step.Execute(context.Background(), state); err != nil {
@@ -198,12 +198,12 @@ type signalOracle struct {
 
 var _ ports.Oracle = (*signalOracle)(nil)
 
-func (o *signalOracle) GetName() string                { return o.wrapped.GetName() }
-func (o *signalOracle) GetAvailableModels() []string   { return nil }
-func (o *signalOracle) IsAvailable() bool              { return true }
-func (o *signalOracle) GetConfig() map[string]any { return nil }
-func (o *signalOracle) SupportsImages(_ string) bool   { return false }
-func (o *signalOracle) SupportsAudio(_ string) bool    { return false }
+func (o *signalOracle) GetName() string                 { return o.wrapped.GetName() }
+func (o *signalOracle) GetAvailableModels() []string    { return nil }
+func (o *signalOracle) IsAvailable() bool               { return true }
+func (o *signalOracle) GetConfig() map[string]any       { return nil }
+func (o *signalOracle) SupportsImages(_ string) bool    { return false }
+func (o *signalOracle) SupportsAudio(_ string) bool     { return false }
 func (o *signalOracle) SupportsDocuments(_ string) bool { return false }
 func (o *signalOracle) GenerateResponse(ctx context.Context, req *ports.OracleRequest) (*ports.OracleResponse, error) {
 	resp, err := o.wrapped.GenerateResponse(ctx, req)

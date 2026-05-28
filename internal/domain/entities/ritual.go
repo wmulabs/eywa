@@ -17,23 +17,23 @@ const (
 )
 
 type Ritual struct {
-	ID            string                 `bson:"_id,omitempty"            json:"id"`
-	MemoryKey     string                 `bson:"memory_key"               json:"memory_key"`
-	EventKey      string                 `bson:"event_key"                json:"event_key"`
-	KeeperTaskID  string                 `bson:"keeper_task_id"           json:"-"`
-	ExecuteAt     time.Time              `bson:"execute_at"               json:"execute_at"`
-	Status        RitualStatus           `bson:"status"                   json:"status"`
-	CreatedBy     string                 `bson:"created_by"               json:"created_by"`
-	EventSnapshot *Pulse                 `bson:"event_snapshot,omitempty" json:"event_snapshot,omitempty"`
-	Recurrence    *RecurrenceConfig      `bson:"recurrence,omitempty"     json:"recurrence,omitempty"`
-	AttemptCount  int                    `bson:"attempt_count"            json:"attempt_count"`
-	CreatedAt     time.Time              `bson:"created_at"               json:"created_at"`
-	StartedAt     *time.Time             `bson:"started_at,omitempty"     json:"started_at,omitempty"`
-	ExecutedAt    *time.Time             `bson:"executed_at,omitempty"    json:"executed_at,omitempty"`
-	CancelledAt   *time.Time             `bson:"cancelled_at,omitempty"   json:"cancelled_at,omitempty"`
-	FailedAt      *time.Time             `bson:"failed_at,omitempty"      json:"failed_at,omitempty"`
-	FailureReason string                 `bson:"failure_reason,omitempty" json:"failure_reason,omitempty"`
-	Metadata      map[string]any `bson:"metadata,omitempty"       json:"metadata,omitempty"`
+	ID            string            `bson:"_id,omitempty"            json:"id"`
+	MemoryKey     string            `bson:"memory_key"               json:"memory_key"`
+	EventKey      string            `bson:"event_key"                json:"event_key"`
+	KeeperTaskID  string            `bson:"keeper_task_id"           json:"-"`
+	ExecuteAt     time.Time         `bson:"execute_at"               json:"execute_at"`
+	Status        RitualStatus      `bson:"status"                   json:"status"`
+	CreatedBy     string            `bson:"created_by"               json:"created_by"`
+	EventSnapshot *Pulse            `bson:"event_snapshot,omitempty" json:"event_snapshot,omitempty"`
+	Recurrence    *RecurrenceConfig `bson:"recurrence,omitempty"     json:"recurrence,omitempty"`
+	AttemptCount  int               `bson:"attempt_count"            json:"attempt_count"`
+	CreatedAt     time.Time         `bson:"created_at"               json:"created_at"`
+	StartedAt     *time.Time        `bson:"started_at,omitempty"     json:"started_at,omitempty"`
+	ExecutedAt    *time.Time        `bson:"executed_at,omitempty"    json:"executed_at,omitempty"`
+	CancelledAt   *time.Time        `bson:"cancelled_at,omitempty"   json:"cancelled_at,omitempty"`
+	FailedAt      *time.Time        `bson:"failed_at,omitempty"      json:"failed_at,omitempty"`
+	FailureReason string            `bson:"failure_reason,omitempty" json:"failure_reason,omitempty"`
+	Metadata      map[string]any    `bson:"metadata,omitempty"       json:"metadata,omitempty"`
 }
 
 // RecurrenceConfig defines the schedule for a repeating Ritual.

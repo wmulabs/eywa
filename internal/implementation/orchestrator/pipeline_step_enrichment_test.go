@@ -13,16 +13,16 @@ import (
 // --- stubs ---
 
 type stubScoutForEnrich struct {
-	name        string
-	applicable  bool
-	harvestErr  error
-	harvested   bool
+	name       string
+	applicable bool
+	harvestErr error
+	harvested  bool
 }
 
 var _ ports.Scout = (*stubScoutForEnrich)(nil)
 
-func (s *stubScoutForEnrich) GetName() string                                    { return s.name }
-func (s *stubScoutForEnrich) IsApplicable(_ *entities.Pulse) bool                { return s.applicable }
+func (s *stubScoutForEnrich) GetName() string                     { return s.name }
+func (s *stubScoutForEnrich) IsApplicable(_ *entities.Pulse) bool { return s.applicable }
 func (s *stubScoutForEnrich) Harvest(_ context.Context, _ *entities.Pulse) error {
 	s.harvested = true
 	return s.harvestErr
@@ -35,8 +35,8 @@ type stubScoutRegistry struct {
 
 var _ ports.ScoutRegistry = (*stubScoutRegistry)(nil)
 
-func (r *stubScoutRegistry) Register(_ ports.Scout) error               { return nil }
-func (r *stubScoutRegistry) RegisterMultiple(_ ...ports.Scout) error    { return nil }
+func (r *stubScoutRegistry) Register(_ ports.Scout) error                       { return nil }
+func (r *stubScoutRegistry) RegisterMultiple(_ ...ports.Scout) error            { return nil }
 func (r *stubScoutRegistry) Harvest(_ context.Context, _ *entities.Pulse) error { return nil }
 func (r *stubScoutRegistry) GetScout(name string) (ports.Scout, error) {
 	if s, ok := r.scouts[name]; ok {
@@ -60,8 +60,8 @@ func (r *stubScoutRegistry) ListScouts() []string { return nil }
 func (r *stubScoutRegistry) List() []ports.Scout  { return nil }
 
 type stubLoreHarvester struct {
-	err     error
-	called  bool
+	err    error
+	called bool
 }
 
 var _ ports.LoreHarvester = (*stubLoreHarvester)(nil)
@@ -90,7 +90,7 @@ type memKeyScout struct {
 
 var _ ports.Scout = (*memKeyScout)(nil)
 
-func (s *memKeyScout) GetName() string { return "mem-key-changer" }
+func (s *memKeyScout) GetName() string                     { return "mem-key-changer" }
 func (s *memKeyScout) IsApplicable(_ *entities.Pulse) bool { return true }
 func (s *memKeyScout) Harvest(_ context.Context, pulse *entities.Pulse) error {
 	pulse.MemoryKey = s.newKey

@@ -19,7 +19,7 @@ type stubLogicRouter struct {
 
 var _ ports.LogicRouter = (*stubLogicRouter)(nil)
 
-func (r *stubLogicRouter) GetName() string                               { return r.name }
+func (r *stubLogicRouter) GetName() string                                   { return r.name }
 func (r *stubLogicRouter) Route(_ context.Context, _ *entities.Pulse) string { return r.result }
 
 type stubLogicRouterRegistry struct {

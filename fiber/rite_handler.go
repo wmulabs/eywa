@@ -105,17 +105,17 @@ func (h *riteHandler) decide(c *fiberlib.Ctx, newStatus eywa.RiteStatus) error {
 }
 
 type riteResponse struct {
-	ID          string                 `json:"id"`
-	MemoryKey   string                 `json:"memory_key"`
-	SubjectKey  string                 `json:"subject_key,omitempty"`
-	EventKey    string                 `json:"event_key"`
-	Context     map[string]any `json:"context,omitempty"`
-	Reason      string                 `json:"reason"`
-	Status      eywa.RiteStatus        `json:"status"`
-	OperatorID  string                 `json:"operator_id,omitempty"`
-	RequestedAt any            `json:"requested_at"`
-	DecidedAt   any            `json:"decided_at,omitempty"`
-	ExpiresAt   any            `json:"expires_at,omitempty"`
+	ID          string          `json:"id"`
+	MemoryKey   string          `json:"memory_key"`
+	SubjectKey  string          `json:"subject_key,omitempty"`
+	EventKey    string          `json:"event_key"`
+	Context     map[string]any  `json:"context,omitempty"`
+	Reason      string          `json:"reason"`
+	Status      eywa.RiteStatus `json:"status"`
+	OperatorID  string          `json:"operator_id,omitempty"`
+	RequestedAt any             `json:"requested_at"`
+	DecidedAt   any             `json:"decided_at,omitempty"`
+	ExpiresAt   any             `json:"expires_at,omitempty"`
 }
 
 func toRiteResponse(r *eywa.Rite) riteResponse {

@@ -34,13 +34,13 @@ func (r *testSpiritRepo) GetVersion(_ context.Context, _ string, _ int) (*eywa.S
 func (r *testSpiritRepo) FindVersionHistory(_ context.Context, _ string) ([]*eywa.Spirit, error) {
 	return nil, nil
 }
-func (r *testSpiritRepo) Activate(_ context.Context, _ string, _ int) error    { return nil }
-func (r *testSpiritRepo) Deactivate(_ context.Context, _ string) error          { return nil }
-func (r *testSpiritRepo) RestoreVersion(_ context.Context, _ string) error      { return nil }
+func (r *testSpiritRepo) Activate(_ context.Context, _ string, _ int) error { return nil }
+func (r *testSpiritRepo) Deactivate(_ context.Context, _ string) error      { return nil }
+func (r *testSpiritRepo) RestoreVersion(_ context.Context, _ string) error  { return nil }
 func (r *testSpiritRepo) ListActive(_ context.Context, _, _ int) ([]*eywa.Spirit, error) {
 	return nil, nil
 }
-func (r *testSpiritRepo) CountActive(_ context.Context) (int64, error)    { return 0, nil }
+func (r *testSpiritRepo) CountActive(_ context.Context) (int64, error)      { return 0, nil }
 func (r *testSpiritRepo) ListAll(_ context.Context) ([]*eywa.Spirit, error) { return nil, nil }
 
 type testMemoryRepo struct{}
@@ -48,8 +48,8 @@ type testMemoryRepo struct{}
 func (r *testMemoryRepo) GetMemory(_ context.Context, _ string) (*eywa.Memory, error) {
 	return nil, eywa.ErrNotFound
 }
-func (r *testMemoryRepo) SaveMemory(_ context.Context, _ string, _ *eywa.Memory) error  { return nil }
-func (r *testMemoryRepo) DeleteMemory(_ context.Context, _ string) error                { return nil }
+func (r *testMemoryRepo) SaveMemory(_ context.Context, _ string, _ *eywa.Memory) error { return nil }
+func (r *testMemoryRepo) DeleteMemory(_ context.Context, _ string) error               { return nil }
 
 type testEchoRepo struct{}
 
@@ -69,9 +69,11 @@ func (r *testEchoRepo) FindRecentByMemoryKeyAndSubject(_ context.Context, _, _ s
 func (r *testEchoRepo) FindBySubjectKey(_ context.Context, _ string, _, _ int) ([]*eywa.Echo, error) {
 	return nil, nil
 }
-func (r *testEchoRepo) CountByMemoryKey(_ context.Context, _ string) (int64, error)                   { return 0, nil }
-func (r *testEchoRepo) CountByMemoryKeyAndSubject(_ context.Context, _, _ string) (int64, error)       { return 0, nil }
-func (r *testEchoRepo) CountBySubjectKey(_ context.Context, _ string) (int64, error)                   { return 0, nil }
+func (r *testEchoRepo) CountByMemoryKey(_ context.Context, _ string) (int64, error) { return 0, nil }
+func (r *testEchoRepo) CountByMemoryKeyAndSubject(_ context.Context, _, _ string) (int64, error) {
+	return 0, nil
+}
+func (r *testEchoRepo) CountBySubjectKey(_ context.Context, _ string) (int64, error) { return 0, nil }
 
 type testChronicleRepo struct{}
 
@@ -91,17 +93,17 @@ type testBond struct{}
 func (b *testBond) AcquireLock(_ context.Context, _ string, _ time.Duration) (bool, error) {
 	return true, nil
 }
-func (b *testBond) ReleaseLock(_ context.Context, _ string) error                    { return nil }
-func (b *testBond) ExtendLock(_ context.Context, _ string, _ time.Duration) error   { return nil }
+func (b *testBond) ReleaseLock(_ context.Context, _ string) error                 { return nil }
+func (b *testBond) ExtendLock(_ context.Context, _ string, _ time.Duration) error { return nil }
 
 type testOracleFactory struct{}
 
-func (f *testOracleFactory) RegisterProvider(_ string, _ eywa.Oracle) error { return nil }
-func (f *testOracleFactory) GetProvider(_ string) (eywa.Oracle, error)      { return nil, nil }
-func (f *testOracleFactory) GetDefaultProvider() (eywa.Oracle, error)       { return nil, nil }
-func (f *testOracleFactory) SetDefaultProvider(_ string) error               { return nil }
-func (f *testOracleFactory) ListProviders() []string                         { return nil }
-func (f *testOracleFactory) ListAvailableProviders() []string                { return nil }
+func (f *testOracleFactory) RegisterProvider(_ string, _ eywa.Oracle) error    { return nil }
+func (f *testOracleFactory) GetProvider(_ string) (eywa.Oracle, error)         { return nil, nil }
+func (f *testOracleFactory) GetDefaultProvider() (eywa.Oracle, error)          { return nil, nil }
+func (f *testOracleFactory) SetDefaultProvider(_ string) error                 { return nil }
+func (f *testOracleFactory) ListProviders() []string                           { return nil }
+func (f *testOracleFactory) ListAvailableProviders() []string                  { return nil }
 func (f *testOracleFactory) GetProviderForModel(_ string) (eywa.Oracle, error) { return nil, nil }
 
 // minimalTestWeave builds a *eywa.Weave with all-stub dependencies.
@@ -464,16 +466,16 @@ func TestAsyncEventHandler_Success_Returns200(t *testing.T) {
 
 type testVoice struct{ name string }
 
-func (v *testVoice) GetName() string                                            { return v.name }
-func (v *testVoice) ShouldAutoRespond() bool                                   { return true }
+func (v *testVoice) GetName() string                                               { return v.name }
+func (v *testVoice) ShouldAutoRespond() bool                                       { return true }
 func (v *testVoice) SendResponse(_ context.Context, _ *eywa.Pulse, _ string) error { return nil }
-func (v *testVoice) GetChannelMetadata(_ *eywa.Pulse) map[string]any   { return nil }
+func (v *testVoice) GetChannelMetadata(_ *eywa.Pulse) map[string]any               { return nil }
 
 type testScout struct{ name string }
 
-func (s *testScout) GetName() string                         { return s.name }
+func (s *testScout) GetName() string                                { return s.name }
 func (s *testScout) Harvest(_ context.Context, _ *eywa.Pulse) error { return nil }
-func (s *testScout) IsApplicable(_ *eywa.Pulse) bool         { return false }
+func (s *testScout) IsApplicable(_ *eywa.Pulse) bool                { return false }
 
 type testPathfinder struct{ name string }
 
@@ -489,15 +491,18 @@ func (r *testLogicRouter) Route(_ context.Context, _ *eywa.Pulse) string { retur
 
 type testAction struct{ name string }
 
-func (a *testAction) GetName() string                                                 { return a.name }
-func (a *testAction) GetDescription() string                                          { return "test action" }
-func (a *testAction) GetParameters() map[string]any                           { return map[string]any{"param": "string"} }
-func (a *testAction) IsCritical() bool                                                { return false }
-func (a *testAction) GetCategory() eywa.ActionCategory                                { return eywa.ActionGeneral }
+func (a *testAction) GetName() string                                             { return a.name }
+func (a *testAction) GetDescription() string                                      { return "test action" }
+func (a *testAction) GetParameters() map[string]any                               { return map[string]any{"param": "string"} }
+func (a *testAction) IsCritical() bool                                            { return false }
+func (a *testAction) GetCategory() eywa.ActionCategory                            { return eywa.ActionGeneral }
 func (a *testAction) Execute(_ context.Context, _ map[string]any) (string, error) { return "ok", nil }
-func (a *testAction) Validate(_ map[string]any) error                              { return nil }
+func (a *testAction) Validate(_ map[string]any) error                             { return nil }
 
-type testReceptor struct{ name string; events []*eywa.Pulse }
+type testReceptor struct {
+	name   string
+	events []*eywa.Pulse
+}
 
 func (r *testReceptor) GetName() string { return r.name }
 func (r *testReceptor) Convert(_ context.Context, _ string, _ map[string]any) ([]*eywa.Pulse, error) {

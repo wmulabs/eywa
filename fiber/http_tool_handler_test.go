@@ -294,12 +294,16 @@ func TestHTTPToolHandler_List_NilSlice_Returns200WithEmptyItems(t *testing.T) {
 
 type stubNilHTTPToolRepo struct{ *stubHTTPToolRepo }
 
-func (s *stubNilHTTPToolRepo) List(_ context.Context) ([]eywa.HTTPTool, error)             { return nil, nil }
-func (s *stubNilHTTPToolRepo) FindBySpiritID(_ context.Context, _ string) ([]eywa.HTTPTool, error) { return nil, nil }
-func (s *stubNilHTTPToolRepo) FindByID(_ context.Context, _ string) (*eywa.HTTPTool, error) { return nil, eywa.ErrNotFound }
-func (s *stubNilHTTPToolRepo) Save(_ context.Context, _ eywa.HTTPTool) error                { return nil }
-func (s *stubNilHTTPToolRepo) Update(_ context.Context, _ eywa.HTTPTool) error              { return nil }
-func (s *stubNilHTTPToolRepo) Delete(_ context.Context, _ string) error                     { return nil }
+func (s *stubNilHTTPToolRepo) List(_ context.Context) ([]eywa.HTTPTool, error) { return nil, nil }
+func (s *stubNilHTTPToolRepo) FindBySpiritID(_ context.Context, _ string) ([]eywa.HTTPTool, error) {
+	return nil, nil
+}
+func (s *stubNilHTTPToolRepo) FindByID(_ context.Context, _ string) (*eywa.HTTPTool, error) {
+	return nil, eywa.ErrNotFound
+}
+func (s *stubNilHTTPToolRepo) Save(_ context.Context, _ eywa.HTTPTool) error   { return nil }
+func (s *stubNilHTTPToolRepo) Update(_ context.Context, _ eywa.HTTPTool) error { return nil }
+func (s *stubNilHTTPToolRepo) Delete(_ context.Context, _ string) error        { return nil }
 
 func TestHTTPToolHandler_List_RepoError_Returns500(t *testing.T) {
 	repo := newStubHTTPToolRepo()

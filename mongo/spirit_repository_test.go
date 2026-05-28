@@ -493,10 +493,10 @@ func TestSpiritRepository_RestoreVersion_UsesTransaction(t *testing.T) {
 	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
 	mt.Run("uses transaction", func(mt *mtest.T) {
 		mt.AddMockResponses(
-			mtest.CreateCursorResponse(0, "db.spirits", mtest.FirstBatch, spiritDoc("bot", 2, false)),          // FindByID
-			bson.D{{Key: "ok", Value: 1}, {Key: "n", Value: int32(2)}, {Key: "nModified", Value: int32(2)}},   // UpdateMany
-			bson.D{{Key: "ok", Value: 1}, {Key: "n", Value: int32(1)}, {Key: "nModified", Value: int32(1)}},   // UpdateOne
-			bson.D{{Key: "ok", Value: 1}},                                                                      // commitTransaction
+			mtest.CreateCursorResponse(0, "db.spirits", mtest.FirstBatch, spiritDoc("bot", 2, false)),       // FindByID
+			bson.D{{Key: "ok", Value: 1}, {Key: "n", Value: int32(2)}, {Key: "nModified", Value: int32(2)}}, // UpdateMany
+			bson.D{{Key: "ok", Value: 1}, {Key: "n", Value: int32(1)}, {Key: "nModified", Value: int32(1)}}, // UpdateOne
+			bson.D{{Key: "ok", Value: 1}}, // commitTransaction
 		)
 
 		if err := newSpiritRepoWithDB(mt).RestoreVersion(context.Background(), "bot-v1"); err != nil {

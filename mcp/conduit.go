@@ -198,10 +198,10 @@ func (c *MCPConduit) post(ctx context.Context, payload mcpRequest, out *mcpRespo
 
 // mcpRequest is the JSON-RPC 2.0 request envelope.
 type mcpRequest struct {
-	JSONRPC string      `json:"jsonrpc"`
-	ID      int         `json:"id"`
-	Method  string      `json:"method"`
-	Params  any `json:"params,omitempty"`
+	JSONRPC string `json:"jsonrpc"`
+	ID      int    `json:"id"`
+	Method  string `json:"method"`
+	Params  any    `json:"params,omitempty"`
 }
 
 // mcpResponse is the JSON-RPC 2.0 response envelope.
@@ -220,8 +220,8 @@ type mcpError struct {
 func parseToolList(raw json.RawMessage) []eywa.ActionDefinition {
 	var result struct {
 		Tools []struct {
-			Name        string                 `json:"name"`
-			Description string                 `json:"description"`
+			Name        string         `json:"name"`
+			Description string         `json:"description"`
 			InputSchema map[string]any `json:"inputSchema"`
 		} `json:"tools"`
 	}

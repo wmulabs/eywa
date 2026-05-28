@@ -23,16 +23,16 @@ func (h *SpiritManagementHandler) CreateSpirit(c *fiber.Ctx) error {
 	log := newLogger()
 
 	var req struct {
-		Name                      string                 `json:"name"`
-		Description               string                 `json:"description"`
-		Specialization            string                 `json:"specialization"`
-		SystemPrompt              string                 `json:"system_prompt"`
-		EnforceVoiceDelivery      bool                   `json:"enforce_voice_delivery,omitempty"`
-		VoiceDeliveryInstructions string                 `json:"voice_delivery_instructions,omitempty"`
-		BusinessErrorInstructions string                 `json:"business_error_instructions,omitempty"`
-		AllowedActions            []eywa.AllowedAction   `json:"allowed_actions"`
-		ModelConfig               eywa.SpiritModel       `json:"model_config"`
-		Metadata                  map[string]any `json:"metadata"`
+		Name                      string               `json:"name"`
+		Description               string               `json:"description"`
+		Specialization            string               `json:"specialization"`
+		SystemPrompt              string               `json:"system_prompt"`
+		EnforceVoiceDelivery      bool                 `json:"enforce_voice_delivery,omitempty"`
+		VoiceDeliveryInstructions string               `json:"voice_delivery_instructions,omitempty"`
+		BusinessErrorInstructions string               `json:"business_error_instructions,omitempty"`
+		AllowedActions            []eywa.AllowedAction `json:"allowed_actions"`
+		ModelConfig               eywa.SpiritModel     `json:"model_config"`
+		Metadata                  map[string]any       `json:"metadata"`
 	}
 
 	if err := c.BodyParser(&req); err != nil {
@@ -92,15 +92,15 @@ func (h *SpiritManagementHandler) UpdateSpirit(c *fiber.Ctx) error {
 	name := c.Params("name")
 
 	var req struct {
-		Description               string                 `json:"description"`
-		Specialization            string                 `json:"specialization"`
-		SystemPrompt              string                 `json:"system_prompt"`
-		EnforceVoiceDelivery      bool                   `json:"enforce_voice_delivery,omitempty"`
-		VoiceDeliveryInstructions string                 `json:"voice_delivery_instructions,omitempty"`
-		BusinessErrorInstructions string                 `json:"business_error_instructions,omitempty"`
-		AllowedActions            []eywa.AllowedAction   `json:"allowed_actions"`
-		ModelConfig               eywa.SpiritModel       `json:"model_config"`
-		Metadata                  map[string]any `json:"metadata"`
+		Description               string               `json:"description"`
+		Specialization            string               `json:"specialization"`
+		SystemPrompt              string               `json:"system_prompt"`
+		EnforceVoiceDelivery      bool                 `json:"enforce_voice_delivery,omitempty"`
+		VoiceDeliveryInstructions string               `json:"voice_delivery_instructions,omitempty"`
+		BusinessErrorInstructions string               `json:"business_error_instructions,omitempty"`
+		AllowedActions            []eywa.AllowedAction `json:"allowed_actions"`
+		ModelConfig               eywa.SpiritModel     `json:"model_config"`
+		Metadata                  map[string]any       `json:"metadata"`
 	}
 
 	if err := c.BodyParser(&req); err != nil {

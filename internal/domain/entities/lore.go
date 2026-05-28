@@ -14,12 +14,12 @@ type Lore struct {
 }
 
 type LoreChunk struct {
-	ID        string                 `bson:"_id" json:"id"`
-	LoreID    string                 `bson:"lore_id" json:"lore_id"`
-	Content   string                 `bson:"content" json:"content"`
-	Embedding []float32              `bson:"embedding,omitempty" json:"embedding,omitempty"`
+	ID        string         `bson:"_id" json:"id"`
+	LoreID    string         `bson:"lore_id" json:"lore_id"`
+	Content   string         `bson:"content" json:"content"`
+	Embedding []float32      `bson:"embedding,omitempty" json:"embedding,omitempty"`
 	Metadata  map[string]any `bson:"metadata,omitempty" json:"metadata,omitempty"`
-	CreatedAt time.Time              `bson:"created_at" json:"created_at"`
+	CreatedAt time.Time      `bson:"created_at" json:"created_at"`
 }
 
 type LoreIngestion struct {

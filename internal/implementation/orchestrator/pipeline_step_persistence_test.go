@@ -12,15 +12,15 @@ import (
 // --- stubs ---
 
 type stubMemoryManager struct {
-	session         *entities.Memory
-	getOrCreateErr  error
-	saveErr         error
-	updateErr       error
-	lastTopicKey    string
-	savedSession    *entities.Memory
-	updatedThreads  []entities.Thread
-	rebuildResult   *entities.Memory
-	rebuildErr      error
+	session        *entities.Memory
+	getOrCreateErr error
+	saveErr        error
+	updateErr      error
+	lastTopicKey   string
+	savedSession   *entities.Memory
+	updatedThreads []entities.Thread
+	rebuildResult  *entities.Memory
+	rebuildErr     error
 }
 
 var _ MemoryManager = (*stubMemoryManager)(nil)
@@ -44,7 +44,7 @@ func (m *stubMemoryManager) Save(_ context.Context, session *entities.Memory) er
 }
 
 type stubMessageManager struct {
-	appended []entities.Echo
+	appended  []entities.Echo
 	appendErr error
 }
 

@@ -127,11 +127,11 @@ func TestGetInt64OrDefault(t *testing.T) {
 
 func TestGetFloat64(t *testing.T) {
 	m := map[string]any{
-		"f64":  float64(1.5),
-		"f32":  float32(2.5),
-		"int":  int(3),
-		"i64":  int64(4),
-		"str":  "x",
+		"f64": float64(1.5),
+		"f32": float32(2.5),
+		"int": int(3),
+		"i64": int64(4),
+		"str": "x",
 	}
 
 	cases := []struct {
@@ -265,10 +265,10 @@ func TestGetSliceOrDefault(t *testing.T) {
 
 func TestGetStringSlice(t *testing.T) {
 	m := map[string]any{
-		"typed":   []string{"a", "b"},
-		"iface":   []any{"x", "y"},
-		"mixed":   []any{"ok", 123},
-		"str":     "not a slice",
+		"typed": []string{"a", "b"},
+		"iface": []any{"x", "y"},
+		"mixed": []any{"ok", 123},
+		"str":   "not a slice",
 	}
 
 	if v, ok := GetStringSlice(m, "typed"); !ok || len(v) != 2 || v[0] != "a" {

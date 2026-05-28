@@ -19,7 +19,7 @@ type stubWeave struct {
 	convertErr    error
 }
 
-func (w *stubWeave) GetAsyncDispatcher() ports.Keeper       { return w.dispatcher }
+func (w *stubWeave) GetAsyncDispatcher() ports.Keeper              { return w.dispatcher }
 func (w *stubWeave) GetEventConfiguration(_ string) *entities.Link { return w.eventConfig }
 func (w *stubWeave) ConvertEventByType(_ context.Context, _ string, _ map[string]any) ([]*entities.Pulse, error) {
 	return w.convertResult, w.convertErr

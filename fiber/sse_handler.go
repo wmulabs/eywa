@@ -116,7 +116,7 @@ func (h *sseHandler) riteSnapshot(ctx context.Context, w *bufio.Writer) {
 			continue
 		}
 		fmt.Fprintf(w, "data: %s\n\n", data) //nolint:errcheck
-		w.Flush()                              //nolint:errcheck
+		w.Flush()                            //nolint:errcheck
 	}
 }
 
@@ -134,6 +134,6 @@ func (h *sseHandler) vigilSnapshot(ctx context.Context, w *bufio.Writer) {
 			continue
 		}
 		fmt.Fprintf(w, "data: %s\n\n", data) //nolint:errcheck
-		w.Flush()                              //nolint:errcheck
+		w.Flush()                            //nolint:errcheck
 	}
 }

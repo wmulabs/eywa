@@ -203,18 +203,18 @@ func TestSummon_WithScouts_RunsThemBeforeReasoning(t *testing.T) {
 
 type stubScoutForSummon struct{}
 
-func (s *stubScoutForSummon) IsApplicable(_ *entities.Pulse) bool              { return true }
+func (s *stubScoutForSummon) IsApplicable(_ *entities.Pulse) bool                { return true }
 func (s *stubScoutForSummon) Harvest(_ context.Context, _ *entities.Pulse) error { return nil }
-func (s *stubScoutForSummon) GetName() string                                   { return "geo" }
+func (s *stubScoutForSummon) GetName() string                                    { return "geo" }
 
 type stubScoutRegistryForSummon struct {
 	scout ports.Scout
 }
 
-func (r *stubScoutRegistryForSummon) Register(_ ports.Scout) error      { return nil }
-func (r *stubScoutRegistryForSummon) RegisterMultiple(_ ...ports.Scout) error { return nil }
+func (r *stubScoutRegistryForSummon) Register(_ ports.Scout) error                       { return nil }
+func (r *stubScoutRegistryForSummon) RegisterMultiple(_ ...ports.Scout) error            { return nil }
 func (r *stubScoutRegistryForSummon) Harvest(_ context.Context, _ *entities.Pulse) error { return nil }
-func (r *stubScoutRegistryForSummon) GetScout(_ string) (ports.Scout, error) { return r.scout, nil }
+func (r *stubScoutRegistryForSummon) GetScout(_ string) (ports.Scout, error)             { return r.scout, nil }
 func (r *stubScoutRegistryForSummon) GetMultiple(_ []string) ([]ports.Scout, error) {
 	if r.scout != nil {
 		return []ports.Scout{r.scout}, nil

@@ -72,14 +72,14 @@ type LLMAttachment struct {
 
 // OracleTool is the Action descriptor sent to the Oracle so it knows when and how to call an Action.
 type OracleTool struct {
-	Name        string                 `json:"name"`
-	Description string                 `json:"description"`
+	Name        string         `json:"name"`
+	Description string         `json:"description"`
 	Parameters  map[string]any `json:"parameters"` // JSON Schema
 }
 
 type OracleToolCall struct {
-	ID        string                 `json:"id"`
-	Name      string                 `json:"name"`
+	ID        string         `json:"id"`
+	Name      string         `json:"name"`
 	Arguments map[string]any `json:"arguments"`
 	// ThoughtSignature is opaque provider data used by reasoning models (e.g. Gemini 2.5+/3.x)
 	// to link internal reasoning steps to tool calls. Must be echoed back in subsequent requests.

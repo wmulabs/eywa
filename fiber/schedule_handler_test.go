@@ -14,10 +14,10 @@ import (
 // --- stubRitualManager ---
 
 type stubRitualManager struct {
-	ritual   *eywa.Ritual
-	rituals  []*eywa.Ritual
-	count    int64
-	schedErr error
+	ritual    *eywa.Ritual
+	rituals   []*eywa.Ritual
+	count     int64
+	schedErr  error
 	cancelErr error
 	countErr  error
 	listErr   error
@@ -364,8 +364,8 @@ type testErrBond struct{}
 func (b *testErrBond) AcquireLock(_ context.Context, _ string, _ time.Duration) (bool, error) {
 	return false, errInternal
 }
-func (b *testErrBond) ReleaseLock(_ context.Context, _ string) error                    { return nil }
-func (b *testErrBond) ExtendLock(_ context.Context, _ string, _ time.Duration) error   { return nil }
+func (b *testErrBond) ReleaseLock(_ context.Context, _ string) error                 { return nil }
+func (b *testErrBond) ExtendLock(_ context.Context, _ string, _ time.Duration) error { return nil }
 
 func testWeaveWithEventConfigAndRitual(t *testing.T, manager eywa.RitualManager, receptor *testReceptor) *eywa.Weave {
 	t.Helper()
@@ -551,7 +551,6 @@ func TestHandleExecuteEvent_NonRetriable_MarkFailed_Error_StillDiscards(t *testi
 		t.Errorf("want 200 even when MarkFailed errors, got %d", resp.StatusCode)
 	}
 }
-
 
 func TestHandleExecuteEvent_NonRetriable_WithRitualID_MarksFailedAndDiscards(t *testing.T) {
 	manager := &stubRitualManager{}

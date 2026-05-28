@@ -11,11 +11,11 @@ import (
 
 func TestFromHTTPStatus(t *testing.T) {
 	cases := []struct {
-		status      int
-		body        string
-		wantNil     bool
-		wantInfra   bool
-		bodyInMsg   bool
+		status    int
+		body      string
+		wantNil   bool
+		wantInfra bool
+		bodyInMsg bool
 	}{
 		// 2xx → nil
 		{200, "", true, false, false},

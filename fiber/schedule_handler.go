@@ -28,10 +28,10 @@ func NewScheduleHandler(weave *eywa.Weave) *ScheduleHandler {
 }
 
 type scheduleByEventKeyRequest struct {
-	ExecuteAt  string                 `json:"execute_at"`
-	Payload    map[string]any `json:"payload,omitempty"`
-	Recurrence *recurrenceInput       `json:"recurrence,omitempty"`
-	Metadata   map[string]any `json:"metadata,omitempty"`
+	ExecuteAt  string           `json:"execute_at"`
+	Payload    map[string]any   `json:"payload,omitempty"`
+	Recurrence *recurrenceInput `json:"recurrence,omitempty"`
+	Metadata   map[string]any   `json:"metadata,omitempty"`
 }
 
 type recurrenceInput struct {

@@ -391,7 +391,7 @@ func TestSendTemplateTool_Execute_WithHeaderBodyButtonParams(t *testing.T) {
 		"phone":         "+5511999999999",
 		"template_name": "order_update",
 		"language":      "pt_BR",
-		"header_params": []any{"https://example.com/img.png"}, // image URL
+		"header_params": []any{"https://example.com/img.png"},                     // image URL
 		"body_params":   []any{"João", "https://example.com/v.mp4", "text-param"}, // video, text
 		"button_params": []any{"payload1"},
 	})
@@ -440,7 +440,10 @@ func TestSendTemplateTool_Execute_PhoneNormalized(t *testing.T) {
 // --- isImageURL / isVideoURL ---
 
 func TestIsImageURL(t *testing.T) {
-	cases := []struct{ url string; want bool }{
+	cases := []struct {
+		url  string
+		want bool
+	}{
 		{"https://example.com/img.jpg", true},
 		{"https://example.com/img.jpeg", true},
 		{"https://example.com/img.png", true},
@@ -459,7 +462,10 @@ func TestIsImageURL(t *testing.T) {
 }
 
 func TestIsVideoURL(t *testing.T) {
-	cases := []struct{ url string; want bool }{
+	cases := []struct {
+		url  string
+		want bool
+	}{
 		{"https://example.com/v.mp4", true},
 		{"https://example.com/v.mov", true},
 		{"https://example.com/v.avi", true},

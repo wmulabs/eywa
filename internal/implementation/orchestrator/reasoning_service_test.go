@@ -21,13 +21,13 @@ type multiOracle struct {
 	call      int
 }
 
-func (o *multiOracle) GetName() string                             { return "multi" }
-func (o *multiOracle) GetAvailableModels() []string                { return nil }
-func (o *multiOracle) IsAvailable() bool                          { return true }
-func (o *multiOracle) GetConfig() map[string]any           { return nil }
-func (o *multiOracle) SupportsImages(_ string) bool               { return false }
-func (o *multiOracle) SupportsAudio(_ string) bool                { return false }
-func (o *multiOracle) SupportsDocuments(_ string) bool            { return false }
+func (o *multiOracle) GetName() string                 { return "multi" }
+func (o *multiOracle) GetAvailableModels() []string    { return nil }
+func (o *multiOracle) IsAvailable() bool               { return true }
+func (o *multiOracle) GetConfig() map[string]any       { return nil }
+func (o *multiOracle) SupportsImages(_ string) bool    { return false }
+func (o *multiOracle) SupportsAudio(_ string) bool     { return false }
+func (o *multiOracle) SupportsDocuments(_ string) bool { return false }
 func (o *multiOracle) GenerateResponse(_ context.Context, _ *ports.OracleRequest) (*ports.OracleResponse, error) {
 	o.mu.Lock()
 	defer o.mu.Unlock()

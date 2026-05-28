@@ -23,19 +23,19 @@ func NewLinkRepository(database *mongodriver.Database) *LinkRepository {
 }
 
 type linkDocument struct {
-	EventType            string                 `bson:"_id"`
-	InboundConverterName string                 `bson:"inbound_converter_name"`
-	RequireScouts        []string               `bson:"require_scouts"`
-	PathfinderName       string                 `bson:"pathfinder_name"`
-	AllowedSpirits       []string               `bson:"allowed_spirits"`
-	DefaultSpirit        string                 `bson:"default_spirit"`
-	VoiceName            string                 `bson:"voice_name"`
-	ChannelName          string                 `bson:"channel_name"`
-	IngestionTimeoutNs   int64                  `bson:"ingestion_timeout_ns"`
-	ProcessingTimeoutNs  int64                  `bson:"processing_timeout_ns"`
-	Guards               []guardDocument        `bson:"guards"`
-	Metadata             map[string]any `bson:"metadata"`
-	UpdatedAt            time.Time              `bson:"updated_at"`
+	EventType            string          `bson:"_id"`
+	InboundConverterName string          `bson:"inbound_converter_name"`
+	RequireScouts        []string        `bson:"require_scouts"`
+	PathfinderName       string          `bson:"pathfinder_name"`
+	AllowedSpirits       []string        `bson:"allowed_spirits"`
+	DefaultSpirit        string          `bson:"default_spirit"`
+	VoiceName            string          `bson:"voice_name"`
+	ChannelName          string          `bson:"channel_name"`
+	IngestionTimeoutNs   int64           `bson:"ingestion_timeout_ns"`
+	ProcessingTimeoutNs  int64           `bson:"processing_timeout_ns"`
+	Guards               []guardDocument `bson:"guards"`
+	Metadata             map[string]any  `bson:"metadata"`
+	UpdatedAt            time.Time       `bson:"updated_at"`
 }
 
 type guardDocument struct {

@@ -3,13 +3,13 @@ package entities
 import "time"
 
 type TrialCase struct {
-	ID          string                 `json:"id" yaml:"id"`
-	Name        string                 `json:"name" yaml:"name"`
-	Description string                 `json:"description,omitempty" yaml:"description,omitempty"`
-	EventType   string                 `json:"event_type" yaml:"event_type"`
-	UserMessage string                 `json:"user_message" yaml:"user_message"`
-	Knowledge   map[string]any `json:"knowledge,omitempty" yaml:"knowledge,omitempty"`
-	Expect      TrialExpectations      `json:"expect" yaml:"expect"`
+	ID          string            `json:"id" yaml:"id"`
+	Name        string            `json:"name" yaml:"name"`
+	Description string            `json:"description,omitempty" yaml:"description,omitempty"`
+	EventType   string            `json:"event_type" yaml:"event_type"`
+	UserMessage string            `json:"user_message" yaml:"user_message"`
+	Knowledge   map[string]any    `json:"knowledge,omitempty" yaml:"knowledge,omitempty"`
+	Expect      TrialExpectations `json:"expect" yaml:"expect"`
 }
 
 type TrialExpectations struct {

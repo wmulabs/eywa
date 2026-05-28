@@ -4,13 +4,13 @@ import "time"
 
 // ActionCallLog records a single Action execution within a reasoning iteration.
 type ActionCallLog struct {
-	ActionName   string                 `bson:"action_name"`
+	ActionName   string         `bson:"action_name"`
 	Arguments    map[string]any `bson:"arguments,omitempty"`
-	Result       string                 `bson:"result,omitempty"`
-	IsError      bool                   `bson:"is_error"`
-	ErrorMessage string                 `bson:"error_message,omitempty"`
-	IsCritical   bool                   `bson:"is_critical"`
-	DurationMs   int64                  `bson:"duration_ms"`
+	Result       string         `bson:"result,omitempty"`
+	IsError      bool           `bson:"is_error"`
+	ErrorMessage string         `bson:"error_message,omitempty"`
+	IsCritical   bool           `bson:"is_critical"`
+	DurationMs   int64          `bson:"duration_ms"`
 }
 
 // IterationLog records one full Oracle request-response cycle, including all Action calls made.
@@ -51,19 +51,19 @@ type InteractionTokenUsage struct {
 
 // InteractionEventLog captures the inbound Pulse state and the context forwarded to the LLM.
 type InteractionEventLog struct {
-	ID             string                 `bson:"id"`
-	Type           string                 `bson:"type"`
-	Source         string                 `bson:"source"`
-	SubType        string                 `bson:"sub_type,omitempty"`
-	IdempotencyKey string                 `bson:"idempotency_key,omitempty"`
-	ContactPhone   string                 `bson:"contact_phone,omitempty"`
-	SubjectKey     string                 `bson:"subject_key,omitempty"`
-	UserInput      string                 `bson:"user_input"`
-	Attachments    []AttachmentLog        `bson:"attachments,omitempty"`
-	Knowledge      map[string]any `bson:"knowledge,omitempty"`
-	ScoutsUsed     []string               `bson:"scouts_used,omitempty"`
-	Payload        map[string]any `bson:"payload,omitempty"`
-	Metadata       map[string]any `bson:"metadata,omitempty"`
+	ID             string          `bson:"id"`
+	Type           string          `bson:"type"`
+	Source         string          `bson:"source"`
+	SubType        string          `bson:"sub_type,omitempty"`
+	IdempotencyKey string          `bson:"idempotency_key,omitempty"`
+	ContactPhone   string          `bson:"contact_phone,omitempty"`
+	SubjectKey     string          `bson:"subject_key,omitempty"`
+	UserInput      string          `bson:"user_input"`
+	Attachments    []AttachmentLog `bson:"attachments,omitempty"`
+	Knowledge      map[string]any  `bson:"knowledge,omitempty"`
+	ScoutsUsed     []string        `bson:"scouts_used,omitempty"`
+	Payload        map[string]any  `bson:"payload,omitempty"`
+	Metadata       map[string]any  `bson:"metadata,omitempty"`
 }
 
 // InteractionSpiritLog captures the Spirit and model that handled the Pulse.

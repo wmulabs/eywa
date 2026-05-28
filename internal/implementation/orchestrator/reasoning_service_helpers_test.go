@@ -374,7 +374,7 @@ func TestAvailableActions_UnregisteredAction_Skipped(t *testing.T) {
 
 	req := &ReasoningRequest{
 		Spirit: &entities.Spirit{
-			Name: "support",
+			Name:           "support",
 			AllowedActions: []entities.AllowedAction{{Name: "missing_action"}},
 		},
 	}

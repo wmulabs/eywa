@@ -29,11 +29,11 @@ func (h *discoveryHandler) get(c *fiberlib.Ctx) error {
 }
 
 type actionInfo struct {
-	Name        string                 `json:"name"`
-	Description string                 `json:"description"`
+	Name        string         `json:"name"`
+	Description string         `json:"description"`
 	Parameters  map[string]any `json:"parameters,omitempty"`
-	IsCritical  bool                   `json:"is_critical"`
-	Category    string                 `json:"category"`
+	IsCritical  bool           `json:"is_critical"`
+	Category    string         `json:"category"`
 }
 
 func (h *discoveryHandler) listActions() []actionInfo {

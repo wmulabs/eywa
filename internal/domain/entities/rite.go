@@ -20,15 +20,15 @@ const (
 // The originating Pulse is paused until an Operator approves or rejects the Rite,
 // or until ExpiresAt elapses (RiteExpired).
 type Rite struct {
-	ID          string                 `bson:"_id"`
-	MemoryKey   string                 `bson:"memory_key"`
-	SubjectKey  string                 `bson:"subject_key,omitempty"`
-	EventKey    string                 `bson:"event_key"`
+	ID          string         `bson:"_id"`
+	MemoryKey   string         `bson:"memory_key"`
+	SubjectKey  string         `bson:"subject_key,omitempty"`
+	EventKey    string         `bson:"event_key"`
 	Context     map[string]any `bson:"context"`
-	Reason      string                 `bson:"reason"`
-	Status      RiteStatus             `bson:"status"`
-	OperatorID  string                 `bson:"operator_id,omitempty"`
-	RequestedAt time.Time              `bson:"requested_at"`
-	DecidedAt   *time.Time             `bson:"decided_at,omitempty"`
-	ExpiresAt   *time.Time             `bson:"expires_at,omitempty"`
+	Reason      string         `bson:"reason"`
+	Status      RiteStatus     `bson:"status"`
+	OperatorID  string         `bson:"operator_id,omitempty"`
+	RequestedAt time.Time      `bson:"requested_at"`
+	DecidedAt   *time.Time     `bson:"decided_at,omitempty"`
+	ExpiresAt   *time.Time     `bson:"expires_at,omitempty"`
 }

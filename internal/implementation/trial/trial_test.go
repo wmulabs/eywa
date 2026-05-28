@@ -29,13 +29,13 @@ type stubOracle struct {
 	err     error
 }
 
-func (o *stubOracle) GetName() string                   { return "test" }
-func (o *stubOracle) GetAvailableModels() []string      { return nil }
-func (o *stubOracle) IsAvailable() bool                 { return true }
-func (o *stubOracle) GetConfig() map[string]any { return nil }
-func (o *stubOracle) SupportsImages(_ string) bool      { return false }
-func (o *stubOracle) SupportsAudio(_ string) bool       { return false }
-func (o *stubOracle) SupportsDocuments(_ string) bool   { return false }
+func (o *stubOracle) GetName() string                 { return "test" }
+func (o *stubOracle) GetAvailableModels() []string    { return nil }
+func (o *stubOracle) IsAvailable() bool               { return true }
+func (o *stubOracle) GetConfig() map[string]any       { return nil }
+func (o *stubOracle) SupportsImages(_ string) bool    { return false }
+func (o *stubOracle) SupportsAudio(_ string) bool     { return false }
+func (o *stubOracle) SupportsDocuments(_ string) bool { return false }
 func (o *stubOracle) GenerateResponse(_ context.Context, _ *ports.OracleRequest) (*ports.OracleResponse, error) {
 	return &ports.OracleResponse{Content: o.content}, o.err
 }
@@ -45,13 +45,15 @@ type stubOracleFactory struct {
 	err    error
 }
 
-func (f *stubOracleFactory) GetProvider(_ string) (ports.Oracle, error)           { return f.oracle, f.err }
-func (f *stubOracleFactory) GetDefaultProvider() (ports.Oracle, error)            { return f.oracle, f.err }
-func (f *stubOracleFactory) GetProviderForModel(_ string) (ports.Oracle, error)   { return f.oracle, f.err }
-func (f *stubOracleFactory) RegisterProvider(_ string, _ ports.Oracle) error      { return nil }
-func (f *stubOracleFactory) SetDefaultProvider(_ string) error                    { return nil }
-func (f *stubOracleFactory) ListProviders() []string                              { return nil }
-func (f *stubOracleFactory) ListAvailableProviders() []string                     { return nil }
+func (f *stubOracleFactory) GetProvider(_ string) (ports.Oracle, error) { return f.oracle, f.err }
+func (f *stubOracleFactory) GetDefaultProvider() (ports.Oracle, error)  { return f.oracle, f.err }
+func (f *stubOracleFactory) GetProviderForModel(_ string) (ports.Oracle, error) {
+	return f.oracle, f.err
+}
+func (f *stubOracleFactory) RegisterProvider(_ string, _ ports.Oracle) error { return nil }
+func (f *stubOracleFactory) SetDefaultProvider(_ string) error               { return nil }
+func (f *stubOracleFactory) ListProviders() []string                         { return nil }
+func (f *stubOracleFactory) ListAvailableProviders() []string                { return nil }
 
 func okResponse(text string, actions ...string) *entities.Response {
 	return &entities.Response{FinalResponse: text, ActionsExecuted: actions}

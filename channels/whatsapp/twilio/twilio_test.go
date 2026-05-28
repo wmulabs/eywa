@@ -565,9 +565,9 @@ func TestTwilioReceptor_Convert_MediaAttachment_WithClient(t *testing.T) {
 	client := &stubTwilioWAClient{data: []byte("IMG"), mimeType: "image/jpeg"}
 	r := NewWhatsAppTwilioInbound(client)
 	payload := twilioPayload("+5511999999999", "", map[string]any{
-		"NumMedia":              1,
-		"MediaUrl0":             "https://api.twilio.com/media/img.jpg",
-		"MediaContentType0":     "image/jpeg",
+		"NumMedia":          1,
+		"MediaUrl0":         "https://api.twilio.com/media/img.jpg",
+		"MediaContentType0": "image/jpeg",
 	})
 	pulses, err := r.Convert(context.Background(), "message", payload)
 	if err != nil {

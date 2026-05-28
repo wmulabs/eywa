@@ -18,13 +18,13 @@ type stubOracle struct {
 
 var _ ports.Oracle = (*stubOracle)(nil)
 
-func (o *stubOracle) GetName() string                    { return "stub" }
-func (o *stubOracle) GetAvailableModels() []string       { return nil }
-func (o *stubOracle) IsAvailable() bool                  { return true }
-func (o *stubOracle) GetConfig() map[string]any  { return nil }
-func (o *stubOracle) SupportsImages(_ string) bool       { return false }
-func (o *stubOracle) SupportsAudio(_ string) bool        { return false }
-func (o *stubOracle) SupportsDocuments(_ string) bool    { return false }
+func (o *stubOracle) GetName() string                 { return "stub" }
+func (o *stubOracle) GetAvailableModels() []string    { return nil }
+func (o *stubOracle) IsAvailable() bool               { return true }
+func (o *stubOracle) GetConfig() map[string]any       { return nil }
+func (o *stubOracle) SupportsImages(_ string) bool    { return false }
+func (o *stubOracle) SupportsAudio(_ string) bool     { return false }
+func (o *stubOracle) SupportsDocuments(_ string) bool { return false }
 func (o *stubOracle) GenerateResponse(_ context.Context, _ *ports.OracleRequest) (*ports.OracleResponse, error) {
 	return o.resp, o.err
 }
@@ -42,9 +42,9 @@ func (f *stubOracleFactory) GetProvider(_ string) (ports.Oracle, error) {
 	return f.oracle, f.getErr
 }
 func (f *stubOracleFactory) GetDefaultProvider() (ports.Oracle, error) { return f.oracle, f.getErr }
-func (f *stubOracleFactory) SetDefaultProvider(_ string) error          { return nil }
-func (f *stubOracleFactory) ListProviders() []string                    { return nil }
-func (f *stubOracleFactory) ListAvailableProviders() []string           { return nil }
+func (f *stubOracleFactory) SetDefaultProvider(_ string) error         { return nil }
+func (f *stubOracleFactory) ListProviders() []string                   { return nil }
+func (f *stubOracleFactory) ListAvailableProviders() []string          { return nil }
 func (f *stubOracleFactory) GetProviderForModel(_ string) (ports.Oracle, error) {
 	return f.oracle, f.forModelErr
 }
@@ -75,9 +75,9 @@ func (r *stubSpiritRepo) GetVersion(_ context.Context, _ string, _ int) (*entiti
 func (r *stubSpiritRepo) FindVersionHistory(_ context.Context, _ string) ([]*entities.Spirit, error) {
 	return nil, nil
 }
-func (r *stubSpiritRepo) Activate(_ context.Context, _ string, _ int) error        { return nil }
-func (r *stubSpiritRepo) Deactivate(_ context.Context, _ string) error              { return nil }
-func (r *stubSpiritRepo) RestoreVersion(_ context.Context, _ string) error          { return nil }
+func (r *stubSpiritRepo) Activate(_ context.Context, _ string, _ int) error { return nil }
+func (r *stubSpiritRepo) Deactivate(_ context.Context, _ string) error      { return nil }
+func (r *stubSpiritRepo) RestoreVersion(_ context.Context, _ string) error  { return nil }
 func (r *stubSpiritRepo) ListActive(_ context.Context, _, _ int) ([]*entities.Spirit, error) {
 	return nil, nil
 }
@@ -90,7 +90,7 @@ func (r *stubSpiritRepo) ListAll(_ context.Context) ([]*entities.Spirit, error) 
 
 func testSpirit(provider, model string) *entities.Spirit {
 	return &entities.Spirit{
-		Name:  "__test_pathfinder",
+		Name: "__test_pathfinder",
 		ModelConfig: entities.SpiritModel{
 			Provider: provider,
 			Model:    model,

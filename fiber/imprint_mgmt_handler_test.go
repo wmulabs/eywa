@@ -24,7 +24,7 @@ func (s *stubImprintRepo) GetByUserKey(_ context.Context, _, _ string) ([]entiti
 func (s *stubImprintRepo) List(_ context.Context, _ eywa.ImprintListOptions) ([]entities.Imprint, int64, error) {
 	return s.imprints, s.total, s.listErr
 }
-func (s *stubImprintRepo) Delete(_ context.Context, _ string) error { return s.delErr }
+func (s *stubImprintRepo) Delete(_ context.Context, _ string) error          { return s.delErr }
 func (s *stubImprintRepo) Prune(_ context.Context, _, _ string, _ int) error { return nil }
 
 func imprintDeps(repo eywa.ImprintRepository) ManagementDeps {

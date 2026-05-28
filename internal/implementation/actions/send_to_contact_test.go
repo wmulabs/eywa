@@ -37,8 +37,8 @@ func (v *stubVoice) SendResponse(_ context.Context, pulse *entities.Pulse, msg s
 	v.sentMsg = msg
 	return v.sendErr
 }
-func (v *stubVoice) GetName() string                                             { return "stub" }
-func (v *stubVoice) ShouldAutoRespond() bool                                     { return false }
+func (v *stubVoice) GetName() string                                     { return "stub" }
+func (v *stubVoice) ShouldAutoRespond() bool                             { return false }
 func (v *stubVoice) GetChannelMetadata(_ *entities.Pulse) map[string]any { return nil }
 
 func linkAndPulseCtx(voiceName, contactPhone string) context.Context {

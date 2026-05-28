@@ -702,7 +702,7 @@ type stubPathfinderRegistryForSelect struct {
 	pfs map[string]ports.Pathfinder
 }
 
-func (r *stubPathfinderRegistryForSelect) Register(_ ports.Pathfinder) error           { return nil }
+func (r *stubPathfinderRegistryForSelect) Register(_ ports.Pathfinder) error            { return nil }
 func (r *stubPathfinderRegistryForSelect) RegisterMultiple(_ ...ports.Pathfinder) error { return nil }
 func (r *stubPathfinderRegistryForSelect) Get(name string) ports.Pathfinder {
 	return r.pfs[name]
@@ -877,8 +877,8 @@ func TestLogInteraction_Success(t *testing.T) {
 	e.interactionLogRepo = repo
 
 	state := &ProcessingState{
-		Event:    &entities.Pulse{MemoryKey: "user:1", ID: "evt-1"},
-		EventKey: "chat",
+		Event:     &entities.Pulse{MemoryKey: "user:1", ID: "evt-1"},
+		EventKey:  "chat",
 		StartTime: time.Now(),
 	}
 	err := e.logInteraction(context.Background(), state)
@@ -989,20 +989,20 @@ func TestProcessMultipleEventsByKey_EventNotFound(t *testing.T) {
 func newPipelineWeave(t *testing.T) *Weave {
 	t.Helper()
 	e, err := newWeaveWithConfig(
-		nil,                  // scoutRegistry
-		nil,                  // pathfinderRegistry
-		nil,                  // voiceRegistry
+		nil, // scoutRegistry
+		nil, // pathfinderRegistry
+		nil, // voiceRegistry
 		&stubSpiritRepo{err: errors.New("spirit not found")},
-		nil,                  // sessionRepo
-		nil,                  // messageRepo
+		nil, // sessionRepo
+		nil, // messageRepo
 		&stubBuilderChronicleRepo{},
 		&stubOracleFactory{},
 		newRegistry(),
 		&stubBond{acquired: true},
-		nil,                  // rateLimiter
-		nil,                  // messageInbox
-		nil,                  // asyncDispatcher
-		nil,                  // config — uses DefaultWeaveConfig
+		nil, // rateLimiter
+		nil, // messageInbox
+		nil, // asyncDispatcher
+		nil, // config — uses DefaultWeaveConfig
 		testLogger(t),
 		noopTracer(),
 	)
@@ -1112,8 +1112,8 @@ func TestLogInteraction_WithScouts(t *testing.T) {
 // succeeds without needing a real LLM or DB.
 type stubSuccessStep struct{}
 
-func (s *stubSuccessStep) Name() string               { return "stub_success" }
-func (s *stubSuccessStep) Timeout() time.Duration      { return 0 }
+func (s *stubSuccessStep) Name() string           { return "stub_success" }
+func (s *stubSuccessStep) Timeout() time.Duration { return 0 }
 func (s *stubSuccessStep) Execute(_ context.Context, state *ProcessingState) error {
 	state.Spirit = &entities.Spirit{Name: "test-spirit"}
 	state.ReasoningResult = &ReasoningResult{

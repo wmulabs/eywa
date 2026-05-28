@@ -775,7 +775,7 @@ func TestWeaveBuilder_WithDefaultLLMArchivist(t *testing.T) {
 
 type stubBuilderInbox struct{}
 
-func (s *stubBuilderInbox) Push(_ context.Context, _ string, _ string) error    { return nil }
+func (s *stubBuilderInbox) Push(_ context.Context, _ string, _ string) error     { return nil }
 func (s *stubBuilderInbox) PopAll(_ context.Context, _ string) ([]string, error) { return nil, nil }
 
 type stubBuilderRitualManager struct{}
@@ -783,8 +783,8 @@ type stubBuilderRitualManager struct{}
 func (s *stubBuilderRitualManager) Schedule(_ context.Context, _ ports.RitualRequest) (*entities.Ritual, error) {
 	return nil, nil
 }
-func (s *stubBuilderRitualManager) Cancel(_ context.Context, _, _ string) error  { return nil }
-func (s *stubBuilderRitualManager) MarkRunning(_ context.Context, _ string) error { return nil }
+func (s *stubBuilderRitualManager) Cancel(_ context.Context, _, _ string) error    { return nil }
+func (s *stubBuilderRitualManager) MarkRunning(_ context.Context, _ string) error  { return nil }
 func (s *stubBuilderRitualManager) MarkExecuted(_ context.Context, _ string) error { return nil }
 func (s *stubBuilderRitualManager) MarkFailed(_ context.Context, _ string, _ string) error {
 	return nil
@@ -815,28 +815,28 @@ func (s *stubBuilderTypingIndicator) StopTyping(_ context.Context, _ string) err
 
 type stubBuilderPathfinderRegistry struct{}
 
-func (s *stubBuilderPathfinderRegistry) Register(_ ports.Pathfinder) error          { return nil }
+func (s *stubBuilderPathfinderRegistry) Register(_ ports.Pathfinder) error            { return nil }
 func (s *stubBuilderPathfinderRegistry) RegisterMultiple(_ ...ports.Pathfinder) error { return nil }
-func (s *stubBuilderPathfinderRegistry) Get(_ string) ports.Pathfinder              { return nil }
-func (s *stubBuilderPathfinderRegistry) List() []string                             { return nil }
+func (s *stubBuilderPathfinderRegistry) Get(_ string) ports.Pathfinder                { return nil }
+func (s *stubBuilderPathfinderRegistry) List() []string                               { return nil }
 
 type stubBuilderVoiceRegistry struct{}
 
-func (s *stubBuilderVoiceRegistry) Register(_ ports.Voice) error              { return nil }
-func (s *stubBuilderVoiceRegistry) RegisterMultiple(_ ...ports.Voice) error   { return nil }
-func (s *stubBuilderVoiceRegistry) Get(_ string) (ports.Voice, error)         { return nil, nil }
-func (s *stubBuilderVoiceRegistry) Has(_ string) bool                         { return false }
-func (s *stubBuilderVoiceRegistry) List() []ports.Voice                       { return nil }
+func (s *stubBuilderVoiceRegistry) Register(_ ports.Voice) error            { return nil }
+func (s *stubBuilderVoiceRegistry) RegisterMultiple(_ ...ports.Voice) error { return nil }
+func (s *stubBuilderVoiceRegistry) Get(_ string) (ports.Voice, error)       { return nil, nil }
+func (s *stubBuilderVoiceRegistry) Has(_ string) bool                       { return false }
+func (s *stubBuilderVoiceRegistry) List() []ports.Voice                     { return nil }
 
 type stubBuilderLogicRouterRegistry struct{}
 
-func (s *stubBuilderLogicRouterRegistry) Register(_ ports.LogicRouter) error   { return nil }
+func (s *stubBuilderLogicRouterRegistry) Register(_ ports.LogicRouter) error      { return nil }
 func (s *stubBuilderLogicRouterRegistry) Get(_ string) (ports.LogicRouter, error) { return nil, nil }
-func (s *stubBuilderLogicRouterRegistry) List() []string                       { return nil }
+func (s *stubBuilderLogicRouterRegistry) List() []string                          { return nil }
 
 type stubBuilderLoreRepo struct{}
 
-func (s *stubBuilderLoreRepo) Create(_ context.Context, _ entities.Lore) error           { return nil }
+func (s *stubBuilderLoreRepo) Create(_ context.Context, _ entities.Lore) error { return nil }
 func (s *stubBuilderLoreRepo) GetByID(_ context.Context, _ string) (entities.Lore, error) {
 	return entities.Lore{}, nil
 }
@@ -869,11 +869,15 @@ func (s *stubBuilderLoreEmbedder) Dimensions() int { return 0 }
 
 type stubBuilderConduit struct{}
 
-func (s *stubBuilderConduit) GetName() string                                                                { return "stub" }
-func (s *stubBuilderConduit) Connect(_ context.Context) error                                               { return nil }
-func (s *stubBuilderConduit) ListTools(_ context.Context) ([]entities.ActionDefinition, error)             { return nil, nil }
-func (s *stubBuilderConduit) Call(_ context.Context, _ string, _ map[string]any) (string, error)   { return "", nil }
-func (s *stubBuilderConduit) Close() error                                                                  { return nil }
+func (s *stubBuilderConduit) GetName() string                 { return "stub" }
+func (s *stubBuilderConduit) Connect(_ context.Context) error { return nil }
+func (s *stubBuilderConduit) ListTools(_ context.Context) ([]entities.ActionDefinition, error) {
+	return nil, nil
+}
+func (s *stubBuilderConduit) Call(_ context.Context, _ string, _ map[string]any) (string, error) {
+	return "", nil
+}
+func (s *stubBuilderConduit) Close() error { return nil }
 
 type stubBuilderLedgerRepo struct{}
 
@@ -886,7 +890,9 @@ func (s *stubBuilderLedgerRepo) GetMonthUsage(_ context.Context, _, _ string) (e
 func (s *stubBuilderLedgerRepo) GetBudget(_ context.Context, _ string) (entities.TokenBudget, error) {
 	return entities.TokenBudget{}, nil
 }
-func (s *stubBuilderLedgerRepo) SetBudget(_ context.Context, _ entities.TokenBudget) error { return nil }
+func (s *stubBuilderLedgerRepo) SetBudget(_ context.Context, _ entities.TokenBudget) error {
+	return nil
+}
 
 type stubBuilderCostAlertHook struct{}
 
@@ -897,33 +903,45 @@ func (s *stubBuilderCostAlertHook) OnBudgetExceeded(_ context.Context, _ string,
 
 type stubBuilderLinkRepo struct{}
 
-func (s *stubBuilderLinkRepo) FindAll(_ context.Context) ([]*entities.Link, error)              { return nil, nil }
-func (s *stubBuilderLinkRepo) FindByKey(_ context.Context, _ string) (*entities.Link, error)    { return nil, nil }
-func (s *stubBuilderLinkRepo) Save(_ context.Context, _ *entities.Link) error                   { return nil }
-func (s *stubBuilderLinkRepo) Delete(_ context.Context, _ string) error                         { return nil }
+func (s *stubBuilderLinkRepo) FindAll(_ context.Context) ([]*entities.Link, error) { return nil, nil }
+func (s *stubBuilderLinkRepo) FindByKey(_ context.Context, _ string) (*entities.Link, error) {
+	return nil, nil
+}
+func (s *stubBuilderLinkRepo) Save(_ context.Context, _ *entities.Link) error { return nil }
+func (s *stubBuilderLinkRepo) Delete(_ context.Context, _ string) error       { return nil }
 
 type stubBuilderPubSub struct{}
 
-func (s *stubBuilderPubSub) Publish(_ context.Context, _, _ string) error                    { return nil }
-func (s *stubBuilderPubSub) Subscribe(_ context.Context, _ string, _ func(string)) error     { return nil }
+func (s *stubBuilderPubSub) Publish(_ context.Context, _, _ string) error                { return nil }
+func (s *stubBuilderPubSub) Subscribe(_ context.Context, _ string, _ func(string)) error { return nil }
 
 type stubBuilderHTTPToolRepo struct{}
 
-func (s *stubBuilderHTTPToolRepo) List(_ context.Context) ([]entities.HTTPTool, error)             { return nil, nil }
-func (s *stubBuilderHTTPToolRepo) FindBySpiritID(_ context.Context, _ string) ([]entities.HTTPTool, error) { return nil, nil }
-func (s *stubBuilderHTTPToolRepo) FindByID(_ context.Context, _ string) (*entities.HTTPTool, error) { return nil, nil }
-func (s *stubBuilderHTTPToolRepo) Save(_ context.Context, _ entities.HTTPTool) error               { return nil }
-func (s *stubBuilderHTTPToolRepo) Update(_ context.Context, _ entities.HTTPTool) error             { return nil }
-func (s *stubBuilderHTTPToolRepo) Delete(_ context.Context, _ string) error                        { return nil }
+func (s *stubBuilderHTTPToolRepo) List(_ context.Context) ([]entities.HTTPTool, error) {
+	return nil, nil
+}
+func (s *stubBuilderHTTPToolRepo) FindBySpiritID(_ context.Context, _ string) ([]entities.HTTPTool, error) {
+	return nil, nil
+}
+func (s *stubBuilderHTTPToolRepo) FindByID(_ context.Context, _ string) (*entities.HTTPTool, error) {
+	return nil, nil
+}
+func (s *stubBuilderHTTPToolRepo) Save(_ context.Context, _ entities.HTTPTool) error   { return nil }
+func (s *stubBuilderHTTPToolRepo) Update(_ context.Context, _ entities.HTTPTool) error { return nil }
+func (s *stubBuilderHTTPToolRepo) Delete(_ context.Context, _ string) error            { return nil }
 
 type stubBuilderRiteRepo struct{}
 
-func (s *stubBuilderRiteRepo) Create(_ context.Context, _ *entities.Rite) error                             { return nil }
-func (s *stubBuilderRiteRepo) FindByID(_ context.Context, _ string) (*entities.Rite, error)                 { return nil, nil }
+func (s *stubBuilderRiteRepo) Create(_ context.Context, _ *entities.Rite) error { return nil }
+func (s *stubBuilderRiteRepo) FindByID(_ context.Context, _ string) (*entities.Rite, error) {
+	return nil, nil
+}
 func (s *stubBuilderRiteRepo) List(_ context.Context, _ ports.RiteListOptions) ([]*entities.Rite, int64, error) {
 	return nil, 0, nil
 }
-func (s *stubBuilderRiteRepo) Decide(_ context.Context, _, _ string, _ entities.RiteStatus) error { return nil }
+func (s *stubBuilderRiteRepo) Decide(_ context.Context, _, _ string, _ entities.RiteStatus) error {
+	return nil
+}
 
 type stubBuilderArchivist struct{}
 
@@ -1003,7 +1021,7 @@ type stubBuilderVigilRepo struct{}
 func (r *stubBuilderVigilRepo) Acquire(_ context.Context, _, _ string, _ time.Duration) error {
 	return nil
 }
-func (r *stubBuilderVigilRepo) Release(_ context.Context, _ string) error               { return nil }
+func (r *stubBuilderVigilRepo) Release(_ context.Context, _ string) error { return nil }
 func (r *stubBuilderVigilRepo) Get(_ context.Context, _ string) (*entities.Vigil, error) {
 	return nil, nil
 }
@@ -1096,10 +1114,10 @@ func TestWeaveBuilder_Validate_AllRequired_Success(t *testing.T) {
 // --- wireConduits ---
 
 type stubConduit struct {
-	name        string
-	connectErr  error
+	name         string
+	connectErr   error
 	listToolsErr error
-	tools       []entities.ActionDefinition
+	tools        []entities.ActionDefinition
 }
 
 func (c *stubConduit) GetName() string { return c.name }
@@ -1400,8 +1418,8 @@ func (s *stubLinkRepoErr) FindAll(_ context.Context) ([]*entities.Link, error) {
 func (s *stubLinkRepoErr) FindByKey(_ context.Context, _ string) (*entities.Link, error) {
 	return nil, errors.New("db error")
 }
-func (s *stubLinkRepoErr) Save(_ context.Context, _ *entities.Link) error   { return nil }
-func (s *stubLinkRepoErr) Delete(_ context.Context, _ string) error         { return nil }
+func (s *stubLinkRepoErr) Save(_ context.Context, _ *entities.Link) error { return nil }
+func (s *stubLinkRepoErr) Delete(_ context.Context, _ string) error       { return nil }
 
 func TestBuild_WeaveConfigRepo_LoadError_ReturnsError(t *testing.T) {
 	b := minimalValidBuilder(t)
@@ -1599,9 +1617,11 @@ func TestBuild_WithConduits(t *testing.T) {
 // stubErrorPathfinderRegistry returns an error from Register to cover the error log branch.
 type stubErrorPathfinderRegistry struct{}
 
-func (s *stubErrorPathfinderRegistry) Register(_ ports.Pathfinder) error          { return errors.New("already registered") }
+func (s *stubErrorPathfinderRegistry) Register(_ ports.Pathfinder) error {
+	return errors.New("already registered")
+}
 func (s *stubErrorPathfinderRegistry) RegisterMultiple(_ ...ports.Pathfinder) error { return nil }
-func (s *stubErrorPathfinderRegistry) Get(_ string) ports.Pathfinder               { return nil }
+func (s *stubErrorPathfinderRegistry) Get(_ string) ports.Pathfinder                { return nil }
 func (s *stubErrorPathfinderRegistry) List() []string                               { return nil }
 
 func TestRegisterDefaultLLMPathfinder_RegisterError_LogsWarn(t *testing.T) {

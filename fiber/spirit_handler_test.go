@@ -17,17 +17,17 @@ var errInternal = errors.New("internal error")
 // --- stubSpiritRepository ---
 
 type stubSpiritRepository struct {
-	spirit   *eywa.Spirit
-	spirits  []*eywa.Spirit
-	count    int64
-	createErr    error
-	findErr      error
-	updateErr    error
-	listErr      error
-	countErr     error
-	activateErr  error
+	spirit        *eywa.Spirit
+	spirits       []*eywa.Spirit
+	count         int64
+	createErr     error
+	findErr       error
+	updateErr     error
+	listErr       error
+	countErr      error
+	activateErr   error
 	deactivateErr error
-	versionsErr  error
+	versionsErr   error
 }
 
 func (s *stubSpiritRepository) Create(_ context.Context, spirit *eywa.Spirit) error {

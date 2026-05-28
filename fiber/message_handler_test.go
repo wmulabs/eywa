@@ -12,10 +12,10 @@ import (
 
 // stubEchoRepo is a configurable EchoRepository for message handler tests.
 type stubEchoRepo struct {
-	echoes      []*eywa.Echo
-	count       int64
-	countErr    error
-	findErr     error
+	echoes   []*eywa.Echo
+	count    int64
+	countErr error
+	findErr  error
 }
 
 func (s *stubEchoRepo) Append(_ context.Context, _ eywa.Echo) error { return nil }

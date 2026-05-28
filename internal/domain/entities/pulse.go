@@ -56,7 +56,7 @@ type Pulse struct {
 
 	IdempotencyKey string `json:"idempotency_key,omitempty"` // e.g. wamid, MessageSid
 
-	Attachments []*Artifact            `json:"attachments,omitempty"`
+	Attachments []*Artifact    `json:"attachments,omitempty"`
 	Payload     map[string]any `json:"payload,omitempty"`
 
 	// SubjectKey identifies the business entity being discussed (e.g. "shipment:123", "ticket:456").

@@ -628,9 +628,9 @@ func TestConvertAttachmentsToImageBlocks_NilDataNilURL_Skipped(t *testing.T) {
 
 func TestBuildRequestParams_SetsFields(t *testing.T) {
 	req := &eywa.OracleRequest{
-		Model:       "claude-3-5-sonnet-20241022",
-		MaxTokens:   1024,
-		Temperature: 0.7,
+		Model:        "claude-3-5-sonnet-20241022",
+		MaxTokens:    1024,
+		Temperature:  0.7,
 		SystemPrompt: "you are helpful",
 		TopP:         0.9,
 		Messages: []eywa.OracleMessage{

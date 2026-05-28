@@ -17,13 +17,13 @@ type stubOracle struct {
 
 var _ ports.Oracle = (*stubOracle)(nil)
 
-func (o *stubOracle) GetName() string                    { return o.name }
-func (o *stubOracle) GetAvailableModels() []string       { return o.models }
-func (o *stubOracle) IsAvailable() bool                  { return o.available }
-func (o *stubOracle) GetConfig() map[string]any  { return nil }
-func (o *stubOracle) SupportsImages(_ string) bool       { return false }
-func (o *stubOracle) SupportsAudio(_ string) bool        { return false }
-func (o *stubOracle) SupportsDocuments(_ string) bool    { return false }
+func (o *stubOracle) GetName() string                 { return o.name }
+func (o *stubOracle) GetAvailableModels() []string    { return o.models }
+func (o *stubOracle) IsAvailable() bool               { return o.available }
+func (o *stubOracle) GetConfig() map[string]any       { return nil }
+func (o *stubOracle) SupportsImages(_ string) bool    { return false }
+func (o *stubOracle) SupportsAudio(_ string) bool     { return false }
+func (o *stubOracle) SupportsDocuments(_ string) bool { return false }
 func (o *stubOracle) GenerateResponse(_ context.Context, _ *ports.OracleRequest) (*ports.OracleResponse, error) {
 	return nil, nil
 }

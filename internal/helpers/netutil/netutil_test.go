@@ -17,13 +17,13 @@ func TestIsPrivateIP(t *testing.T) {
 		{"192.168.1.1", true},
 		{"127.0.0.1", true},
 		{"127.0.0.2", true},
-		{"169.254.169.254", true},  // AWS/GCP IMDS link-local
-		{"100.64.0.1", true},       // CGN (carrier-grade NAT)
-		{"100.127.255.255", true},  // CGN upper bound
-		{"::1", true},              // IPv6 loopback
-		{"fc00::1", true},          // IPv6 ULA
-		{"fd00::1", true},          // IPv6 ULA (fd prefix)
-		{"fe80::1", true},          // IPv6 link-local
+		{"169.254.169.254", true}, // AWS/GCP IMDS link-local
+		{"100.64.0.1", true},      // CGN (carrier-grade NAT)
+		{"100.127.255.255", true}, // CGN upper bound
+		{"::1", true},             // IPv6 loopback
+		{"fc00::1", true},         // IPv6 ULA
+		{"fd00::1", true},         // IPv6 ULA (fd prefix)
+		{"fe80::1", true},         // IPv6 link-local
 		{"8.8.8.8", false},
 		{"1.1.1.1", false},
 		{"2001:4860:4860::8888", false}, // Google DNS IPv6
@@ -69,18 +69,18 @@ func TestValidateURL_BlockedSchemes(t *testing.T) {
 // without an actual DNS query, so these tests work in sandboxed environments.
 func TestValidateURL_PrivateIPLiterals(t *testing.T) {
 	cases := []string{
-		"http://127.0.0.1/",              // loopback IPv4
-		"http://127.0.0.2/",              // loopback IPv4 (non-zero host)
-		"http://10.0.0.1/",               // RFC 1918 class A
-		"http://192.168.1.1/",            // RFC 1918 class C
-		"http://172.16.0.1/",             // RFC 1918 class B lower
-		"http://172.31.255.255/",         // RFC 1918 class B upper
-		"http://169.254.169.254/",        // AWS/GCP IMDS link-local
-		"http://100.64.0.1/",             // CGN (RFC 6598)
-		"http://[::1]/",                  // loopback IPv6
-		"http://[fc00::1]/",              // IPv6 ULA
-		"http://[fd00::1]/",              // IPv6 ULA (fd prefix)
-		"http://[fe80::1]/",              // IPv6 link-local
+		"http://127.0.0.1/",       // loopback IPv4
+		"http://127.0.0.2/",       // loopback IPv4 (non-zero host)
+		"http://10.0.0.1/",        // RFC 1918 class A
+		"http://192.168.1.1/",     // RFC 1918 class C
+		"http://172.16.0.1/",      // RFC 1918 class B lower
+		"http://172.31.255.255/",  // RFC 1918 class B upper
+		"http://169.254.169.254/", // AWS/GCP IMDS link-local
+		"http://100.64.0.1/",      // CGN (RFC 6598)
+		"http://[::1]/",           // loopback IPv6
+		"http://[fc00::1]/",       // IPv6 ULA
+		"http://[fd00::1]/",       // IPv6 ULA (fd prefix)
+		"http://[fe80::1]/",       // IPv6 link-local
 	}
 	for _, raw := range cases {
 		raw := raw
@@ -96,7 +96,7 @@ func TestValidateURL_PrivateIPLiterals(t *testing.T) {
 func TestValidateURL_MalformedURLs(t *testing.T) {
 	cases := []string{
 		"http://",           // no host
-		"not-a-url",        // no scheme
+		"not-a-url",         // no scheme
 		"://missing-scheme", // malformed
 	}
 	for _, raw := range cases {

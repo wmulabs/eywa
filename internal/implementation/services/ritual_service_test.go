@@ -605,7 +605,7 @@ func TestMarkExecuted_WithRecurrence_NonEmptyMetadata_Cloned(t *testing.T) {
 			ID:        "evt-1",
 			MemoryKey: "user:1",
 			Metadata: map[string]any{
-				"source":                    "web",
+				"source":                     "web",
 				entities.MetadataKeyRitualID: "old-ritual-id",
 			},
 		},

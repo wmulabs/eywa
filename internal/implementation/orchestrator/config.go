@@ -31,8 +31,8 @@ type WeaveConfig struct {
 	// Size it as: MaxReasoningIterations × MaxActionsPerCycle × (avg action latency + avg Oracle latency).
 	// Example: 5 iterations × 20 actions × 2 s/action = 200 s minimum.
 	// LockTTL must be set at least 15 s above ReasoningTimeout (enforced by Validate).
-	ReasoningTimeout time.Duration `json:"reasoning_timeout"`
-	PersistenceTimeout     time.Duration `json:"persistence_timeout"`
+	ReasoningTimeout   time.Duration `json:"reasoning_timeout"`
+	PersistenceTimeout time.Duration `json:"persistence_timeout"`
 
 	MaxReasoningIterations int    `json:"max_reasoning_iterations"`
 	MaxMemoryMessages      int    `json:"max_memory_messages"`

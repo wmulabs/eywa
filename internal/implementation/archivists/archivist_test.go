@@ -21,7 +21,7 @@ var _ ports.Oracle = (*stubOracle)(nil)
 func (o *stubOracle) GetName() string                 { return "stub" }
 func (o *stubOracle) GetAvailableModels() []string    { return nil }
 func (o *stubOracle) IsAvailable() bool               { return true }
-func (o *stubOracle) GetConfig() map[string]any { return nil }
+func (o *stubOracle) GetConfig() map[string]any       { return nil }
 func (o *stubOracle) SupportsImages(_ string) bool    { return false }
 func (o *stubOracle) SupportsAudio(_ string) bool     { return false }
 func (o *stubOracle) SupportsDocuments(_ string) bool { return false }
@@ -42,9 +42,9 @@ func (f *stubOracleFactory) GetProvider(_ string) (ports.Oracle, error) {
 	return f.oracle, f.getErr
 }
 func (f *stubOracleFactory) GetDefaultProvider() (ports.Oracle, error) { return f.oracle, f.getErr }
-func (f *stubOracleFactory) SetDefaultProvider(_ string) error          { return nil }
-func (f *stubOracleFactory) ListProviders() []string                    { return nil }
-func (f *stubOracleFactory) ListAvailableProviders() []string           { return nil }
+func (f *stubOracleFactory) SetDefaultProvider(_ string) error         { return nil }
+func (f *stubOracleFactory) ListProviders() []string                   { return nil }
+func (f *stubOracleFactory) ListAvailableProviders() []string          { return nil }
 func (f *stubOracleFactory) GetProviderForModel(_ string) (ports.Oracle, error) {
 	return f.oracle, f.forModelErr
 }

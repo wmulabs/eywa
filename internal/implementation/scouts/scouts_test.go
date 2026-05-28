@@ -25,7 +25,7 @@ func (r *stubImprintRepo) GetByUserKey(_ context.Context, _, _ string) ([]entiti
 func (r *stubImprintRepo) List(_ context.Context, _ ports.ImprintListOptions) ([]entities.Imprint, int64, error) {
 	panic("not implemented")
 }
-func (r *stubImprintRepo) Delete(_ context.Context, _ string) error { panic("not implemented") }
+func (r *stubImprintRepo) Delete(_ context.Context, _ string) error          { panic("not implemented") }
 func (r *stubImprintRepo) Prune(_ context.Context, _, _ string, _ int) error { return nil }
 
 type stubLoreRepo struct {

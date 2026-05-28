@@ -14,20 +14,20 @@ import (
 // --- stubs ---
 
 type stubAction struct {
-	name       string
-	category   ports.ActionCategory
-	critical   bool
+	name        string
+	category    ports.ActionCategory
+	critical    bool
 	validateErr error
-	execResult string
-	execErr    error
+	execResult  string
+	execErr     error
 }
 
-func (a *stubAction) GetName() string                            { return a.name }
-func (a *stubAction) GetDescription() string                     { return "stub action" }
-func (a *stubAction) GetParameters() map[string]any      { return nil }
-func (a *stubAction) IsCritical() bool                           { return a.critical }
-func (a *stubAction) GetCategory() ports.ActionCategory          { return a.category }
-func (a *stubAction) Validate(_ map[string]any) error    { return a.validateErr }
+func (a *stubAction) GetName() string                   { return a.name }
+func (a *stubAction) GetDescription() string            { return "stub action" }
+func (a *stubAction) GetParameters() map[string]any     { return nil }
+func (a *stubAction) IsCritical() bool                  { return a.critical }
+func (a *stubAction) GetCategory() ports.ActionCategory { return a.category }
+func (a *stubAction) Validate(_ map[string]any) error   { return a.validateErr }
 func (a *stubAction) Execute(_ context.Context, _ map[string]any) (string, error) {
 	return a.execResult, a.execErr
 }
@@ -37,7 +37,7 @@ type stubActionRegistry struct {
 	getErr  error
 }
 
-func (r *stubActionRegistry) Register(_ ports.Action) error           { return nil }
+func (r *stubActionRegistry) Register(_ ports.Action) error            { return nil }
 func (r *stubActionRegistry) RegisterMultiple(_ ...ports.Action) error { return nil }
 func (r *stubActionRegistry) Get(name string) (ports.Action, error) {
 	if r.getErr != nil {
@@ -64,9 +64,9 @@ func (r *stubActionRegistry) Execute(_ context.Context, name string, args map[st
 	}
 	return a.Execute(context.Background(), args)
 }
-func (r *stubActionRegistry) List() []ports.Action      { return nil }
+func (r *stubActionRegistry) List() []ports.Action          { return nil }
 func (r *stubActionRegistry) IsRegistered(name string) bool { _, ok := r.actions[name]; return ok }
-func (r *stubActionRegistry) ListRegistered() []string  { return nil }
+func (r *stubActionRegistry) ListRegistered() []string      { return nil }
 func (r *stubActionRegistry) GetActionDefinitions(_ context.Context, _ []string) ([]entities.ActionDefinition, error) {
 	return nil, nil
 }
@@ -273,12 +273,12 @@ type actionWithCallCount struct {
 	result    string
 }
 
-func (a *actionWithCallCount) GetName() string                          { return a.name }
-func (a *actionWithCallCount) GetDescription() string                   { return "" }
-func (a *actionWithCallCount) GetParameters() map[string]any    { return nil }
-func (a *actionWithCallCount) IsCritical() bool                         { return false }
-func (a *actionWithCallCount) GetCategory() ports.ActionCategory        { return ports.ActionGeneral }
-func (a *actionWithCallCount) Validate(_ map[string]any) error  { return nil }
+func (a *actionWithCallCount) GetName() string                   { return a.name }
+func (a *actionWithCallCount) GetDescription() string            { return "" }
+func (a *actionWithCallCount) GetParameters() map[string]any     { return nil }
+func (a *actionWithCallCount) IsCritical() bool                  { return false }
+func (a *actionWithCallCount) GetCategory() ports.ActionCategory { return ports.ActionGeneral }
+func (a *actionWithCallCount) Validate(_ map[string]any) error   { return nil }
 func (a *actionWithCallCount) Execute(_ context.Context, _ map[string]any) (string, error) {
 	*a.counter++
 	if *a.counter <= a.failTimes {
@@ -295,7 +295,6 @@ func TestExecuteOne_ZeroMaxAttempts_DefaultsToOne(t *testing.T) {
 	exec := NewActionExecutor(reg, false, testLogger(t), noopTracer())
 	exec.retryConfig.MaxAttempts = 0 // bypass normalization
 
-	
 	results := exec.ExecuteAll(context.Background(), []ports.OracleToolCall{call("pay")})
 	if len(results) != 1 {
 		t.Fatalf("expected 1 result, got %d", len(results))

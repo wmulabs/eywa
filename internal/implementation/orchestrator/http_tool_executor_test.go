@@ -447,11 +447,11 @@ func (r *stubActionRegistryForHTTP) RegisterMultiple(_ ...ports.Action) error { 
 func (r *stubActionRegistryForHTTP) Execute(_ context.Context, _ string, _ map[string]any) (string, error) {
 	return "", nil
 }
-func (r *stubActionRegistryForHTTP) Get(_ string) (ports.Action, error)       { return nil, nil }
+func (r *stubActionRegistryForHTTP) Get(_ string) (ports.Action, error) { return nil, nil }
 func (r *stubActionRegistryForHTTP) GetMultiple(_ []string) ([]ports.Action, error) {
 	return nil, nil
 }
-func (r *stubActionRegistryForHTTP) List() []ports.Action { return nil }
+func (r *stubActionRegistryForHTTP) List() []ports.Action       { return nil }
 func (r *stubActionRegistryForHTTP) IsRegistered(_ string) bool { return false }
 func (r *stubActionRegistryForHTTP) ListRegistered() []string   { return nil }
 func (r *stubActionRegistryForHTTP) GetActionDefinitions(_ context.Context, _ []string) ([]entities.ActionDefinition, error) {

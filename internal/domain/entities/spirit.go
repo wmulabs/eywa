@@ -21,9 +21,9 @@ type ExecutorConfig struct {
 }
 
 type NotifierCondition struct {
-	Field    string      `bson:"field" json:"field"`
-	Operator string      `bson:"operator" json:"operator"`
-	Value    any `bson:"value,omitempty" json:"value,omitempty"`
+	Field    string `bson:"field" json:"field"`
+	Operator string `bson:"operator" json:"operator"`
+	Value    any    `bson:"value,omitempty" json:"value,omitempty"`
 }
 
 type NotifierConfig struct {
@@ -47,20 +47,20 @@ type AllowedAction struct {
 }
 
 type Spirit struct {
-	ID                        string                 `bson:"_id,omitempty" json:"id"`
-	Name                      string                 `bson:"name" json:"name"`
-	Description               string                 `bson:"description,omitempty" json:"description,omitempty"`
-	Version                   int                    `bson:"version" json:"version"`
-	IsActive                  bool                   `bson:"is_active" json:"is_active"`
-	IsDeleted                 bool                   `bson:"is_deleted" json:"is_deleted"`
-	SystemPrompt              string                 `bson:"system_prompt" json:"system_prompt"`
-	Specialization            string                 `bson:"specialization,omitempty" json:"specialization,omitempty"`
-	AllowedActions            []AllowedAction        `bson:"allowed_actions" json:"allowed_actions"`
-	EnforceVoiceDelivery      bool                   `bson:"enforce_voice_delivery,omitempty" json:"enforce_voice_delivery,omitempty"`
-	VoiceDeliveryInstructions string                 `bson:"voice_delivery_instructions,omitempty" json:"voice_delivery_instructions,omitempty"`
-	BusinessErrorInstructions string                 `bson:"business_error_instructions,omitempty" json:"business_error_instructions,omitempty"`
-	ModelConfig               SpiritModel            `bson:"model_config" json:"model_config"`
-	Metadata                  map[string]any `bson:"metadata,omitempty" json:"metadata,omitempty"`
+	ID                        string          `bson:"_id,omitempty" json:"id"`
+	Name                      string          `bson:"name" json:"name"`
+	Description               string          `bson:"description,omitempty" json:"description,omitempty"`
+	Version                   int             `bson:"version" json:"version"`
+	IsActive                  bool            `bson:"is_active" json:"is_active"`
+	IsDeleted                 bool            `bson:"is_deleted" json:"is_deleted"`
+	SystemPrompt              string          `bson:"system_prompt" json:"system_prompt"`
+	Specialization            string          `bson:"specialization,omitempty" json:"specialization,omitempty"`
+	AllowedActions            []AllowedAction `bson:"allowed_actions" json:"allowed_actions"`
+	EnforceVoiceDelivery      bool            `bson:"enforce_voice_delivery,omitempty" json:"enforce_voice_delivery,omitempty"`
+	VoiceDeliveryInstructions string          `bson:"voice_delivery_instructions,omitempty" json:"voice_delivery_instructions,omitempty"`
+	BusinessErrorInstructions string          `bson:"business_error_instructions,omitempty" json:"business_error_instructions,omitempty"`
+	ModelConfig               SpiritModel     `bson:"model_config" json:"model_config"`
+	Metadata                  map[string]any  `bson:"metadata,omitempty" json:"metadata,omitempty"`
 
 	Type                 SpiritType           `bson:"type,omitempty" json:"type,omitempty"`
 	RequireScouts        []string             `bson:"require_scouts,omitempty" json:"require_scouts,omitempty"`
@@ -106,10 +106,10 @@ func (s Spirit) NeedsMessageCoalescing() bool {
 }
 
 type SpiritModel struct {
-	Provider    string                 `bson:"provider" json:"provider"`
-	Model       string                 `bson:"model" json:"model"`
-	Temperature float64                `bson:"temperature" json:"temperature"`
-	MaxTokens   int                    `bson:"max_tokens,omitempty" json:"max_tokens,omitempty"`
-	TopP        float64                `bson:"top_p,omitempty" json:"top_p,omitempty"`
+	Provider    string         `bson:"provider" json:"provider"`
+	Model       string         `bson:"model" json:"model"`
+	Temperature float64        `bson:"temperature" json:"temperature"`
+	MaxTokens   int            `bson:"max_tokens,omitempty" json:"max_tokens,omitempty"`
+	TopP        float64        `bson:"top_p,omitempty" json:"top_p,omitempty"`
 	ExtraConfig map[string]any `bson:"extra_config,omitempty" json:"extra_config,omitempty"`
 }
