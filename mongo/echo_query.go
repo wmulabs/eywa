@@ -41,14 +41,14 @@ func (r *EchoRepository) ListSessions(ctx context.Context, opts eywa.SessionList
 	}
 	countCursor, err := r.collection.Aggregate(ctx, countPipeline)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("aggregate session count: %w", err)
 	}
-	defer countCursor.Close(ctx)
+	defer countCursor.Close(ctx) //nolint:errcheck
 	var countResult []struct {
 		Total int64 `bson:"total"`
 	}
 	if err := countCursor.All(ctx, &countResult); err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("decode session count: %w", err)
 	}
 	var total int64
 	if len(countResult) > 0 {
@@ -82,9 +82,9 @@ func (r *EchoRepository) ListSessions(ctx context.Context, opts eywa.SessionList
 
 	cursor, err := r.collection.Aggregate(ctx, pipeline)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("aggregate sessions: %w", err)
 	}
-	defer cursor.Close(ctx)
+	defer cursor.Close(ctx) //nolint:errcheck
 
 	type sessionResult struct {
 		MemoryKey     string    `bson:"_id"`
@@ -94,7 +94,7 @@ func (r *EchoRepository) ListSessions(ctx context.Context, opts eywa.SessionList
 
 	var raw []sessionResult
 	if err := cursor.All(ctx, &raw); err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("decode sessions: %w", err)
 	}
 
 	result := make([]*eywa.SessionSummary, len(raw))
@@ -135,13 +135,13 @@ func (r *EchoRepository) FindByMemoryKeyBefore(ctx context.Context, memoryKey, b
 
 	cursor, err := r.collection.Find(ctx, filter, findOpts)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("find messages before cursor: %w", err)
 	}
-	defer cursor.Close(ctx)
+	defer cursor.Close(ctx) //nolint:errcheck
 
 	var messages []*eywa.Echo
 	if err := cursor.All(ctx, &messages); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decode messages before cursor: %w", err)
 	}
 	return messages, nil
 }

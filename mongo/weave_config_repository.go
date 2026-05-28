@@ -2,6 +2,7 @@ package mongo
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	eywa "github.com/wmulabs/eywa"
@@ -120,7 +121,7 @@ func (r *WeaveConfigRepository) Find(ctx context.Context) (*eywa.WeaveConfig, er
 		return eywa.DefaultWeaveConfig(), nil
 	}
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decode weave config: %w", err)
 	}
 	return documentToConfig(doc), nil
 }
@@ -129,5 +130,8 @@ func (r *WeaveConfigRepository) Save(ctx context.Context, config *eywa.WeaveConf
 	doc := configToDocument(config)
 	opts := options.Replace().SetUpsert(true)
 	_, err := r.collection.ReplaceOne(ctx, bson.M{"_id": "default"}, doc, opts)
-	return err
+	if err != nil {
+		return fmt.Errorf("replace weave config: %w", err)
+	}
+	return nil
 }

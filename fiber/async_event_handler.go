@@ -7,7 +7,7 @@ import (
 	eywa "github.com/wmulabs/eywa"
 	resthttp "github.com/wmulabs/eywa/fiber/http"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
 )
 
 // Async event handler — dispatches to Keeper, returns < 100ms.
@@ -23,7 +23,7 @@ func NewAsyncEventHandler(weave *eywa.Weave) *AsyncEventHandler {
 
 // IngestAsyncEvent handles POST /api/v1/events/:event_key/async.
 func (h *AsyncEventHandler) IngestAsyncEvent(c *fiber.Ctx) error {
-	ctx, span := trace.NewNoopTracerProvider().Tracer("eywa").Start(c.Context(), "Handler/AsyncEvent/IngestAsyncEvent")
+	ctx, span := noop.NewTracerProvider().Tracer("eywa").Start(c.Context(), "Handler/AsyncEvent/IngestAsyncEvent")
 	defer span.End()
 
 	log := newLogger()
