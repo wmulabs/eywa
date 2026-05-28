@@ -3,7 +3,7 @@ module github.com/wmulabs/eywa/providers/anthropic
 go 1.26.3
 
 require (
-	github.com/anthropics/anthropic-sdk-go v1.42.0
+	github.com/anthropics/anthropic-sdk-go v1.46.0
 	github.com/wmulabs/eywa v0.0.0
 )
 
@@ -16,7 +16,7 @@ require (
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/nyaruka/phonenumbers v1.7.4 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
-	github.com/standard-webhooks/standard-webhooks/libraries v0.0.0-20260508151727-1282bb917829 // indirect
+	github.com/standard-webhooks/standard-webhooks/libraries v0.0.1 // indirect
 	github.com/tidwall/gjson v1.18.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
