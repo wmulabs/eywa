@@ -9,7 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/zap"
 
 	eywa "github.com/wmulabs/eywa"
@@ -64,7 +64,7 @@ func (r *EchoRepository) ensureIndexes() {
 }
 
 func (r *EchoRepository) Append(ctx context.Context, message eywa.Echo) error {
-	ctx, span := trace.NewNoopTracerProvider().Tracer("eywa").Start(ctx, "EchoRepository/Append")
+	ctx, span := noop.NewTracerProvider().Tracer("eywa").Start(ctx, "EchoRepository/Append")
 	defer span.End()
 
 	if !message.IsUserFacing {
@@ -90,7 +90,7 @@ func (r *EchoRepository) Append(ctx context.Context, message eywa.Echo) error {
 }
 
 func (r *EchoRepository) FindByMemoryKey(ctx context.Context, memoryKey string, limit, offset int) ([]*eywa.Echo, error) {
-	ctx, span := trace.NewNoopTracerProvider().Tracer("eywa").Start(ctx, "EchoRepository/FindByMemoryKey")
+	ctx, span := noop.NewTracerProvider().Tracer("eywa").Start(ctx, "EchoRepository/FindByMemoryKey")
 	defer span.End()
 
 	if memoryKey == "" {
@@ -102,7 +102,7 @@ func (r *EchoRepository) FindByMemoryKey(ctx context.Context, memoryKey string, 
 }
 
 func (r *EchoRepository) FindByMemoryKeyAndSubject(ctx context.Context, memoryKey, subjectKey string, limit, offset int) ([]*eywa.Echo, error) {
-	ctx, span := trace.NewNoopTracerProvider().Tracer("eywa").Start(ctx, "EchoRepository/FindByMemoryKeyAndSubject")
+	ctx, span := noop.NewTracerProvider().Tracer("eywa").Start(ctx, "EchoRepository/FindByMemoryKeyAndSubject")
 	defer span.End()
 
 	if memoryKey == "" || subjectKey == "" {
@@ -114,7 +114,7 @@ func (r *EchoRepository) FindByMemoryKeyAndSubject(ctx context.Context, memoryKe
 }
 
 func (r *EchoRepository) FindRecentByMemoryKey(ctx context.Context, memoryKey string, limit int) ([]*eywa.Echo, error) {
-	ctx, span := trace.NewNoopTracerProvider().Tracer("eywa").Start(ctx, "EchoRepository/FindRecentByMemoryKey")
+	ctx, span := noop.NewTracerProvider().Tracer("eywa").Start(ctx, "EchoRepository/FindRecentByMemoryKey")
 	defer span.End()
 
 	if memoryKey == "" {
@@ -126,7 +126,7 @@ func (r *EchoRepository) FindRecentByMemoryKey(ctx context.Context, memoryKey st
 }
 
 func (r *EchoRepository) FindRecentByMemoryKeyAndSubject(ctx context.Context, memoryKey, subjectKey string, limit int) ([]*eywa.Echo, error) {
-	ctx, span := trace.NewNoopTracerProvider().Tracer("eywa").Start(ctx, "EchoRepository/FindRecentByMemoryKeyAndSubject")
+	ctx, span := noop.NewTracerProvider().Tracer("eywa").Start(ctx, "EchoRepository/FindRecentByMemoryKeyAndSubject")
 	defer span.End()
 
 	if memoryKey == "" || subjectKey == "" {
@@ -138,7 +138,7 @@ func (r *EchoRepository) FindRecentByMemoryKeyAndSubject(ctx context.Context, me
 }
 
 func (r *EchoRepository) FindBySubjectKey(ctx context.Context, subjectKey string, limit, offset int) ([]*eywa.Echo, error) {
-	ctx, span := trace.NewNoopTracerProvider().Tracer("eywa").Start(ctx, "EchoRepository/FindBySubjectKey")
+	ctx, span := noop.NewTracerProvider().Tracer("eywa").Start(ctx, "EchoRepository/FindBySubjectKey")
 	defer span.End()
 
 	if subjectKey == "" {
@@ -175,7 +175,7 @@ func (r *EchoRepository) find(ctx context.Context, filter bson.M, limit, offset 
 		r.logger.Errorw("failed to query messages", "error", err, "filter", filter)
 		return nil, fmt.Errorf("failed to query messages: %w", err)
 	}
-	defer cursor.Close(ctx)
+	defer cursor.Close(ctx) //nolint:errcheck
 
 	var messages []*eywa.Echo
 	if err := cursor.All(ctx, &messages); err != nil {
@@ -202,7 +202,7 @@ func (r *EchoRepository) findRecent(ctx context.Context, filter bson.M, limit in
 		r.logger.Errorw("failed to query recent messages", "error", err, "filter", filter)
 		return nil, fmt.Errorf("failed to query recent messages: %w", err)
 	}
-	defer cursor.Close(ctx)
+	defer cursor.Close(ctx) //nolint:errcheck
 
 	var messages []*eywa.Echo
 	if err := cursor.All(ctx, &messages); err != nil {
@@ -214,13 +214,25 @@ func (r *EchoRepository) findRecent(ctx context.Context, filter bson.M, limit in
 }
 
 func (r *EchoRepository) CountByMemoryKey(ctx context.Context, memoryKey string) (int64, error) {
-	return r.collection.CountDocuments(ctx, bson.M{"memory_key": memoryKey, "is_user_facing": true})
+	count, err := r.collection.CountDocuments(ctx, bson.M{"memory_key": memoryKey, "is_user_facing": true})
+	if err != nil {
+		return 0, fmt.Errorf("count messages by memory key: %w", err)
+	}
+	return count, nil
 }
 
 func (r *EchoRepository) CountByMemoryKeyAndSubject(ctx context.Context, memoryKey, subjectKey string) (int64, error) {
-	return r.collection.CountDocuments(ctx, bson.M{"memory_key": memoryKey, "subject_key": subjectKey, "is_user_facing": true})
+	count, err := r.collection.CountDocuments(ctx, bson.M{"memory_key": memoryKey, "subject_key": subjectKey, "is_user_facing": true})
+	if err != nil {
+		return 0, fmt.Errorf("count messages by memory key and subject: %w", err)
+	}
+	return count, nil
 }
 
 func (r *EchoRepository) CountBySubjectKey(ctx context.Context, subjectKey string) (int64, error) {
-	return r.collection.CountDocuments(ctx, bson.M{"subject_key": subjectKey, "is_user_facing": true})
+	count, err := r.collection.CountDocuments(ctx, bson.M{"subject_key": subjectKey, "is_user_facing": true})
+	if err != nil {
+		return 0, fmt.Errorf("count messages by subject key: %w", err)
+	}
+	return count, nil
 }

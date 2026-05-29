@@ -26,24 +26,6 @@ func mockServer(t *testing.T, status int, body string) (*httptest.Server, *Dialo
 	return srv, client
 }
 
-// captureServer returns a server that records the last request body and responds with 200.
-func captureServer(t *testing.T) (*httptest.Server, *[]byte, *Dialog360Client) {
-	t.Helper()
-	var captured []byte
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewDecoder(r.Body).Decode(&captured) //nolint:errcheck
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{}`)) //nolint:errcheck
-	}))
-	t.Cleanup(srv.Close)
-	client := NewDialog360Client(Dialog360Config{
-		APIKey:     "test-key",
-		BaseURL:    srv.URL,
-		HTTPClient: srv.Client(),
-	})
-	return srv, &captured, client
-}
-
 // --- NewDialog360Client ---
 
 func TestNewDialog360Client_Defaults(t *testing.T) {
