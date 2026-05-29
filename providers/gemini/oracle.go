@@ -270,7 +270,7 @@ func (p *GeminiOracle) splitMessagesForChat(messages []eywa.OracleMessage, attac
 	for batchStart > 0 && messages[batchStart-1].Role == eywa.RoleTool {
 		batchStart--
 	}
-	if batchStart == n && n > 0 && messages[n-1].Role == eywa.RoleUser {
+	if batchStart == n && n > 0 && messages[n-1].Role == eywa.RoleUser { //nolint:gosec
 		batchStart = n - 1
 	}
 
@@ -392,7 +392,7 @@ func (p *GeminiOracle) convertPartToToolCall(part *genai.Part) eywa.OracleToolCa
 // normalizeStopReason maps Gemini finish reasons to standard StopReason constants.
 // https://ai.google.dev/api/generate-content#finishreason
 func (p *GeminiOracle) normalizeStopReason(finishReason genai.FinishReason) string {
-	switch finishReason {
+	switch finishReason { //nolint:exhaustive
 	case genai.FinishReasonStop:
 		return eywa.StopReasonComplete
 	case genai.FinishReasonMaxTokens:

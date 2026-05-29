@@ -7,7 +7,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	eywa "github.com/wmulabs/eywa"
 	resthttp "github.com/wmulabs/eywa/fiber/http"
-	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
 )
 
 const (
@@ -49,7 +49,7 @@ type scheduledTaskResponse struct {
 
 // ScheduleByEventKey handles POST /api/v1/events/:event_key/schedule.
 func (h *ScheduleHandler) ScheduleByEventKey(c *fiber.Ctx) error {
-	ctx, span := trace.NewNoopTracerProvider().Tracer("eywa").Start(c.Context(), "Handler/Schedule/ScheduleByEventKey")
+	ctx, span := noop.NewTracerProvider().Tracer("eywa").Start(c.Context(), "Handler/Schedule/ScheduleByEventKey")
 	defer span.End()
 
 	log := newLogger()
@@ -121,7 +121,7 @@ func (h *ScheduleHandler) ScheduleByEventKey(c *fiber.Ctx) error {
 
 // Cancel handles DELETE /api/v1/schedule/:id.
 func (h *ScheduleHandler) Cancel(c *fiber.Ctx) error {
-	ctx, span := trace.NewNoopTracerProvider().Tracer("eywa").Start(c.Context(), "Handler/Schedule/Cancel")
+	ctx, span := noop.NewTracerProvider().Tracer("eywa").Start(c.Context(), "Handler/Schedule/Cancel")
 	defer span.End()
 
 	id := c.Params("id")
@@ -140,7 +140,7 @@ func (h *ScheduleHandler) Cancel(c *fiber.Ctx) error {
 
 // ListPending handles GET /api/v1/schedule.
 func (h *ScheduleHandler) ListPending(c *fiber.Ctx) error {
-	ctx, span := trace.NewNoopTracerProvider().Tracer("eywa").Start(c.Context(), "Handler/Schedule/ListPending")
+	ctx, span := noop.NewTracerProvider().Tracer("eywa").Start(c.Context(), "Handler/Schedule/ListPending")
 	defer span.End()
 
 	memoryKey := c.Query("memory_key")
@@ -175,7 +175,7 @@ func (h *ScheduleHandler) ListPending(c *fiber.Ctx) error {
 // HandleExecuteEvent is the Keeper callback handler for POST /internal/execute-event.
 func HandleExecuteEvent(weave *eywa.Weave) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		ctx, span := trace.NewNoopTracerProvider().Tracer("eywa").Start(c.Context(), "Handler/ExecuteEvent")
+		ctx, span := noop.NewTracerProvider().Tracer("eywa").Start(c.Context(), "Handler/ExecuteEvent")
 		defer span.End()
 
 		log := newLogger()

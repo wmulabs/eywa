@@ -2,6 +2,7 @@ package mongo
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -66,7 +67,10 @@ func (r *LedgerRepository) IncrementUsage(ctx context.Context, spiritName string
 	}
 
 	_, err := r.entries.UpdateOne(ctx, filter, update, options.Update().SetUpsert(true))
-	return err
+	if err != nil {
+		return fmt.Errorf("update ledger entry: %w", err)
+	}
+	return nil
 }
 
 func (r *LedgerRepository) GetMonthUsage(ctx context.Context, spiritName string, month string) (eywa.LedgerEntry, error) {
@@ -77,7 +81,10 @@ func (r *LedgerRepository) GetMonthUsage(ctx context.Context, spiritName string,
 	if err == mongo.ErrNoDocuments {
 		return eywa.LedgerEntry{SpiritName: spiritName, Month: month}, nil
 	}
-	return entry, err
+	if err != nil {
+		return eywa.LedgerEntry{}, fmt.Errorf("decode ledger entry: %w", err)
+	}
+	return entry, nil
 }
 
 func (r *LedgerRepository) GetBudget(ctx context.Context, spiritName string) (eywa.TokenBudget, error) {
@@ -88,7 +95,10 @@ func (r *LedgerRepository) GetBudget(ctx context.Context, spiritName string) (ey
 	if err == mongo.ErrNoDocuments {
 		return eywa.TokenBudget{SpiritName: spiritName}, nil
 	}
-	return budget, err
+	if err != nil {
+		return eywa.TokenBudget{}, fmt.Errorf("decode ledger budget: %w", err)
+	}
+	return budget, nil
 }
 
 func (r *LedgerRepository) SetBudget(ctx context.Context, budget eywa.TokenBudget) error {
@@ -98,5 +108,8 @@ func (r *LedgerRepository) SetBudget(ctx context.Context, budget eywa.TokenBudge
 	}
 
 	_, err := r.budgets.UpdateOne(ctx, filter, update, options.Update().SetUpsert(true))
-	return err
+	if err != nil {
+		return fmt.Errorf("upsert ledger entry: %w", err)
+	}
+	return nil
 }
