@@ -2,6 +2,7 @@ package mongo
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	eywa "github.com/wmulabs/eywa"
@@ -63,7 +64,10 @@ func (r *RiteRepository) Create(ctx context.Context, rite *eywa.Rite) error {
 		rite.ID = primitive.NewObjectID().Hex()
 	}
 	_, err := r.collection.InsertOne(ctx, rite)
-	return err
+	if err != nil {
+		return fmt.Errorf("insert rite: %w", err)
+	}
+	return nil
 }
 
 func (r *RiteRepository) FindByID(ctx context.Context, id string) (*eywa.Rite, error) {
@@ -72,7 +76,10 @@ func (r *RiteRepository) FindByID(ctx context.Context, id string) (*eywa.Rite, e
 	if err == mongodriver.ErrNoDocuments {
 		return nil, &eywa.NotFoundError{Entity: "rite", ID: id}
 	}
-	return &rite, err
+	if err != nil {
+		return nil, fmt.Errorf("decode rite: %w", err)
+	}
+	return &rite, nil
 }
 
 func (r *RiteRepository) List(ctx context.Context, opts eywa.RiteListOptions) ([]*eywa.Rite, int64, error) {
@@ -96,7 +103,7 @@ func (r *RiteRepository) List(ctx context.Context, opts eywa.RiteListOptions) ([
 
 	total, err := r.collection.CountDocuments(ctx, filter)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("count rites: %w", err)
 	}
 
 	cursor, err := r.collection.Find(ctx, filter, options.Find().
@@ -104,13 +111,13 @@ func (r *RiteRepository) List(ctx context.Context, opts eywa.RiteListOptions) ([
 		SetSkip(skip).
 		SetLimit(int64(limit)))
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("find rites: %w", err)
 	}
-	defer cursor.Close(ctx)
+	defer cursor.Close(ctx) //nolint:errcheck
 
 	var rites []*eywa.Rite
 	if err := cursor.All(ctx, &rites); err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("decode rites: %w", err)
 	}
 	return rites, total, nil
 }
@@ -126,7 +133,7 @@ func (r *RiteRepository) Decide(ctx context.Context, id, operatorID string, stat
 	}
 	res, err := r.collection.UpdateOne(ctx, bson.M{"_id": id}, update)
 	if err != nil {
-		return err
+		return fmt.Errorf("decide rite: %w", err)
 	}
 	if res.MatchedCount == 0 {
 		return &eywa.NotFoundError{Entity: "rite", ID: id}

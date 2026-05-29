@@ -36,7 +36,7 @@ func (r *VigilRepository) Acquire(ctx context.Context, memoryKey, operatorID str
 	value := fmt.Sprintf("%s:%d", operatorID, now.Unix())
 	ok, err := r.client.SetNX(ctx, r.key(memoryKey), value, ttl).Result()
 	if err != nil {
-		return err
+		return fmt.Errorf("set vigil flag: %w", err)
 	}
 	if !ok {
 		return eywa.ErrSessionHeld
@@ -45,7 +45,10 @@ func (r *VigilRepository) Acquire(ctx context.Context, memoryKey, operatorID str
 }
 
 func (r *VigilRepository) Release(ctx context.Context, memoryKey string) error {
-	return r.client.Del(ctx, r.key(memoryKey)).Err()
+	if err := r.client.Del(ctx, r.key(memoryKey)).Err(); err != nil {
+		return fmt.Errorf("release vigil: %w", err)
+	}
+	return nil
 }
 
 func (r *VigilRepository) Get(ctx context.Context, memoryKey string) (*eywa.Vigil, error) {
@@ -55,7 +58,7 @@ func (r *VigilRepository) Get(ctx context.Context, memoryKey string) (*eywa.Vigi
 		if err == redis.Nil {
 			return nil, nil // no vigil = spirit mode
 		}
-		return nil, err
+		return nil, fmt.Errorf("get vigil: %w", err)
 	}
 
 	parts := strings.SplitN(val, ":", 2)
@@ -71,7 +74,7 @@ func (r *VigilRepository) Get(ctx context.Context, memoryKey string) (*eywa.Vigi
 
 	ttlDuration, err := r.client.TTL(ctx, k).Result()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get vigil TTL: %w", err)
 	}
 	expiresAt := time.Now().UTC().Add(ttlDuration)
 
@@ -84,7 +87,10 @@ func (r *VigilRepository) Get(ctx context.Context, memoryKey string) (*eywa.Vigi
 }
 
 func (r *VigilRepository) Refresh(ctx context.Context, memoryKey string, ttl time.Duration) error {
-	return r.client.Expire(ctx, r.key(memoryKey), ttl).Err()
+	if err := r.client.Expire(ctx, r.key(memoryKey), ttl).Err(); err != nil {
+		return fmt.Errorf("refresh vigil TTL: %w", err)
+	}
+	return nil
 }
 
 // ListAll scans Redis for all active vigil keys under this service/environment prefix.

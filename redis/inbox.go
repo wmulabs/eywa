@@ -32,7 +32,10 @@ func (r *InboxManager) Push(ctx context.Context, memoryKey string, message strin
 	pipe.RPush(ctx, key, message)
 	pipe.Expire(ctx, key, r.ttl)
 	_, err := pipe.Exec(ctx)
-	return err
+	if err != nil {
+		return fmt.Errorf("execute inbox pipeline: %w", err)
+	}
+	return nil
 }
 
 // PopAll atomically reads all messages and deletes the inbox key.
@@ -46,7 +49,7 @@ func (r *InboxManager) PopAll(ctx context.Context, memoryKey string) ([]string, 
 		newLogger().Warnw("inbox pipeline partial failure",
 			"memory_key", memoryKey,
 			"error", err)
-		return nil, err
+		return nil, fmt.Errorf("execute inbox pipeline: %w", err)
 	}
 	return lrange.Val(), nil
 }

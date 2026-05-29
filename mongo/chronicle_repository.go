@@ -2,6 +2,7 @@ package mongo
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	eywa "github.com/wmulabs/eywa"
@@ -10,7 +11,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/zap"
 )
 
@@ -117,7 +118,7 @@ func (r *ChronicleRepository) getIndexModels() []mongo.IndexModel {
 }
 
 func (r *ChronicleRepository) LogInteraction(ctx context.Context, log *eywa.Chronicle) error {
-	ctx, span := trace.NewNoopTracerProvider().Tracer("eywa").Start(ctx, "Repository/Interaction/LogInteraction")
+	ctx, span := noop.NewTracerProvider().Tracer("eywa").Start(ctx, "Repository/Interaction/LogInteraction")
 	defer span.End()
 
 	log.Timestamp = eywa.NowUTC()
@@ -125,7 +126,7 @@ func (r *ChronicleRepository) LogInteraction(ctx context.Context, log *eywa.Chro
 	result, err := r.collection.InsertOne(ctx, log)
 	if err != nil {
 		r.logger.Errorw("error logging interaction", "error", err)
-		return err
+		return fmt.Errorf("insert interaction log: %w", err)
 	}
 
 	log.ID = result.InsertedID.(primitive.ObjectID).Hex()
@@ -134,49 +135,49 @@ func (r *ChronicleRepository) LogInteraction(ctx context.Context, log *eywa.Chro
 }
 
 func (r *ChronicleRepository) FindByMemoryKey(ctx context.Context, memoryKey string) ([]*eywa.Chronicle, error) {
-	ctx, span := trace.NewNoopTracerProvider().Tracer("eywa").Start(ctx, "Repository/Interaction/FindByMemoryKey")
+	ctx, span := noop.NewTracerProvider().Tracer("eywa").Start(ctx, "Repository/Interaction/FindByMemoryKey")
 	defer span.End()
 
 	opts := options.Find().SetSort(bson.D{{Key: "timestamp", Value: 1}})
 	cursor, err := r.collection.Find(ctx, bson.M{"memory_key": memoryKey}, opts)
 	if err != nil {
 		r.logger.Errorw("error finding interactions", "error", err, "memory_key", memoryKey)
-		return nil, err
+		return nil, fmt.Errorf("find interactions: %w", err)
 	}
-	defer cursor.Close(ctx)
+	defer cursor.Close(ctx) //nolint:errcheck
 
 	var interactions []*eywa.Chronicle
 	if err = cursor.All(ctx, &interactions); err != nil {
 		r.logger.Errorw("error decoding interactions", "error", err)
-		return nil, err
+		return nil, fmt.Errorf("find interactions: %w", err)
 	}
 
 	return interactions, nil
 }
 
 func (r *ChronicleRepository) FindByEventKey(ctx context.Context, eventKey string) ([]*eywa.Chronicle, error) {
-	ctx, span := trace.NewNoopTracerProvider().Tracer("eywa").Start(ctx, "Repository/Interaction/FindByEventKey")
+	ctx, span := noop.NewTracerProvider().Tracer("eywa").Start(ctx, "Repository/Interaction/FindByEventKey")
 	defer span.End()
 
 	opts := options.Find().SetSort(bson.D{{Key: "timestamp", Value: -1}})
 	cursor, err := r.collection.Find(ctx, bson.M{"event_key": eventKey}, opts)
 	if err != nil {
 		r.logger.Errorw("error finding interactions", "error", err, "event_key", eventKey)
-		return nil, err
+		return nil, fmt.Errorf("find interactions by event key: %w", err)
 	}
-	defer cursor.Close(ctx)
+	defer cursor.Close(ctx) //nolint:errcheck
 
 	var interactions []*eywa.Chronicle
 	if err = cursor.All(ctx, &interactions); err != nil {
 		r.logger.Errorw("error decoding interactions", "error", err)
-		return nil, err
+		return nil, fmt.Errorf("find interactions by event key: %w", err)
 	}
 
 	return interactions, nil
 }
 
 func (r *ChronicleRepository) FindByTimeRange(ctx context.Context, start, end time.Time) ([]*eywa.Chronicle, error) {
-	ctx, span := trace.NewNoopTracerProvider().Tracer("eywa").Start(ctx, "Repository/Interaction/FindByTimeRange")
+	ctx, span := noop.NewTracerProvider().Tracer("eywa").Start(ctx, "Repository/Interaction/FindByTimeRange")
 	defer span.End()
 
 	opts := options.Find().SetSort(bson.D{{Key: "timestamp", Value: -1}})
@@ -189,14 +190,14 @@ func (r *ChronicleRepository) FindByTimeRange(ctx context.Context, start, end ti
 	cursor, err := r.collection.Find(ctx, filter, opts)
 	if err != nil {
 		r.logger.Errorw("error finding interactions by time range", "error", err)
-		return nil, err
+		return nil, fmt.Errorf("find interactions: %w", err)
 	}
-	defer cursor.Close(ctx)
+	defer cursor.Close(ctx) //nolint:errcheck
 
 	var interactions []*eywa.Chronicle
 	if err = cursor.All(ctx, &interactions); err != nil {
 		r.logger.Errorw("error decoding interactions", "error", err)
-		return nil, err
+		return nil, fmt.Errorf("find interactions: %w", err)
 	}
 
 	return interactions, nil

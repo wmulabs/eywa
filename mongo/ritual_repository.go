@@ -56,7 +56,10 @@ func (r *RitualRepository) Save(ctx context.Context, task *eywa.Ritual) error {
 		task.ID = primitive.NewObjectID().Hex()
 	}
 	_, err := r.collection.InsertOne(ctx, task)
-	return err
+	if err != nil {
+		return fmt.Errorf("insert ritual: %w", err)
+	}
+	return nil
 }
 
 func (r *RitualRepository) FindByID(ctx context.Context, id string) (*eywa.Ritual, error) {
@@ -65,7 +68,10 @@ func (r *RitualRepository) FindByID(ctx context.Context, id string) (*eywa.Ritua
 	if err == mongo.ErrNoDocuments {
 		return nil, &eywa.NotFoundError{Entity: "ritual", ID: id}
 	}
-	return &task, err
+	if err != nil {
+		return nil, fmt.Errorf("decode ritual: %w", err)
+	}
+	return &task, nil
 }
 
 func (r *RitualRepository) FindPendingByMemoryKey(ctx context.Context, memoryKey string, limit, offset int) ([]*eywa.Ritual, error) {
@@ -80,22 +86,26 @@ func (r *RitualRepository) FindPendingByMemoryKey(ctx context.Context, memoryKey
 
 	cursor, err := r.collection.Find(ctx, filter, opts)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("find rituals by memory key: %w", err)
 	}
-	defer cursor.Close(ctx)
+	defer cursor.Close(ctx) //nolint:errcheck
 
 	var tasks []*eywa.Ritual
 	if err := cursor.All(ctx, &tasks); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decode rituals: %w", err)
 	}
 	return tasks, nil
 }
 
 func (r *RitualRepository) CountByMemoryKey(ctx context.Context, memoryKey string) (int64, error) {
-	return r.collection.CountDocuments(ctx, bson.M{
+	count, err := r.collection.CountDocuments(ctx, bson.M{
 		"memory_key": memoryKey,
 		"status":     eywa.RitualPending,
 	})
+	if err != nil {
+		return 0, fmt.Errorf("count rituals: %w", err)
+	}
+	return count, nil
 }
 
 func (r *RitualRepository) UpdateStatus(ctx context.Context, id string, status eywa.RitualStatus, ts time.Time) error {
@@ -105,7 +115,10 @@ func (r *RitualRepository) UpdateStatus(ctx context.Context, id string, status e
 	}
 	update := bson.M{"$set": bson.M{"status": status, tsField: ts}}
 	_, err = r.collection.UpdateOne(ctx, bson.M{"_id": id}, update)
-	return err
+	if err != nil {
+		return fmt.Errorf("update ritual status: %w", err)
+	}
+	return nil
 }
 
 func (r *RitualRepository) UpdateRunning(ctx context.Context, id string, ts time.Time) error {
@@ -114,7 +127,10 @@ func (r *RitualRepository) UpdateRunning(ctx context.Context, id string, ts time
 		"$inc": bson.M{"attempt_count": 1},
 	}
 	_, err := r.collection.UpdateOne(ctx, bson.M{"_id": id}, update)
-	return err
+	if err != nil {
+		return fmt.Errorf("update ritual running: %w", err)
+	}
+	return nil
 }
 
 func (r *RitualRepository) UpdateFailed(ctx context.Context, id string, ts time.Time, reason string) error {
@@ -124,13 +140,19 @@ func (r *RitualRepository) UpdateFailed(ctx context.Context, id string, ts time.
 		"failure_reason": reason,
 	}}
 	_, err := r.collection.UpdateOne(ctx, bson.M{"_id": id}, update)
-	return err
+	if err != nil {
+		return fmt.Errorf("update ritual failed: %w", err)
+	}
+	return nil
 }
 
 func (r *RitualRepository) UpdateKeeperTaskID(ctx context.Context, id string, keeperTaskID string) error {
 	update := bson.M{"$set": bson.M{"keeper_task_id": keeperTaskID}}
 	_, err := r.collection.UpdateOne(ctx, bson.M{"_id": id}, update)
-	return err
+	if err != nil {
+		return fmt.Errorf("update ritual keeper task id: %w", err)
+	}
+	return nil
 }
 
 func statusTimestampField(status eywa.RitualStatus) (string, error) {
