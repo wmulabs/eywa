@@ -29,6 +29,10 @@ linters:
         - ".Errorf("
         - "errors.New("
         - "errors.Unwrap("
+        - ".JSON("
+        - ".SendStatus("
+        - "ErrorResponse("
+        - "(context.Context).Err("
   exclusions:
     rules:
       - path: '(.+)_test\.go'

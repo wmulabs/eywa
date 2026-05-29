@@ -5,7 +5,7 @@ import (
 	"github.com/google/uuid"
 	eywa "github.com/wmulabs/eywa"
 	resthttp "github.com/wmulabs/eywa/fiber/http"
-	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
 )
 
 type SpiritManagementHandler struct {
@@ -17,7 +17,7 @@ func NewSpiritManagementHandler(spiritRepo eywa.SpiritRepository) *SpiritManagem
 }
 
 func (h *SpiritManagementHandler) CreateSpirit(c *fiber.Ctx) error {
-	ctx, span := trace.NewNoopTracerProvider().Tracer("eywa").Start(c.Context(), "Handler/Spirit/Create")
+	ctx, span := noop.NewTracerProvider().Tracer("eywa").Start(c.Context(), "Handler/Spirit/Create")
 	defer span.End()
 
 	log := newLogger()
@@ -69,7 +69,7 @@ func (h *SpiritManagementHandler) CreateSpirit(c *fiber.Ctx) error {
 }
 
 func (h *SpiritManagementHandler) GetSpirit(c *fiber.Ctx) error {
-	ctx, span := trace.NewNoopTracerProvider().Tracer("eywa").Start(c.Context(), "Handler/Spirit/Get")
+	ctx, span := noop.NewTracerProvider().Tracer("eywa").Start(c.Context(), "Handler/Spirit/Get")
 	defer span.End()
 
 	log := newLogger()
@@ -85,7 +85,7 @@ func (h *SpiritManagementHandler) GetSpirit(c *fiber.Ctx) error {
 }
 
 func (h *SpiritManagementHandler) UpdateSpirit(c *fiber.Ctx) error {
-	ctx, span := trace.NewNoopTracerProvider().Tracer("eywa").Start(c.Context(), "Handler/Spirit/Update")
+	ctx, span := noop.NewTracerProvider().Tracer("eywa").Start(c.Context(), "Handler/Spirit/Update")
 	defer span.End()
 
 	log := newLogger()
@@ -139,7 +139,7 @@ func (h *SpiritManagementHandler) UpdateSpirit(c *fiber.Ctx) error {
 }
 
 func (h *SpiritManagementHandler) DeleteSpirit(c *fiber.Ctx) error {
-	ctx, span := trace.NewNoopTracerProvider().Tracer("eywa").Start(c.Context(), "Handler/Spirit/Delete")
+	ctx, span := noop.NewTracerProvider().Tracer("eywa").Start(c.Context(), "Handler/Spirit/Delete")
 	defer span.End()
 
 	log := newLogger()
@@ -161,7 +161,7 @@ func (h *SpiritManagementHandler) DeleteSpirit(c *fiber.Ctx) error {
 }
 
 func (h *SpiritManagementHandler) ListSpirits(c *fiber.Ctx) error {
-	ctx, span := trace.NewNoopTracerProvider().Tracer("eywa").Start(c.Context(), "Handler/Spirit/List")
+	ctx, span := noop.NewTracerProvider().Tracer("eywa").Start(c.Context(), "Handler/Spirit/List")
 	defer span.End()
 
 	log := newLogger()
@@ -187,7 +187,7 @@ func (h *SpiritManagementHandler) ListSpirits(c *fiber.Ctx) error {
 }
 
 func (h *SpiritManagementHandler) ActivateSpirit(c *fiber.Ctx) error {
-	ctx, span := trace.NewNoopTracerProvider().Tracer("eywa").Start(c.Context(), "Handler/Spirit/Activate")
+	ctx, span := noop.NewTracerProvider().Tracer("eywa").Start(c.Context(), "Handler/Spirit/Activate")
 	defer span.End()
 
 	log := newLogger()
@@ -214,7 +214,7 @@ func (h *SpiritManagementHandler) ActivateSpirit(c *fiber.Ctx) error {
 }
 
 func (h *SpiritManagementHandler) DeactivateSpirit(c *fiber.Ctx) error {
-	ctx, span := trace.NewNoopTracerProvider().Tracer("eywa").Start(c.Context(), "Handler/Spirit/Deactivate")
+	ctx, span := noop.NewTracerProvider().Tracer("eywa").Start(c.Context(), "Handler/Spirit/Deactivate")
 	defer span.End()
 
 	log := newLogger()
@@ -237,7 +237,7 @@ func (h *SpiritManagementHandler) DeactivateSpirit(c *fiber.Ctx) error {
 
 // GetSpiritVersions returns the full version history for a Spirit, newest first.
 func (h *SpiritManagementHandler) GetSpiritVersions(c *fiber.Ctx) error {
-	ctx, span := trace.NewNoopTracerProvider().Tracer("eywa").Start(c.Context(), "Handler/Spirit/Versions")
+	ctx, span := noop.NewTracerProvider().Tracer("eywa").Start(c.Context(), "Handler/Spirit/Versions")
 	defer span.End()
 
 	name := c.Params("name")

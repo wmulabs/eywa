@@ -4,7 +4,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	eywa "github.com/wmulabs/eywa"
 	resthttp "github.com/wmulabs/eywa/fiber/http"
-	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
 )
 
 // Synchronous webhook event handler.
@@ -25,7 +25,7 @@ func NewEventHandler(weave *eywa.Weave) *EventHandler {
 //   - 400: invalid payload or unknown event_key
 //   - 500: infrastructure failure before processing
 func (h *EventHandler) ProcessEvent(c *fiber.Ctx) error {
-	ctx, span := trace.NewNoopTracerProvider().Tracer("eywa").Start(c.Context(), "Handler/Event/ProcessEvent")
+	ctx, span := noop.NewTracerProvider().Tracer("eywa").Start(c.Context(), "Handler/Event/ProcessEvent")
 	defer span.End()
 
 	log := newLogger()

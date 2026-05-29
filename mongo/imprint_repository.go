@@ -70,7 +70,7 @@ func (r *ImprintRepository) GetByUserKey(ctx context.Context, userKey string, sp
 	if err != nil {
 		return nil, fmt.Errorf("get imprints: %w", err)
 	}
-	defer cursor.Close(ctx)
+	defer cursor.Close(ctx) //nolint:errcheck
 
 	var imprints []eywa.Imprint
 	if err := cursor.All(ctx, &imprints); err != nil {
@@ -119,7 +119,7 @@ func (r *ImprintRepository) List(ctx context.Context, opts eywa.ImprintListOptio
 	if err != nil {
 		return nil, 0, fmt.Errorf("list imprints: %w", err)
 	}
-	defer cursor.Close(ctx)
+	defer cursor.Close(ctx) //nolint:errcheck
 
 	var imprints []eywa.Imprint
 	if err := cursor.All(ctx, &imprints); err != nil {

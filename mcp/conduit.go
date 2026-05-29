@@ -182,7 +182,7 @@ func (c *MCPConduit) post(ctx context.Context, payload mcpRequest, out *mcpRespo
 	if err != nil {
 		return fmt.Errorf("mcp http call: %w", err)
 	}
-	defer httpResp.Body.Close()
+	defer httpResp.Body.Close() //nolint:errcheck
 
 	if httpResp.StatusCode >= 400 {
 		return fmt.Errorf("mcp server returned %d", httpResp.StatusCode)
@@ -193,7 +193,10 @@ func (c *MCPConduit) post(ctx context.Context, payload mcpRequest, out *mcpRespo
 		return fmt.Errorf("read mcp response: %w", err)
 	}
 
-	return json.Unmarshal(data, out)
+	if err := json.Unmarshal(data, out); err != nil {
+		return fmt.Errorf("unmarshal response: %w", err)
+	}
+	return nil
 }
 
 // mcpRequest is the JSON-RPC 2.0 request envelope.

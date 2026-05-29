@@ -87,7 +87,7 @@ func (r *LoreRepository) GetBySpiritID(ctx context.Context, spiritID string) ([]
 	if err != nil {
 		return nil, fmt.Errorf("get lores by spirit: %w", err)
 	}
-	defer cursor.Close(ctx)
+	defer cursor.Close(ctx) //nolint:errcheck
 
 	var lores []eywa.Lore
 	if err := cursor.All(ctx, &lores); err != nil {
@@ -101,7 +101,7 @@ func (r *LoreRepository) GetByIDs(ctx context.Context, ids []string) ([]eywa.Lor
 	if err != nil {
 		return nil, fmt.Errorf("get lores by ids: %w", err)
 	}
-	defer cursor.Close(ctx)
+	defer cursor.Close(ctx) //nolint:errcheck
 
 	var lores []eywa.Lore
 	if err := cursor.All(ctx, &lores); err != nil {
