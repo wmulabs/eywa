@@ -211,6 +211,21 @@ jobs:
             fi
           done
 
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    needs: [test-root, test-core, test-modules]
+    if: always()
+    steps:
+      - name: All tests passed
+        run: |
+          if [[ "${{ needs.test-root.result }}"    != "success" || \
+                "${{ needs.test-core.result }}"    != "success" || \
+                "${{ needs.test-modules.result }}" != "success" ]]; then
+            echo "One or more test jobs failed"
+            exit 1
+          fi
+
   lint:
     name: Lint
     runs-on: ubuntu-latest
