@@ -82,7 +82,7 @@ func (s *LoreStore) Search(ctx context.Context, loreID string, queryVec []float3
 	if err != nil {
 		return nil, fmt.Errorf("vector search: %w", err)
 	}
-	defer cursor.Close(ctx)
+	defer cursor.Close(ctx) //nolint:errcheck
 
 	var chunks []eywa.LoreChunk
 	if err := cursor.All(ctx, &chunks); err != nil {
