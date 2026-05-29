@@ -3,10 +3,12 @@ package fiber
 import (
 	"context"
 
+	"fmt"
+
 	"github.com/gofiber/fiber/v2"
 	eywa "github.com/wmulabs/eywa"
 	resthttp "github.com/wmulabs/eywa/fiber/http"
-	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
 )
 
 const defaultMessageLimit = 50
@@ -22,7 +24,7 @@ func NewMessageHandler(echoRepo eywa.EchoRepository) *MessageHandler {
 
 // GetMessages handles GET /api/v1/messages.
 func (h *MessageHandler) GetMessages(c *fiber.Ctx) error {
-	ctx, span := trace.NewNoopTracerProvider().Tracer("eywa").Start(c.Context(), "Handler/Message/GetMessages")
+	ctx, span := noop.NewTracerProvider().Tracer("eywa").Start(c.Context(), "Handler/Message/GetMessages")
 	defer span.End()
 
 	log := newLogger()
@@ -59,23 +61,39 @@ func (h *MessageHandler) GetMessages(c *fiber.Ctx) error {
 }
 
 func (h *MessageHandler) queryMessages(ctx context.Context, memoryKey, subjectKey string, limit, offset int) ([]*eywa.Echo, error) {
+	var (
+		msgs []*eywa.Echo
+		err  error
+	)
 	switch {
 	case memoryKey != "" && subjectKey != "":
-		return h.echoRepo.FindByMemoryKeyAndSubject(ctx, memoryKey, subjectKey, limit, offset)
+		msgs, err = h.echoRepo.FindByMemoryKeyAndSubject(ctx, memoryKey, subjectKey, limit, offset)
 	case memoryKey != "":
-		return h.echoRepo.FindByMemoryKey(ctx, memoryKey, limit, offset)
+		msgs, err = h.echoRepo.FindByMemoryKey(ctx, memoryKey, limit, offset)
 	default:
-		return h.echoRepo.FindBySubjectKey(ctx, subjectKey, limit, offset)
+		msgs, err = h.echoRepo.FindBySubjectKey(ctx, subjectKey, limit, offset)
 	}
+	if err != nil {
+		return nil, fmt.Errorf("find messages: %w", err)
+	}
+	return msgs, nil
 }
 
 func (h *MessageHandler) queryCount(ctx context.Context, memoryKey, subjectKey string) (int64, error) {
+	var (
+		count int64
+		err   error
+	)
 	switch {
 	case memoryKey != "" && subjectKey != "":
-		return h.echoRepo.CountByMemoryKeyAndSubject(ctx, memoryKey, subjectKey)
+		count, err = h.echoRepo.CountByMemoryKeyAndSubject(ctx, memoryKey, subjectKey)
 	case memoryKey != "":
-		return h.echoRepo.CountByMemoryKey(ctx, memoryKey)
+		count, err = h.echoRepo.CountByMemoryKey(ctx, memoryKey)
 	default:
-		return h.echoRepo.CountBySubjectKey(ctx, subjectKey)
+		count, err = h.echoRepo.CountBySubjectKey(ctx, subjectKey)
 	}
+	if err != nil {
+		return 0, fmt.Errorf("count messages: %w", err)
+	}
+	return count, nil
 }

@@ -73,7 +73,7 @@ func (r *BondManager) AcquireLock(ctx context.Context, key string, ttl time.Dura
 			return false, nil
 		}
 		log.Warnw("infrastructure error acquiring lock", "key", key, "error", err)
-		return false, err
+		return false, fmt.Errorf("acquire bond lock: %w", err)
 	}
 
 	r.mu.Lock()
@@ -105,7 +105,7 @@ func (r *BondManager) ReleaseLock(ctx context.Context, key string) error {
 	ok, err := entry.mutex.UnlockContext(ctx)
 	if err != nil {
 		log.Errorw("failed to release lock", "key", key, "error", err)
-		return err
+		return fmt.Errorf("release bond lock: %w", err)
 	}
 
 	if !ok {

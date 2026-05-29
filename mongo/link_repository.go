@@ -2,6 +2,7 @@ package mongo
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	eywa "github.com/wmulabs/eywa"
@@ -98,12 +99,12 @@ func documentToLink(doc linkDocument) *eywa.Link {
 func (r *LinkRepository) FindAll(ctx context.Context) ([]*eywa.Link, error) {
 	cursor, err := r.collection.Find(ctx, bson.M{})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("find all links: %w", err)
 	}
-	defer cursor.Close(ctx)
+	defer cursor.Close(ctx) //nolint:errcheck
 	var docs []linkDocument
 	if err := cursor.All(ctx, &docs); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decode links: %w", err)
 	}
 	result := make([]*eywa.Link, len(docs))
 	for i, d := range docs {
@@ -119,7 +120,7 @@ func (r *LinkRepository) FindByKey(ctx context.Context, eventType string) (*eywa
 		return nil, eywa.ErrNotFound
 	}
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decode link: %w", err)
 	}
 	return documentToLink(doc), nil
 }
@@ -128,10 +129,16 @@ func (r *LinkRepository) Save(ctx context.Context, link *eywa.Link) error {
 	doc := linkToDocument(link)
 	opts := options.Replace().SetUpsert(true)
 	_, err := r.collection.ReplaceOne(ctx, bson.M{"_id": link.EventType}, doc, opts)
-	return err
+	if err != nil {
+		return fmt.Errorf("replace link: %w", err)
+	}
+	return nil
 }
 
 func (r *LinkRepository) Delete(ctx context.Context, eventType string) error {
 	_, err := r.collection.DeleteOne(ctx, bson.M{"_id": eventType})
-	return err
+	if err != nil {
+		return fmt.Errorf("delete link: %w", err)
+	}
+	return nil
 }
