@@ -139,7 +139,7 @@ func isValidSpiritNameFormat(name string) bool {
 		return false
 	}
 	for _, char := range name {
-		if !((char >= 'a' && char <= 'z') || (char >= '0' && char <= '9') || char == '_') {
+		if (char < 'a' || char > 'z') && (char < '0' || char > '9') && char != '_' {
 			return false
 		}
 	}

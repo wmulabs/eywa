@@ -47,7 +47,10 @@ func (s *GCSVault) Store(ctx context.Context, key string, data []byte, mimeType 
 }
 
 func (s *GCSVault) Close() error {
-	return s.client.Close()
+	if err := s.client.Close(); err != nil {
+		return fmt.Errorf("close storage client: %w", err)
+	}
+	return nil
 }
 
 func buildPublicURL(bucket, key string) string {

@@ -8,7 +8,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/zap"
 
 	eywa "github.com/wmulabs/eywa"
@@ -89,7 +89,7 @@ func (r *SpiritRepository) getIndexModels() []mongo.IndexModel {
 }
 
 func (r *SpiritRepository) Create(ctx context.Context, spirit *eywa.Spirit) error {
-	ctx, span := trace.NewNoopTracerProvider().Tracer("eywa").Start(ctx, "SpiritRepository/Create")
+	ctx, span := noop.NewTracerProvider().Tracer("eywa").Start(ctx, "SpiritRepository/Create")
 	defer span.End()
 
 	if spirit == nil || spirit.Name == "" {
@@ -120,7 +120,7 @@ func (r *SpiritRepository) Create(ctx context.Context, spirit *eywa.Spirit) erro
 
 // Update deactivates the current active version and inserts a new one with an incremented version number.
 func (r *SpiritRepository) Update(ctx context.Context, spiritName string, spirit *eywa.Spirit, changeLog string) (*eywa.Spirit, error) {
-	ctx, span := trace.NewNoopTracerProvider().Tracer("eywa").Start(ctx, "SpiritRepository/Update")
+	ctx, span := noop.NewTracerProvider().Tracer("eywa").Start(ctx, "SpiritRepository/Update")
 	defer span.End()
 
 	if spiritName == "" || spirit == nil {
@@ -171,7 +171,7 @@ func (r *SpiritRepository) Update(ctx context.Context, spiritName string, spirit
 }
 
 func (r *SpiritRepository) FindActiveByName(ctx context.Context, spiritName string) (*eywa.Spirit, error) {
-	ctx, span := trace.NewNoopTracerProvider().Tracer("eywa").Start(ctx, "SpiritRepository/FindActiveByName")
+	ctx, span := noop.NewTracerProvider().Tracer("eywa").Start(ctx, "SpiritRepository/FindActiveByName")
 	defer span.End()
 
 	if spiritName == "" {
@@ -205,7 +205,7 @@ func (r *SpiritRepository) FindActiveByName(ctx context.Context, spiritName stri
 
 // FindActiveByNames fetches multiple Spirits in a single query — avoids N+1 round trips.
 func (r *SpiritRepository) FindActiveByNames(ctx context.Context, spiritNames []string) (map[string]*eywa.Spirit, error) {
-	ctx, span := trace.NewNoopTracerProvider().Tracer("eywa").Start(ctx, "SpiritRepository/FindActiveByNames")
+	ctx, span := noop.NewTracerProvider().Tracer("eywa").Start(ctx, "SpiritRepository/FindActiveByNames")
 	defer span.End()
 
 	if len(spiritNames) == 0 {
@@ -225,7 +225,7 @@ func (r *SpiritRepository) FindActiveByNames(ctx context.Context, spiritNames []
 		r.logger.Errorw("failed to find spirits by names", "names", spiritNames, "error", err)
 		return nil, fmt.Errorf("failed to find spirits by names: %w", err)
 	}
-	defer cursor.Close(ctx)
+	defer cursor.Close(ctx) //nolint:errcheck
 
 	spiritMap := make(map[string]*eywa.Spirit)
 	for cursor.Next(ctx) {
@@ -250,7 +250,7 @@ func (r *SpiritRepository) FindActiveByNames(ctx context.Context, spiritNames []
 }
 
 func (r *SpiritRepository) FindByID(ctx context.Context, id string) (*eywa.Spirit, error) {
-	ctx, span := trace.NewNoopTracerProvider().Tracer("eywa").Start(ctx, "SpiritRepository/FindByID")
+	ctx, span := noop.NewTracerProvider().Tracer("eywa").Start(ctx, "SpiritRepository/FindByID")
 	defer span.End()
 
 	if id == "" {
@@ -279,7 +279,7 @@ func (r *SpiritRepository) FindByID(ctx context.Context, id string) (*eywa.Spiri
 }
 
 func (r *SpiritRepository) ListActive(ctx context.Context, limit, offset int) ([]*eywa.Spirit, error) {
-	ctx, span := trace.NewNoopTracerProvider().Tracer("eywa").Start(ctx, "SpiritRepository/ListActive")
+	ctx, span := noop.NewTracerProvider().Tracer("eywa").Start(ctx, "SpiritRepository/ListActive")
 	defer span.End()
 
 	opts := options.Find().
@@ -299,7 +299,7 @@ func (r *SpiritRepository) ListActive(ctx context.Context, limit, offset int) ([
 		r.logger.Errorw("failed to list active spirits", "error", err)
 		return nil, fmt.Errorf("failed to list active spirits: %w", err)
 	}
-	defer cursor.Close(ctx)
+	defer cursor.Close(ctx) //nolint:errcheck
 
 	var spirits []*eywa.Spirit
 	if err := cursor.All(ctx, &spirits); err != nil {
@@ -312,7 +312,7 @@ func (r *SpiritRepository) ListActive(ctx context.Context, limit, offset int) ([
 }
 
 func (r *SpiritRepository) CountActive(ctx context.Context) (int64, error) {
-	ctx, span := trace.NewNoopTracerProvider().Tracer("eywa").Start(ctx, "SpiritRepository/CountActive")
+	ctx, span := noop.NewTracerProvider().Tracer("eywa").Start(ctx, "SpiritRepository/CountActive")
 	defer span.End()
 
 	count, err := r.collection.CountDocuments(ctx, bson.M{
@@ -327,7 +327,7 @@ func (r *SpiritRepository) CountActive(ctx context.Context) (int64, error) {
 }
 
 func (r *SpiritRepository) ListAll(ctx context.Context) ([]*eywa.Spirit, error) {
-	ctx, span := trace.NewNoopTracerProvider().Tracer("eywa").Start(ctx, "SpiritRepository/ListAll")
+	ctx, span := noop.NewTracerProvider().Tracer("eywa").Start(ctx, "SpiritRepository/ListAll")
 	defer span.End()
 
 	cursor, err := r.collection.Find(
@@ -339,7 +339,7 @@ func (r *SpiritRepository) ListAll(ctx context.Context) ([]*eywa.Spirit, error) 
 		r.logger.Errorw("failed to list all spirits", "error", err)
 		return nil, fmt.Errorf("failed to list all spirits: %w", err)
 	}
-	defer cursor.Close(ctx)
+	defer cursor.Close(ctx) //nolint:errcheck
 
 	var spirits []*eywa.Spirit
 	if err := cursor.All(ctx, &spirits); err != nil {
@@ -354,7 +354,7 @@ func (r *SpiritRepository) ListAll(ctx context.Context) ([]*eywa.Spirit, error) 
 // Activate sets only the requested version to active — deactivates all other versions of the same Spirit.
 // Both operations run inside a session transaction to prevent a window where no version is active.
 func (r *SpiritRepository) Activate(ctx context.Context, spiritName string, version int) error {
-	ctx, span := trace.NewNoopTracerProvider().Tracer("eywa").Start(ctx, "SpiritRepository/Activate")
+	ctx, span := noop.NewTracerProvider().Tracer("eywa").Start(ctx, "SpiritRepository/Activate")
 	defer span.End()
 
 	if spiritName == "" || version < 1 {
@@ -396,7 +396,7 @@ func (r *SpiritRepository) Activate(ctx context.Context, spiritName string, vers
 	})
 	if err != nil {
 		r.logger.Errorw("failed to activate spirit", "name", spiritName, "version", version, "error", err)
-		return err
+		return fmt.Errorf("spirit transaction: %w", err)
 	}
 
 	r.logger.Infow("spirit activated", "name", spiritName, "version", version)
@@ -404,7 +404,7 @@ func (r *SpiritRepository) Activate(ctx context.Context, spiritName string, vers
 }
 
 func (r *SpiritRepository) Deactivate(ctx context.Context, id string) error {
-	ctx, span := trace.NewNoopTracerProvider().Tracer("eywa").Start(ctx, "SpiritRepository/Deactivate")
+	ctx, span := noop.NewTracerProvider().Tracer("eywa").Start(ctx, "SpiritRepository/Deactivate")
 	defer span.End()
 
 	if id == "" {
@@ -432,7 +432,7 @@ func (r *SpiritRepository) Deactivate(ctx context.Context, id string) error {
 }
 
 func (r *SpiritRepository) GetVersion(ctx context.Context, spiritName string, version int) (*eywa.Spirit, error) {
-	ctx, span := trace.NewNoopTracerProvider().Tracer("eywa").Start(ctx, "SpiritRepository/GetVersion")
+	ctx, span := noop.NewTracerProvider().Tracer("eywa").Start(ctx, "SpiritRepository/GetVersion")
 	defer span.End()
 
 	if spiritName == "" || version < 1 {
@@ -464,7 +464,7 @@ func (r *SpiritRepository) GetVersion(ctx context.Context, spiritName string, ve
 }
 
 func (r *SpiritRepository) FindVersionHistory(ctx context.Context, spiritName string) ([]*eywa.Spirit, error) {
-	ctx, span := trace.NewNoopTracerProvider().Tracer("eywa").Start(ctx, "SpiritRepository/FindVersionHistory")
+	ctx, span := noop.NewTracerProvider().Tracer("eywa").Start(ctx, "SpiritRepository/FindVersionHistory")
 	defer span.End()
 
 	if spiritName == "" {
@@ -481,7 +481,7 @@ func (r *SpiritRepository) FindVersionHistory(ctx context.Context, spiritName st
 		r.logger.Errorw("failed to find version history", "name", spiritName, "error", err)
 		return nil, fmt.Errorf("failed to find version history: %w", err)
 	}
-	defer cursor.Close(ctx)
+	defer cursor.Close(ctx) //nolint:errcheck
 
 	var spirits []*eywa.Spirit
 	if err := cursor.All(ctx, &spirits); err != nil {
@@ -496,7 +496,7 @@ func (r *SpiritRepository) FindVersionHistory(ctx context.Context, spiritName st
 // RestoreVersion promotes a specific version to active, deactivating all other versions of the same Spirit.
 // Both operations run inside a session transaction to prevent a window where no version is active.
 func (r *SpiritRepository) RestoreVersion(ctx context.Context, id string) error {
-	ctx, span := trace.NewNoopTracerProvider().Tracer("eywa").Start(ctx, "SpiritRepository/RestoreVersion")
+	ctx, span := noop.NewTracerProvider().Tracer("eywa").Start(ctx, "SpiritRepository/RestoreVersion")
 	defer span.End()
 
 	if id == "" {
@@ -548,7 +548,7 @@ func (r *SpiritRepository) RestoreVersion(ctx context.Context, id string) error 
 	})
 	if err != nil {
 		r.logger.Errorw("failed to restore spirit version", "id", id, "error", err)
-		return err
+		return fmt.Errorf("spirit transaction: %w", err)
 	}
 
 	r.logger.Infow("spirit version restored", "id", id, "name", spirit.Name, "version", spirit.Version)
