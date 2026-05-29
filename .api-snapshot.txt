@@ -1,0 +1,948 @@
+package eywa // import "github.com/wmulabs/eywa"
+
+Package eywa is a Go library for building event-driven, multi-agent AI systems.
+
+Inspired by the neural network in Avatar that connects all living things on
+Pandora, Eywa orchestrates a network of AI Spirits (agents) that perceive Pulses
+(events), are enriched by Scouts, routed by a Pathfinder, consult an Oracle
+(LLM), execute Actions (tools), and respond through a Voice (output channel).
+
+Pipeline:
+
+    Pulse → Scouts → Pathfinder → Spirit → Oracle → Actions → Voice
+
+The central runtime is the Weave, assembled via NewWeaveBuilder. It wires
+together repositories (Spirit, Memory, Echo, Chronicle), a Bond (distributed
+lock), one or more Oracle providers, and optional registries for Actions,
+Scouts, Pathfinders, and Voices.
+
+Quick start:
+
+    weave, err := eywa.NewWeaveBuilder(ctx).
+        WithRepositories(spiritRepo, memoryRepo, echoRepo, chronicleRepo).
+        WithBond(distributedLock).
+        AddOracle(anthropicOracle).
+        Build()
+
+See the _examples directory for runnable examples.
+
+CONSTANTS
+
+const (
+	ResponseSuccess = entities.ResponseSuccess
+	ResponsePartial = entities.ResponsePartial
+	ResponseFailed  = entities.ResponseFailed
+)
+    Response status constants returned in Response.Status.
+
+const (
+	RitualPending   = entities.RitualPending
+	RitualRunning   = entities.RitualRunning
+	RitualExecuted  = entities.RitualExecuted
+	RitualCancelled = entities.RitualCancelled
+	RitualFailed    = entities.RitualFailed
+)
+    Ritual lifecycle status constants.
+
+const (
+	ArtifactTypeImage    = entities.ArtifactTypeImage
+	ArtifactTypeAudio    = entities.ArtifactTypeAudio
+	ArtifactTypeVideo    = entities.ArtifactTypeVideo
+	ArtifactTypeDocument = entities.ArtifactTypeDocument
+)
+    Artifact media-type constants for Artifact.Type.
+
+const (
+	SpiritTypeConversational = entities.SpiritTypeConversational
+	SpiritTypeExecutor       = entities.SpiritTypeExecutor
+	SpiritTypeNotifier       = entities.SpiritTypeNotifier
+
+	// SpiritTypeOrchestrator enables the summon_spirit built-in tool. Configure
+	// which sub-spirits can be summoned via Spirit.OrchestratorConfig.
+	SpiritTypeOrchestrator = entities.SpiritTypeOrchestrator
+)
+    Spirit type constants for Spirit.Type.
+
+const (
+	// BusinessError marks an error that should be surfaced to the user (e.g. "order not found").
+	BusinessError = errors.BusinessError
+
+	// InfrastructureError marks a transient failure the user should not see (e.g. DB timeout).
+	InfrastructureError = errors.InfrastructureError
+)
+    Action error type constants for ActionError.Type.
+
+const (
+	RoleUser      = ports.RoleUser
+	RoleAssistant = ports.RoleAssistant
+	RoleSystem    = ports.RoleSystem
+	RoleTool      = ports.RoleTool
+)
+    Oracle role constants — used by Oracle provider implementations to populate
+    OracleMessage.Role.
+
+const (
+	StopReasonComplete      = ports.StopReasonComplete
+	StopReasonLength        = ports.StopReasonLength
+	StopReasonToolCalls     = ports.StopReasonToolCalls
+	StopReasonContentFilter = ports.StopReasonContentFilter
+)
+    Normalized stop reason constants — Oracle provider implementations must map
+    provider-native values to these before returning OracleResponse.StopReason.
+
+const (
+	ActionDelivery     = ports.ActionDelivery
+	ActionRetrieval    = ports.ActionRetrieval
+	ActionModification = ports.ActionModification
+	ActionGeneral      = ports.ActionGeneral
+)
+    Action category constants for Action.GetCategory.
+
+const (
+	RoleAdmin    = ports.RoleAdmin
+	RoleOperator = ports.RoleOperator
+)
+    Operator role constants for AuthClaims.Role.
+
+const MetadataKeyRitualID = entities.MetadataKeyRitualID
+    MetadataKeyRitualID is the Pulse.Metadata key that carries the originating
+    Ritual ID when a scheduled event fires.
+
+
+VARIABLES
+
+var (
+	// RitePending is the initial state of a Rite — awaiting operator decision.
+	RitePending = entities.RitePending
+
+	// RiteApproved means an operator approved the Rite.
+	RiteApproved = entities.RiteApproved
+
+	// RiteRejected means an operator rejected the Rite.
+	RiteRejected = entities.RiteRejected
+
+	// RiteExpired means the Rite TTL elapsed before a decision was made.
+	RiteExpired = entities.RiteExpired
+)
+var (
+	// NewBusinessError creates an ActionError with type BusinessError. The Oracle will
+	// relay msg to the user as part of its reasoning context.
+	NewBusinessError = errors.NewBusinessError
+
+	// NewInfrastructureError creates an ActionError with type InfrastructureError.
+	// The Oracle receives a generic failure message; the original err is logged.
+	NewInfrastructureError = errors.NewInfrastructureError
+
+	// IsBusinessError reports whether err is an ActionError with type BusinessError.
+	IsBusinessError = errors.IsBusinessError
+
+	// IsInfrastructureError reports whether err is an ActionError with type InfrastructureError.
+	IsInfrastructureError = errors.IsInfrastructureError
+
+	// MessageFor returns the user-facing message for err if it is a BusinessError,
+	// or a generic fallback message for infrastructure errors.
+	MessageFor = errors.MessageFor
+)
+var (
+	// ErrNotFound is returned by repositories when a requested resource does not exist.
+	ErrNotFound = errors.ErrNotFound
+
+	// ErrConflict is returned by repositories when a resource with the same key already exists.
+	ErrConflict = errors.ErrConflict
+
+	// ErrRitualTerminal is returned when an operation is attempted on a Ritual that has
+	// already reached a terminal state (executed, cancelled, or failed).
+	ErrRitualTerminal = errors.ErrRitualTerminal
+
+	// ErrSessionHeld is returned by Weave.ProcessEventByKey when an active Vigil seat
+	// is held for the MemoryKey. The operator is handling the conversation directly.
+	ErrSessionHeld = orchestrator.ErrSessionHeld
+
+	// IsSessionHeld reports whether err is ErrSessionHeld.
+	IsSessionHeld = orchestrator.IsSessionHeld
+)
+var (
+	// NewWeaveBuilder returns a WeaveBuilder ready to wire infrastructure and build a Weave.
+	NewWeaveBuilder = orchestrator.NewWeaveBuilder
+
+	// DefaultWeaveConfig returns a WeaveConfig with production-safe defaults.
+	// Override individual fields before passing to WeaveBuilder.WithConfig.
+	DefaultWeaveConfig = orchestrator.DefaultWeaveConfig
+
+	// IsRetriable reports whether err is a transient error that the Keeper should retry.
+	IsRetriable = orchestrator.IsRetriable
+
+	// NewConfigCache creates a ConfigCache backed by linkRepo. Pass nil for pubSub and
+	// logger to skip live-update notifications; they are optional.
+	NewConfigCache = orchestrator.NewConfigCache
+
+	// NewPulse returns a PulseBuilder for constructing a Pulse to send into the Weave.
+	NewPulse = entities.NewPulse
+
+	// NewAsyncIngestionService creates an AsyncIngestionService that chunks and embeds
+	// Lore documents in the background using the provided LoreEmbedder.
+	NewAsyncIngestionService = ingestion.NewAsyncIngestionService
+
+	// NewArchivist creates an LLM-backed Archivist that summarizes conversation history
+	// once it exceeds the configured message threshold.
+	NewArchivist = archivists.NewLLMArchivist
+
+	// NewVoiceRegistry creates an empty VoiceRegistry. Register Voice implementations
+	// to enable automatic response delivery on named channels.
+	NewVoiceRegistry = registries.NewVoiceRegistry
+
+	// NewHTTPVoice creates a Voice that POSTs the response body to an HTTP endpoint.
+	NewHTTPVoice = voices.NewHTTPVoice
+
+	// NewTrialRunner creates a TrialRunner that executes eval suites against weave.
+	NewTrialRunner = trial.NewTrialRunner
+
+	// LoadTrialSuite loads a TrialSuite from a YAML or JSON file at path.
+	LoadTrialSuite = trial.LoadTrialSuite
+
+	// NewAPIKeyValidator returns a TokenValidator that accepts static API keys.
+	// keys maps raw key strings to role names (e.g. "admin", "operator").
+	NewAPIKeyValidator = auth.NewAPIKeyValidator
+
+	// NewOperatorAuth creates an OperatorAuth that signs and validates operator JWTs
+	// using secret. The same secret must be used across all instances.
+	NewOperatorAuth = auth.NewOperatorAuth
+
+	// NewJWTValidator returns a TokenValidator for HS256-signed JWTs.
+	NewJWTValidator = auth.NewJWTValidator
+
+	// NewJWTValidatorRS256 returns a TokenValidator for RS256-signed JWTs.
+	NewJWTValidatorRS256 = auth.NewJWTValidatorRS256
+
+	// NewJWKSValidator returns a TokenValidator that fetches public keys from a JWKS URL.
+	// Suitable for OIDC/SSO integrations.
+	NewJWKSValidator = auth.NewJWKSValidator
+
+	// HashPassword returns a bcrypt hash of password. Use when creating Operator records.
+	HashPassword = auth.HashPassword
+
+	// NewHTTPToolExecutor creates an HTTPToolExecutor for testing HTTPTool definitions
+	// against live endpoints.
+	NewHTTPToolExecutor = orchestrator.NewHTTPToolExecutor
+
+	// NewNoOpBond returns an in-process Bond backed by a sync.Mutex map.
+	// Use for single-instance deployments, local development, and tests.
+	// For multi-instance production use redis.NewBondManager from the redis sub-module.
+	NewNoOpBond = orchestrator.NewNoOpBond
+)
+var (
+	// GenerateID returns a new random unique identifier string.
+	GenerateID = helpers.GenerateRandomID
+
+	// NowUTC returns the current time in UTC.
+	NowUTC = helpers.NowUTC
+
+	// TodayUTC returns today's date at midnight UTC.
+	TodayUTC = helpers.TodayUTC
+
+	// NormalizePhone strips formatting and returns an E.164 phone number string.
+	NormalizePhone = helpers.NormalizePhone
+
+	// ObfuscatePhone returns a partially masked phone number for safe logging.
+	ObfuscatePhone = helpers.ObfuscatePhone
+
+	// FromHTTPStatus maps an HTTP status code to a ResponseStatus.
+	FromHTTPStatus = helpers.FromHTTPStatus
+
+	// FromHTTPResponse maps an HTTP response body and status to an ActionError or nil.
+	FromHTTPResponse = helpers.FromHTTPResponse
+
+	// GetString extracts a string value from a map[string]any by key.
+	GetString = helpers.GetString
+
+	// GetStringOrDefault extracts a string from args, returning def if missing or wrong type.
+	GetStringOrDefault = helpers.GetStringOrDefault
+
+	// GetIntOrDefault extracts an int from args, returning def if missing or wrong type.
+	GetIntOrDefault = helpers.GetIntOrDefault
+
+	// GetFloat64OrDefault extracts a float64 from args, returning def if missing or wrong type.
+	GetFloat64OrDefault = helpers.GetFloat64OrDefault
+
+	// GetMap extracts a nested map[string]any from args by key.
+	GetMap = helpers.GetMap
+
+	// GetMapOrDefault extracts a nested map from args, returning def if missing or wrong type.
+	GetMapOrDefault = helpers.GetMapOrDefault
+
+	// GetSlice extracts a []any from args by key.
+	GetSlice = helpers.GetSlice
+
+	// GetSliceOrDefault extracts a slice from args, returning def if missing or wrong type.
+	GetSliceOrDefault = helpers.GetSliceOrDefault
+
+	// GetStringSlice extracts a []string from args by key, filtering non-string elements.
+	GetStringSlice = helpers.GetStringSlice
+
+	// GetFirstMapFromSlice returns the first map element from a slice value in args.
+	GetFirstMapFromSlice = helpers.GetFirstMapFromSlice
+
+	// CombineTextPartsMultiLine joins multiple text parts with newline separators.
+	CombineTextPartsMultiLine = helpers.CombineTextPartsMultiLine
+
+	// StringMapKeys returns the sorted keys of a map[string]string.
+	StringMapKeys = helpers.StringMapKeys
+)
+var (
+	// GetLogger returns the shared application logger, creating one if needed.
+	GetLogger = dbg.GetLogger
+
+	// CreateLogger creates a new named logger instance.
+	CreateLogger = dbg.CreateLogger
+)
+var (
+	// NewActionRegistry creates an empty ActionRegistry. Register Action implementations
+	// and pass the registry to WeaveBuilder.WithActionRegistry.
+	NewActionRegistry = registries.NewActionRegistry
+
+	// NewScoutRegistry creates an empty ScoutRegistry. Register Scout implementations
+	// and pass the registry to WeaveBuilder.WithScoutRegistry.
+	NewScoutRegistry = registries.NewScoutRegistry
+
+	// NewPathfinderRegistry creates an empty PathfinderRegistry. Register Pathfinder
+	// implementations and pass the registry to WeaveBuilder.WithPathfinderRegistry.
+	NewPathfinderRegistry = registries.NewPathfinderRegistry
+
+	// NewLogicRouterRegistry creates an empty LogicRouterRegistry. Register LogicRouter
+	// implementations for post-processing responses before Voice delivery.
+	NewLogicRouterRegistry = registries.NewLogicRouterRegistry
+
+	// NewConduitRegistry creates an empty ConduitRegistry. Prefer passing Conduits
+	// directly via WeaveBuilder.WithConduit; use this only for advanced multi-conduit setups.
+	NewConduitRegistry = registries.NewConduitRegistry
+
+	// NewRitualService creates a RitualManager backed by a RitualRepository and a Keeper.
+	// Required to enable scheduled event execution via the Oracle's built-in Ritual Actions.
+	NewRitualService = services.NewRitualService
+)
+var ConvertToLLMAttachments = media.ConvertToLLMAttachments
+    ConvertToLLMAttachments filters and maps Artifacts to LLMAttachment for
+    Oracle calls.
+
+var NewAPIDefaultReceptor = receptors.NewAPIDefaultReceptor
+    NewAPIDefaultReceptor creates a Receptor that parses JSON API payloads into
+    Pulses. Suitable for direct HTTP integrations where the caller sends eywa's
+    native format.
+
+var NewActionSequenceScorer = trial.NewActionSequenceScorer
+    NewActionSequenceScorer returns a deterministic Scorer that passes when the
+    response executed Actions in the expected sequence.
+
+var NewCancelRitualAction = actions.NewCancelRitualAction
+    NewCancelRitualAction lets the Oracle cancel a pending Ritual by ID.
+    Requires WeaveBuilder.WithRitualManager to be configured.
+
+var NewForgetFactAction = actions.NewForgetFactAction
+    NewForgetFactAction lets the Oracle delete a previously stored Imprint fact
+    by ID. Requires WeaveBuilder.WithImprintRepository to be configured.
+
+var NewLLMJudgeScorer = trial.NewLLMJudgeScorer
+    NewLLMJudgeScorer returns an LLM-as-judge Scorer. It uses an Oracle
+    to evaluate whether the response meets the expectations defined in
+    LLMJudgeExpect.
+
+var NewLatencyScorer = trial.NewLatencyScorer
+    NewLatencyScorer returns a deterministic Scorer that passes when the
+    processing time is below the configured threshold.
+
+var NewLink = entities.NewLink
+    NewLink returns a builder for constructing a Link (event configuration).
+    eventKey must match the key passed to Weave.ProcessEventByKey.
+
+var NewListRitualsAction = actions.NewListRitualsAction
+    NewListRitualsAction lets the Oracle list the user's pending Rituals.
+    Requires WeaveBuilder.WithRitualManager to be configured.
+
+var NewOracleFactory = oracles.NewFactory
+    NewOracleFactory creates an OracleFactoryImpl. Register Oracle
+    providers via OracleFactoryImpl.RegisterProvider, then pass it to
+    WeaveBuilder.WithOracleFactory.
+
+var NewOutputContainsScorer = trial.NewOutputContainsScorer
+    NewOutputContainsScorer returns a deterministic Scorer that passes when the
+    response contains all of the expected strings.
+
+var NewOutputNotContainsScorer = trial.NewOutputNotContainsScorer
+    NewOutputNotContainsScorer returns a deterministic Scorer that passes when
+    the response contains none of the prohibited strings.
+
+var NewRememberFactAction = actions.NewRememberFactAction
+    NewRememberFactAction lets the Oracle store a persistent user fact in
+    Imprint. Requires WeaveBuilder.WithImprintRepository to be configured.
+
+var NewRequestRiteAction = actions.NewRequestRiteAction
+    NewRequestRiteAction lets the Oracle pause and request human approval
+    before proceeding. The Rite is stored in RiteRepository; the operator
+    decides via RiteRepository.Decide or the management API. Requires
+    WeaveBuilder.WithRiteRepository to be configured.
+
+var NewScheduleRitualAction = actions.NewScheduleRitualAction
+    NewScheduleRitualAction lets the Oracle create a future or recurring Pulse
+    via the Keeper. Requires WeaveBuilder.WithRitualManager to be configured.
+
+var NewSearchLoreAction = actions.NewSearchLoreAction
+    NewSearchLoreAction lets the Oracle search the Lore knowledge base (RAG)
+    and inject the retrieved chunks as context before answering. Requires
+    WeaveBuilder.WithLoreRepository to be configured.
+
+var NewSendToContactAction = actions.NewSendToContactAction
+    NewSendToContactAction lets the Oracle send a message to a different contact
+    than the one currently in the conversation.
+
+var NewUpdateSubjectAction = actions.NewUpdateSubjectAction
+    NewUpdateSubjectAction lets the Oracle set or update the active SubjectKey
+    and accumulate subject facts in memory. Register on Spirits that need to
+    identify and track business entities (e.g. order IDs, ticket numbers)
+    conversationally.
+
+
+TYPES
+
+type Action = ports.Action
+    Action is the tool-use port. Implement it to expose capabilities to Spirits.
+    Register implementations via ActionRegistry.Register.
+
+type ActionCategory = ports.ActionCategory
+    ActionCategory classifies an Action by its effect (retrieval, modification,
+    delivery).
+
+type ActionDefinition = entities.ActionDefinition
+    ActionDefinition describes a tool schema as it is sent to an Oracle
+    provider.
+
+type ActionError = errors.ActionError
+    ActionError is the error type returned by Action.Execute. It carries an
+    ActionErrorType that distinguishes user-facing business errors from infra
+    failures.
+
+type ActionErrorType = errors.ActionErrorType
+    ActionErrorType classifies an ActionError as BusinessError or
+    InfrastructureError.
+
+type ActionRegistry = ports.ActionRegistry
+    ActionRegistry holds the set of Actions available to the Weave engine.
+    Create with NewActionRegistry; pass via WeaveBuilder.WithActionRegistry.
+
+type ActionResult = entities.ActionResult
+    ActionResult records the outcome of a single Action (tool call) execution.
+
+type ActionStats = ports.ActionStats
+    ActionStats aggregates Action invocation counts and latency.
+
+type AllowedAction = entities.AllowedAction
+    AllowedAction names a single Action (or MCP tool) a Spirit is permitted to
+    call.
+
+type AppInfo = orchestrator.AppInfo
+    AppInfo carries service identity metadata logged with every Chronicle entry.
+
+type Archivist = ports.Archivist
+    Archivist summarises a conversation Thread when it exceeds a message
+    threshold, preventing context overflow on long conversations.
+
+type Artifact = entities.Artifact
+    Artifact is a media attachment on an Echo — image, audio, video,
+    or document.
+
+type ArtifactType = entities.ArtifactType
+    ArtifactType classifies the media kind of an Artifact.
+
+type AsyncIngestionService = ingestion.AsyncIngestionService
+    AsyncIngestionService ingests Lore documents asynchronously, chunking and
+    embedding them via the configured LoreEmbedder.
+
+type AuthClaims = ports.AuthClaims
+    AuthClaims carries identity claims extracted by a TokenValidator.
+
+type Bond = ports.Bond
+    Bond is the distributed lock port. It prevents concurrent
+    processing of Pulses for the same MemoryKey. Use the Redis adapter
+    (eywaredis.NewBondManager) in production.
+
+type Channel = orchestrator.Channel
+    Channel pairs an inbound Receptor with an outbound Voice under a shared
+    name.
+
+type Chronicle = entities.Chronicle
+    Chronicle is an immutable audit record written after every Weave processing
+    call. Query via ChronicleQueryRepository or the /chronicle management API.
+
+type ChronicleListOptions = ports.ChronicleListOptions
+    ChronicleListOptions filters a Chronicle query by time range, Spirit, user,
+    etc.
+
+type ChronicleQueryRepository = ports.ChronicleQueryRepository
+    ChronicleQueryRepository provides read-only analytics queries over Chronicle
+    data.
+
+type ChronicleRepository = ports.ChronicleRepository
+    ChronicleRepository persists immutable audit records of every Weave
+    processing call.
+
+type CompiledGuard = entities.CompiledGuard
+    CompiledGuard is a pre-compiled Guard ready for fast evaluation in the
+    pipeline.
+
+type Conduit = ports.Conduit
+    Conduit is the MCP client port. It connects to an external MCP server,
+    discovers its tools, and makes them available as Actions in the Weave.
+    Create with eywamcp.NewConduit; register via WeaveBuilder.WithConduit.
+
+type ConduitRegistry = ports.ConduitRegistry
+    ConduitRegistry manages the set of active Conduits in the Weave engine.
+
+type ConfigCache = orchestrator.ConfigCache
+    ConfigCache holds the in-memory event-configuration cache. Changes pushed
+    through the management API take effect immediately via the cache without a
+    restart.
+
+type ConflictError = errors.ConflictError
+    ConflictError indicates a uniqueness constraint violation (duplicate
+    resource).
+
+type ConversationalConfig = entities.ConversationalConfig
+    ConversationalConfig holds optional tuning for conversational Spirits.
+
+type CostAlertHook = ports.CostAlertHook
+    CostAlertHook is called when a Spirit's token usage reaches its
+    AlertThreshold.
+
+type Ear = ports.Ear
+    Ear is the audio transcription port used by a Lens implementation.
+
+type Echo = entities.Echo
+    Echo is a single persisted message record (user or assistant) stored in
+    MongoDB.
+
+type EchoQueryRepository = ports.EchoQueryRepository
+    EchoQueryRepository provides read-only queries over Echo (message history)
+    data.
+
+type EchoRepository = ports.EchoRepository
+    EchoRepository persists individual message records for conversation history.
+
+type ExecutorConfig = entities.ExecutorConfig
+    ExecutorConfig configures batch-execution Spirits that run without a user
+    turn.
+
+type Eye = ports.Eye
+    Eye is the image analysis port used by a Lens implementation.
+
+type Guard = entities.Guard
+    Guard holds allow/block rules for a single field (e.g. ContactPhone).
+
+type GuardConfig = orchestrator.GuardConfig
+    GuardConfig defines allow/block rules that gate Pulses before processing
+    begins. Set on WeaveBuilder.WithInputGuard.
+
+type HTTPTool = entities.HTTPTool
+    HTTPTool defines a parameterised HTTP endpoint that Spirits can invoke as an
+    Action. Stored and managed via the /http-tools management API.
+
+type HTTPToolExecutor = orchestrator.HTTPToolExecutor
+    HTTPToolExecutor executes HTTPTool definitions against live HTTP endpoints.
+    Used internally by the management API test endpoint.
+
+type HTTPToolParam = entities.HTTPToolParam
+    HTTPToolParam is a single parameter definition for an HTTPTool.
+
+type HTTPToolRepository = ports.HTTPToolRepository
+    HTTPToolRepository persists HTTPTool definitions managed via the management
+    API.
+
+type HTTPToolTestResult = orchestrator.HTTPToolTestResult
+    HTTPToolTestResult holds the outcome of a single HTTPTool test execution.
+
+type Imprint = entities.Imprint
+    Imprint is a persistent user fact stored across sessions. Spirits read
+    Imprints as context before each response; the remember_fact action creates
+    new ones.
+
+type ImprintExtractionConfig = orchestrator.ImprintExtractionConfig
+    ImprintExtractionConfig controls automatic fact extraction. When Enabled,
+    the engine extracts Imprints from user messages without requiring an
+    explicit Action.
+
+type ImprintHarvester = ports.ImprintHarvester
+    ImprintHarvester extracts structured facts from raw conversation text.
+    Used by the automatic ImprintExtractionConfig pipeline.
+
+type ImprintListOptions = ports.ImprintListOptions
+    ImprintListOptions filters for ImprintRepository.List.
+
+type ImprintRepository = ports.ImprintRepository
+    ImprintRepository persists long-term user facts (Imprints) across sessions.
+
+type Inbox = ports.Inbox
+    Inbox is the message-coalescing port. When multiple Pulses arrive in quick
+    succession for the same user, the Inbox accumulates them into a single
+    Pulse.
+
+type IngestionResult = ingestion.IngestionResult
+    IngestionResult carries the outcome of a single async Lore ingestion job.
+
+type Keeper = ports.Keeper
+    Keeper is the scheduler port. It enqueues Pulses for future delivery and
+    handles async dispatch. Use the Cloud Tasks adapter for GCP workloads.
+
+type LLMAttachment = ports.LLMAttachment
+    LLMAttachment is a media file (image, audio, document) sent to
+    the Oracle alongside the text prompt. Created from Artifacts via
+    ConvertToLLMAttachments.
+
+type LLMJudgeExpect = entities.LLMJudgeExpect
+    LLMJudgeExpect configures an LLM-as-judge scorer for a TrialCase.
+
+type LedgerEntry = entities.LedgerEntry
+    LedgerEntry records token usage and estimated cost for a Spirit in a given
+    month.
+
+type LedgerRepository = ports.LedgerRepository
+    LedgerRepository persists monthly token usage and manages TokenBudgets per
+    Spirit.
+
+type Lens = ports.Lens
+    Lens is the media processing port. It transcribes audio, describes images,
+    and extracts text from documents for the Oracle.
+
+type Limiter = ports.Limiter
+    Limiter is the rate-limiting port. Implement to throttle Pulse processing
+    per user.
+
+type Link = entities.Link
+    Link wires an event key to Scouts, a Pathfinder, and allowed Spirits.
+    Build with NewLink and register via Weave.RegisterEventConfiguration.
+
+type LinkRepository = ports.LinkRepository
+    LinkRepository persists Link (event configuration) records, enabling the
+    management API to read and update event routing at runtime.
+
+type LogicRouter = ports.LogicRouter
+    LogicRouter applies post-processing logic (redaction, formatting) to a
+    Response before it is delivered via Voice.
+
+type LogicRouterRegistry = ports.LogicRouterRegistry
+    LogicRouterRegistry holds the set of LogicRouters active in the Weave
+    engine.
+
+type Lore = entities.Lore
+    Lore is a named knowledge base that Spirits can search via the search_lore
+    action. Ingest documents as LoreChunks; the LoreEmbedder indexes them for
+    retrieval.
+
+type LoreChunk = entities.LoreChunk
+    LoreChunk is a single document fragment stored in a Lore knowledge base.
+
+type LoreEmbedder = ports.LoreEmbedder
+    LoreEmbedder converts text into a vector embedding for Lore indexing and
+    search. Implement using your preferred embedding model API.
+
+type LoreHarvester = ports.LoreHarvester
+    LoreHarvester pre-processes raw documents into LoreChunks before ingestion.
+
+type LoreIngestion = entities.LoreIngestion
+    LoreIngestion tracks the status of an async Lore ingestion job.
+
+type LoreRepository = ports.LoreRepository
+    LoreRepository persists Lore documents and chunks for RAG retrieval.
+    The MongoDB adapter supports full-text search out of the box.
+
+type LoreStore = ports.LoreStore
+    LoreStore is the vector search backend port for semantic Lore retrieval.
+    Implement for pgvector, Qdrant, Pinecone, or Weaviate.
+
+type Memory = entities.Memory
+    Memory is the ephemeral per-user conversation state held in Redis.
+    It contains the recent message Thread and any Scout-injected Knowledge.
+
+type MemoryKey = entities.MemoryKey
+    MemoryKey uniquely identifies a conversation context. Channel is the inbound
+    channel name (e.g. "whatsapp", "api"); User is the end-user identifier.
+
+type MemoryRepository = ports.MemoryRepository
+    MemoryRepository persists ephemeral per-user conversation state (Thread +
+    Knowledge). TTL-based — use the Redis adapter for production workloads.
+
+type ModelRoutingCondition = entities.ModelRoutingCondition
+    ModelRoutingCondition is the match criteria for a ModelRoutingRule.
+
+type ModelRoutingRule = entities.ModelRoutingRule
+    ModelRoutingRule routes Pulses matching a condition to a specific model,
+    enabling automatic cost optimisation (e.g. route long inputs to a cheaper
+    model).
+
+type NotFoundError = errors.NotFoundError
+    NotFoundError indicates a requested resource does not exist.
+
+type NotifierCondition = entities.NotifierCondition
+    NotifierCondition is a trigger rule evaluated by a NotifierConfig Spirit.
+
+type NotifierConfig = entities.NotifierConfig
+    NotifierConfig configures proactive-notification Spirits that fire on
+    conditions.
+
+type Operator = entities.Operator
+    Operator is an authenticated human operator who can manage Spirits, review
+    Rites, and take over conversations via Vigil.
+
+type OperatorAuth = auth.OperatorAuth
+    OperatorAuth provides JWT issuance and validation for built-in operator
+    accounts. Create with NewOperatorAuth; pass the same secret used at signing
+    time for validation.
+
+type OperatorRepository = ports.OperatorRepository
+    OperatorRepository persists Operator records and validates credentials.
+
+type Oracle = ports.Oracle
+    Oracle is the LLM provider port. Implement it to integrate any language
+    model. Register implementations via WeaveBuilder.AddOracle.
+
+type OracleFactory = ports.OracleFactory
+    OracleFactory selects the correct Oracle for a given provider name. Build
+    with NewOracleFactory; pass via WeaveBuilder.WithOracleFactory.
+
+type OracleFactoryImpl = oracles.Factory
+    OracleFactoryImpl is the concrete Oracle factory. Register providers via
+    RegisterProvider, then pass it to WeaveBuilder.WithOracleFactory.
+
+type OracleMessage = ports.OracleMessage
+    OracleMessage is a single message in the conversation thread sent to an
+    Oracle.
+
+type OracleRequest = ports.OracleRequest
+    OracleRequest is the input sent to an Oracle. It carries the conversation
+    thread, available tools, attachments, and generation parameters.
+
+type OracleResponse = ports.OracleResponse
+    OracleResponse is the output returned by an Oracle after one generation
+    step.
+
+type OracleTool = ports.OracleTool
+    OracleTool describes a tool (Action) schema as sent to the Oracle provider.
+
+type OracleToolCall = ports.OracleToolCall
+    OracleToolCall is a tool invocation requested by the Oracle in its response.
+
+type OracleUsage = ports.OracleUsage
+    OracleUsage records token consumption for a single Oracle call.
+
+type OrchestratorConfig = entities.OrchestratorConfig
+    OrchestratorConfig configures a SpiritTypeOrchestrator. SubSpirits lists the
+    names the orchestrator may summon; MaxDepth caps delegation chains.
+
+type Pathfinder = ports.Pathfinder
+    Pathfinder is the Spirit-selection port. Implement it for custom routing
+    logic. Register via PathfinderRegistry.Register.
+
+type PathfinderRegistry = ports.PathfinderRegistry
+    PathfinderRegistry holds the set of Pathfinders available to the Weave
+    engine.
+
+type PubSub = ports.PubSub
+    PubSub is the publish/subscribe port used by ConfigCache for live-update
+    notifications when event configurations change.
+
+type Pulse = entities.Pulse
+    Pulse is the unit of work flowing through the Weave — an inbound
+    event from any channel. Build one with NewPulse and send it via
+    Weave.ProcessEventByKey.
+
+type PulseBuilder = entities.PulseBuilder
+    PulseBuilder constructs a Pulse with a fluent API. Obtain one via NewPulse.
+
+type Receptor = ports.Receptor
+    Receptor converts a raw inbound payload (webhook body, queue message) into a
+    Pulse. Register via Weave.RegisterReceptor.
+
+type RecurrenceConfig = entities.RecurrenceConfig
+    RecurrenceConfig defines cron-based recurrence for a Ritual (timezone,
+    expression, max runs, end date).
+
+type Response = entities.Response
+    Response is the result returned by Weave.ProcessEventByKey. It contains the
+    assistant message, which Spirit was used, Actions executed, and token usage.
+
+type ResponseStatus = entities.ResponseStatus
+    ResponseStatus classifies the outcome of a Weave processing call.
+
+type Rite = entities.Rite
+    Rite is an async approval request created by the request_rite built-in
+    action. An operator approves or rejects it via RiteRepository.Decide or the
+    management API.
+
+type RiteListOptions = ports.RiteListOptions
+    RiteListOptions filters a Rite query by status, Spirit, or user.
+
+type RiteRepository = ports.RiteRepository
+    RiteRepository persists Rite (async approval) records.
+
+type RiteStatus = entities.RiteStatus
+    RiteStatus is the lifecycle state of a Rite.
+
+type Ritual = entities.Ritual
+    Ritual is a scheduled or recurring event managed by the Keeper. Created
+    by the schedule_ritual built-in action; delivered back as a Pulse at the
+    scheduled time.
+
+type RitualManager = ports.RitualManager
+    RitualManager coordinates Ritual lifecycle: create, list, cancel, and fire
+    scheduled events. Create with NewRitualService.
+
+type RitualRepository = ports.RitualRepository
+    RitualRepository persists Ritual definitions and tracks their execution
+    state.
+
+type RitualRequest = ports.RitualRequest
+    RitualRequest is the input for scheduling a new Ritual.
+
+type RitualStatus = entities.RitualStatus
+    RitualStatus is the lifecycle state of a Ritual.
+
+type Scorer = ports.Scorer
+    Scorer evaluates a single TrialCase response. Implement for custom eval
+    metrics. Built-in scorers: NewOutputContainsScorer, NewActionSequenceScorer,
+    NewLLMJudgeScorer.
+
+type Scout = ports.Scout
+    Scout is the context-enrichment port. Implement it to inject knowledge into
+    a Pulse before Spirit selection. Register via ScoutRegistry.Register.
+
+type ScoutRegistry = ports.ScoutRegistry
+    ScoutRegistry holds the set of Scouts available to the Weave engine.
+    Create with NewScoutRegistry; pass via WeaveBuilder.WithScoutRegistry.
+
+type SessionListOptions = ports.SessionListOptions
+    SessionListOptions filters a conversation session query.
+
+type SessionSummary = ports.SessionSummary
+    SessionSummary is a lightweight summary of a conversation session for
+    listing.
+
+type Spirit = entities.Spirit
+    Spirit is an AI assistant definition stored in the SpiritRepository.
+    It carries the system prompt, model configuration, and the list of Actions
+    the Oracle may invoke. Spirits are versioned — every update creates a new
+    version, allowing rollback.
+
+type SpiritModel = entities.SpiritModel
+    SpiritModel specifies which Oracle provider and model a Spirit uses,
+    along with generation parameters (Temperature, MaxTokens, TopP).
+
+type SpiritRepository = ports.SpiritRepository
+    SpiritRepository persists Spirit definitions.
+
+type SpiritStats = ports.SpiritStats
+    SpiritStats aggregates per-Spirit usage metrics.
+
+type SpiritType = entities.SpiritType
+    SpiritType controls which built-in capabilities a Spirit has. Defaults to
+    SpiritTypeConversational.
+
+type SubjectKey = entities.SubjectKey
+    SubjectKey identifies the business entity being discussed in a conversation
+    (e.g. an order ID or ticket number). Set by the update_subject built-in
+    action.
+
+type TemplateComponent = ports.TemplateComponent
+    TemplateComponent is a section of a WhatsApp template message.
+
+type TemplateMessage = ports.TemplateMessage
+    TemplateMessage is a WhatsApp template message with its components.
+
+type TemplateParameter = ports.TemplateParameter
+    TemplateParameter is a single variable parameter within a WhatsApp template.
+
+type Thread = entities.Thread
+    Thread is the ordered list of messages in the current conversation window.
+    When the window fills, the Archivist summarises older messages.
+
+type TokenBudget = entities.TokenBudget
+    TokenBudget sets a monthly token limit for a Spirit with configurable
+    enforcement: "block" (reject when exceeded), "downgrade" (switch to a
+    cheaper model), or "alert".
+
+type TokenSeries = ports.TokenSeries
+    TokenSeries is a time-bucketed token usage series returned by analytics
+    queries.
+
+type TokenValidator = ports.TokenValidator
+    TokenValidator authenticates inbound API requests. Implementations include
+    NewAPIKeyValidator, NewJWTValidator, and NewJWKSValidator.
+
+type TrialCase = entities.TrialCase
+    TrialCase is a single eval test case with input, context, and scoring
+    expectations.
+
+type TrialExpectations = entities.TrialExpectations
+    TrialExpectations declares what a TrialCase response must satisfy to pass.
+
+type TrialReport = entities.TrialReport
+    TrialReport aggregates TrialResults from a full TrialSuite run.
+
+type TrialResult = entities.TrialResult
+    TrialResult holds the outcome of a single TrialCase execution.
+
+type TrialRunner = trial.TrialRunner
+    TrialRunner executes eval suites against a live Weave, scoring responses
+    with deterministic and LLM-as-judge Scorers.
+
+type TrialSuite = entities.TrialSuite
+    TrialSuite is a collection of TrialCases loaded from YAML or JSON via
+    LoadTrialSuite.
+
+type TypingIndicator = ports.TypingIndicator
+    TypingIndicator sends a typing-in-progress signal on a channel while the
+    Oracle reasons.
+
+type Vault = ports.Vault
+    Vault is the object storage port for media files (images, audio, documents).
+    Use the GCS adapter for Google Cloud Storage.
+
+type Vigil = entities.Vigil
+    Vigil represents an operator's active seat on a conversation. While a Vigil
+    seat is held, the Weave returns ErrSessionHeld and the operator handles
+    messages directly.
+
+type VigilConfig = orchestrator.VigilConfig
+    VigilConfig controls human-takeover behaviour. InactivityTimeout sets how
+    long an operator seat stays active without activity before auto-releasing.
+
+type VigilRepository = ports.VigilRepository
+    VigilRepository persists active Vigil seats (operator takeover state) in
+    Redis.
+
+type Voice = ports.Voice
+    Voice delivers a Spirit's response to an external channel (WhatsApp, HTTP,
+    etc.). Register via VoiceRegistry.Register.
+
+type VoiceRegistry = ports.VoiceRegistry
+    VoiceRegistry holds the set of Voices available to the Weave engine.
+    Create with NewVoiceRegistry; pass via WeaveBuilder.WithVoiceRegistry.
+
+type Weave = orchestrator.Weave
+    Weave is the central runtime engine. Assemble it via NewWeaveBuilder,
+    then call ProcessEventByKey to handle Pulses. A single Weave instance is
+    safe for concurrent use.
+
+type WeaveBuilder = orchestrator.WeaveBuilder
+    WeaveBuilder assembles a Weave via a fluent API. Obtain one with
+    NewWeaveBuilder, chain With*/Add*/Register* methods, and call Build to
+    produce the Weave.
+
+type WeaveConfig = orchestrator.WeaveConfig
+    WeaveConfig holds global engine settings (timeouts, iteration limits, etc.).
+    Use DefaultWeaveConfig for sensible defaults, then override individual
+    fields.
+
+type WeaveConfigRepository = orchestrator.WeaveConfigRepository
+    WeaveConfigRepository persists WeaveConfig to a durable store (e.g.
+    MongoDB). Used by the management API to support hot-reload.
+
+type WhatsAppClient = ports.WhatsAppClient
+    WhatsAppClient sends WhatsApp messages and templates via a provider's API.
+

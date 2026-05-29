@@ -1,0 +1,43 @@
+name: Feature Request
+description: Suggest an enhancement or new capability
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before opening a feature request, check the [roadmap](../README.md#roadmap) and existing issues.
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use case
+      description: What problem does this feature solve? Who benefits?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the API or behavior change you'd like to see.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Core (Weave, Pipeline, Spirit)
+        - Providers (Oracle adapters)
+        - Channels (Voice, Receptor)
+        - Infrastructure (Bond, Memory, PubSub)
+        - Management API (fiber)
+        - MCP / Tool Integration
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: checkboxes
+    id: breaking
+    attributes:
+      label: Breaking change?
+      options:
+        - label: This change would require a major version bump

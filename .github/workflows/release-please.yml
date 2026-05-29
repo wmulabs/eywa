@@ -1,0 +1,103 @@
+name: Release Please
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    name: Release Please
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      version: ${{ steps.release.outputs.version }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          token: ${{ secrets.RELEASE_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  tag-submodules:
+    name: Tag Sub-modules
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.RELEASE_TOKEN }}
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Configure git
+        run: |
+          git config user.name "wmoraes"
+          git config user.email "willianmoraes.email@gmail.com"
+
+      - name: Update sub-module go.mod versions
+        run: |
+          VERSION="${{ needs.release-please.outputs.version }}"
+          echo "Updating sub-modules to v${VERSION}"
+
+          # Update root eywa reference in each sub-module
+          for mod in fiber mongo redis mcp \
+            channels/whatsapp \
+            providers/anthropic providers/openai providers/gemini \
+            providers/bedrock providers/vertexai providers/weaviate \
+            providers/qdrant providers/pgvector providers/pinecone \
+            gcp/cloudtasks gcp/gcs gcp/gemini; do
+            sed -i "s|github\.com/wmulabs/eywa v[0-9]*\.[0-9]*\.[0-9]*|github.com/wmulabs/eywa v${VERSION}|g" "$mod/go.mod"
+            echo "  updated $mod/go.mod"
+          done
+
+          # Update all eywa module references in _examples
+          sed -i "s|\(github\.com/wmulabs/eywa[^ ]*\) v[0-9]*\.[0-9]*\.[0-9]*|\1 v${VERSION}|g" _examples/go.mod
+          echo "  updated _examples/go.mod"
+
+      - name: Run go mod tidy in sub-modules
+        run: |
+          for mod in fiber mongo redis mcp \
+            channels/whatsapp \
+            providers/anthropic providers/openai providers/gemini \
+            providers/bedrock providers/vertexai providers/weaviate \
+            providers/qdrant providers/pgvector providers/pinecone \
+            gcp/cloudtasks gcp/gcs gcp/gemini; do
+            echo "==> go mod tidy: $mod"
+            (cd "$mod" && go mod tidy)
+          done
+          (cd _examples && go mod tidy)
+
+      - name: Commit version updates
+        run: |
+          VERSION="${{ needs.release-please.outputs.version }}"
+          git add -A
+          git diff --staged --quiet || git commit -m "chore: update sub-modules to v${VERSION}"
+          git push origin main
+
+      - name: Create sub-module tags
+        run: |
+          VERSION="${{ needs.release-please.outputs.version }}"
+          for mod in fiber mongo redis mcp \
+            channels/whatsapp \
+            providers/anthropic providers/openai providers/gemini \
+            providers/bedrock providers/vertexai providers/weaviate \
+            providers/qdrant providers/pgvector providers/pinecone \
+            gcp/cloudtasks gcp/gcs gcp/gemini; do
+            git tag "${mod}/v${VERSION}"
+            echo "  tagged ${mod}/v${VERSION}"
+          done
+          git push origin --tags

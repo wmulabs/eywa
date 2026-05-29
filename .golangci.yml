@@ -1,0 +1,53 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - gosec
+    - noctx
+    - wrapcheck
+    - unparam
+    - exhaustive
+    - misspell
+  settings:
+    errcheck:
+      check-blank: false
+    gosec:
+      excludes:
+        - G115
+        - G118
+    wrapcheck:
+      ignore-sigs:
+        - ".Errorf("
+        - "errors.New("
+        - "errors.Unwrap("
+        - ".JSON("
+        - ".SendStatus("
+        - "ErrorResponse("
+        - "(context.Context).Err("
+  exclusions:
+    rules:
+      - path: '(.+)_test\.go'
+        linters:
+          - errcheck
+          - gosec
+          - wrapcheck
+          - unparam
+          - noctx
+      - path: '(.+)_test\.go'
+        linters:
+          - staticcheck
+        text: 'SA5011'
+      - path: '_examples/'
+        linters:
+          - gosec
+          - errcheck
+          - wrapcheck

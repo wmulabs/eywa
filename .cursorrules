@@ -1,0 +1,76 @@
+# Eywa — Cursor Rules
+
+## Project
+
+Production-grade Go framework for conversational AI agents. Hexagonal architecture.
+19 independent Go sub-modules (each has its own `go.mod`).
+
+## Architecture — Hexagonal (Non-Negotiable)
+
+- `internal/implementation/` = domain logic. NEVER import `internal/infrastructure/`.
+- `ports/` = interfaces only. No structs, no functions, no init side effects.
+- All dependencies injected via constructors — no globals except `dbg.globalLogger`.
+- Sub-modules never import each other — only root `eywa` module is shared.
+- New capability: define port interface → implement adapter → inject via builder.
+
+## Domain Terms
+
+Always use: `Weave`, `Spirit`, `Pulse`, `Oracle`, `Bond`, `Voice`, `Receptor`,
+`Scout` (sequential, fail-open), `Lore` (RAG), `Imprint`, `Vigil`, `Rite`,
+`Keeper`, `Conduit` (MCP), `Archivist`, `Action`.
+
+Never invent synonyms ("agent" for Spirit, "handler" for Voice, etc.).
+
+## SOLID
+
+- Single Responsibility: one struct, one job. Split if you need "and".
+- Open/Closed: extend via new port implementations, not modifying orchestration core.
+- Liskov: all port implementations must honor the full contract.
+- Interface Segregation: narrow ports — don't pass god-objects.
+- Dependency Inversion: domain depends on `ports.*`, never concretions.
+
+## Clean Code
+
+- Names reveal intent. Booleans: `is`/`has`/`can` prefix.
+- Functions do ONE thing. Max ~40 lines before questioning design.
+- Early return over nesting.
+- No hidden side effects.
+- Comments explain WHY only. Never WHAT. No godoc on self-explanatory functions.
+- Errors: always return, wrap with `fmt.Errorf("context: %w", err)`.
+- `log.Fatal`/`os.Exit` never in library code.
+
+## Testing
+
+- TDD: write failing test first.
+- Table-driven tests for variation cases.
+- Always `-race` flag.
+- No real HTTP calls — use `httptest.NewServer` or injectable stubs.
+- `t.Skip` when external services not configured.
+- Test inside sub-module dir: `cd redis && go test ./... -race`
+
+## Security — Never Break
+
+- SSRF: `netutil.ValidateURL` before any outbound HTTP.
+- Body limits: `io.LimitReader` — never bare `io.ReadAll(resp.Body)`.
+- API keys: SHA-256 hash + `crypto/subtle.ConstantTimeCompare`.
+- In-memory maps on external input: hard cap required.
+- New unauthenticated endpoint: add rate limiting middleware.
+
+## Go Conventions
+
+- Propagate caller `ctx` — no `context.Background()` mid-chain.
+- Cleanup goroutines: `context.WithTimeout(context.Background(), 10*time.Second)`.
+- Sentinel errors exported; error constructors unexported.
+- `sync.RWMutex` for read-heavy shared state.
+
+## Never Do
+
+- `log.Fatal` in library code → return error
+- `io.ReadAll(resp.Body)` → use LimitReader
+- Outbound HTTP without SSRF check
+- Import infra from domain → define port, inject adapter
+- Sub-modules importing each other
+- Speculative abstractions (YAGNI)
+- Comments describing what code does
+- Skip `-race` in tests
+- AI attribution in commits

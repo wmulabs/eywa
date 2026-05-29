@@ -1,0 +1,103 @@
+# Eywa — Windsurf Rules
+
+## Project
+
+Production-grade Go framework for conversational AI agents. Strict hexagonal
+architecture. 19 independent Go sub-modules, each with its own `go.mod`.
+
+## Architecture — Hexagonal
+
+```
+channels/, fiber/          ← inbound adapters (Receptor, REST)
+ports/                     ← interfaces only, zero implementation
+internal/implementation/   ← domain logic, depends only on ports
+internal/infrastructure/   ← outbound adapters
+mongo/, redis/, providers/ ← sub-module adapters
+```
+
+**Hard rules:**
+- `internal/implementation/` NEVER imports `internal/infrastructure/`
+- `ports/` = interfaces only
+- All dependencies injected via constructors
+- Sub-modules never import each other — root `eywa` only
+- New capability: port first → adapter → inject
+
+## Domain Vocabulary
+
+| Term | Meaning |
+|---|---|
+| Weave | Runtime engine |
+| Spirit | Agent config |
+| Pulse | Inbound event |
+| Oracle | LLM abstraction |
+| Bond | Distributed lock |
+| Voice | Outbound adapter |
+| Receptor | Inbound adapter |
+| Scout | Enrichment step (sequential, fail-open) |
+| Lore | RAG |
+| Imprint | Long-term memory |
+| Vigil | Human takeover |
+| Rite | Approval workflow |
+| Keeper | Scheduler |
+| Conduit | MCP client |
+| Archivist | Summarizer |
+| Action | LLM-callable tool |
+
+## SOLID
+
+- **SRP:** one struct, one job
+- **OCP:** extend via new port implementations, don't touch orchestration core
+- **LSP:** implementations honor full port contract
+- **ISP:** narrow ports — no god-objects
+- **DIP:** domain depends on `ports.*` abstractions only
+
+## Clean Code
+
+- Names reveal intent. Booleans: `is`/`has`/`can` prefix.
+- Functions do ONE thing. Early return over nesting.
+- No hidden side effects. No speculative abstractions (YAGNI).
+- Comments: WHY only, never WHAT. No godoc on self-explanatory functions.
+- Errors: return always, wrap with `%w`. Never `log.Fatal` in library code.
+
+## Testing
+
+- TDD: failing test first, minimal implementation second.
+- Table-driven tests. Always `-race`.
+- No real network — `httptest.NewServer` or injected stubs.
+- `t.Skip` for integration tests needing external credentials.
+- Run inside sub-module: `cd redis && go test ./... -race`
+
+## Security Invariants
+
+- SSRF: `netutil.ValidateURL` before any outbound HTTP
+- Body limits: `io.LimitReader` — no bare `io.ReadAll`
+- API keys: SHA-256 + `crypto/subtle.ConstantTimeCompare`
+- Rate limit all unauthenticated endpoints
+- Hard cap on in-memory maps growing from external input
+
+## Go Rules
+
+- Propagate caller `ctx` — no mid-chain `context.Background()`
+- Cleanup goroutines: `context.WithTimeout(context.Background(), 10*time.Second)`
+- Sentinel errors exported; error factories unexported
+- `sync.RWMutex` for read-heavy state
+
+## Commits
+
+```
+feat(fiber): description
+fix(redis): description
+test(gemini): description
+```
+
+No AI attribution. No co-author trailers.
+
+## Absolute Don'ts
+
+- `log.Fatal` in library code
+- `io.ReadAll(resp.Body)` without LimitReader
+- Outbound HTTP without SSRF validation
+- Importing infrastructure from domain
+- Sub-modules importing each other
+- `context.Background()` replacing caller context
+- Skipping `-race` in tests

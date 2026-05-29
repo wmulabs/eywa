@@ -1,0 +1,56 @@
+package mcp // import "github.com/wmulabs/eywa/mcp"
+
+Package mcp provides an MCP (Model Context Protocol) Conduit for Eywa.
+It connects to an external MCP server over HTTP (StreamableHTTP transport),
+discovers its tools, and adapts them as Eywa Actions.
+
+Usage:
+
+    conduit := mcp.NewConduit(mcp.ConduitConfig{
+        Name:      "my-mcp-server",
+        Transport: "http",
+        URL:       "https://mcp.example.com",
+    })
+    weave, _ := eywa.NewWeaveBuilder(ctx).
+        WithConduit(conduit).
+        Build()
+
+FUNCTIONS
+
+func NewConduit(cfg ConduitConfig) eywa.Conduit
+
+TYPES
+
+type ConduitConfig struct {
+	// Name is the unique identifier for this Conduit in the Eywa registry.
+	// Tool names are prefixed: "<Name>__<tool_name>".
+	Name string
+
+	// Transport: "http" (StreamableHTTP). Stdio support planned.
+	Transport string
+
+	// URL is the MCP server endpoint (HTTP transport).
+	URL string
+
+	// Headers are added to every HTTP request (e.g. Authorization).
+	Headers map[string]string
+
+	// Timeout for individual MCP calls. Default: 30s.
+	Timeout time.Duration
+}
+    ConduitConfig holds the configuration for connecting to an MCP server.
+
+type MCPConduit struct {
+	// Has unexported fields.
+}
+
+func (c *MCPConduit) Call(ctx context.Context, toolName string, args map[string]any) (string, error)
+
+func (c *MCPConduit) Close() error
+
+func (c *MCPConduit) Connect(ctx context.Context) error
+
+func (c *MCPConduit) GetName() string
+
+func (c *MCPConduit) ListTools(_ context.Context) ([]eywa.ActionDefinition, error)
+

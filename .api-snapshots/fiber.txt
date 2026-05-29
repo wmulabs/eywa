@@ -1,0 +1,229 @@
+package fiber // import "github.com/wmulabs/eywa/fiber"
+
+
+FUNCTIONS
+
+func HandleExecuteEvent(weave *eywa.Weave) fiber.Handler
+    HandleExecuteEvent is the Keeper callback handler for POST
+    /internal/execute-event.
+
+func RegisterManagementRoutes(app *fiberlib.App, weave *eywa.Weave, deps ManagementDeps) error
+    RegisterManagementRoutes mounts the management API onto app under /api/v1.
+    All management routes require authentication. Route groups are registered
+    conditionally based on which ManagementDeps fields are non-nil.
+
+func RegisterRoutes(
+	app *fiber.App,
+	weave *eywa.Weave,
+	spiritRepo eywa.SpiritRepository,
+	echoRepo eywa.EchoRepository,
+	opts ...RouteOption,
+)
+    RegisterRoutes registers all REST API routes onto app.
+
+    Routes:
+      - GET /health, GET /ready
+      - POST /api/v1/events/:event_key
+      - POST /api/v1/events/:event_key/async (requires async dispatcher on
+        weave)
+      - POST /api/v1/events/:event_key/schedule, GET/DELETE /api/v1/schedule
+      - CRUD /api/v1/spirits
+      - GET /api/v1/messages
+      - POST /internal/execute-event (Keeper callback)
+
+    Security: Spirit mutation endpoints (POST/PUT/DELETE /api/v1/spirits) are
+    registered without authentication by this function. Spirit system prompts
+    are a critical attack surface — an attacker who can write Spirits can
+    inject arbitrary instructions into your AI agents (prompt injection at the
+    infrastructure level). You MUST protect these routes before exposing this
+    server publicly. Options:
+
+     1. Use RegisterManagementRoutes instead, which applies auth middleware to
+        all management endpoints including Spirit CRUD.
+     2. Place this server behind a network boundary (VPC/firewall) and never
+        expose it to the public internet.
+     3. Add your own auth middleware to the Fiber app before calling this
+        function.
+
+
+TYPES
+
+type AsyncEventHandler struct {
+	// Has unexported fields.
+}
+    Async event handler — dispatches to Keeper, returns < 100ms.
+
+func NewAsyncEventHandler(weave *eywa.Weave) *AsyncEventHandler
+
+func (h *AsyncEventHandler) IngestAsyncEvent(c *fiber.Ctx) error
+    IngestAsyncEvent handles POST /api/v1/events/:event_key/async.
+
+type CheckResult struct {
+	Name    string `json:"name"`
+	Status  string `json:"status"`
+	Message string `json:"message,omitempty"`
+}
+    CheckResult is a single named readiness outcome included in the /ready
+    response body.
+
+type EventBus struct {
+	// Has unexported fields.
+}
+    EventBus wraps eywa.PubSub and publishes typed management events. All
+    methods are no-ops when bus is nil — callers never need to nil-check.
+
+func NewEventBus(pubSub eywa.PubSub) *EventBus
+
+func (b *EventBus) PublishEchoAdded(ctx context.Context, memoryKey string, echo eywa.Echo)
+
+func (b *EventBus) PublishRiteDecided(ctx context.Context, riteID string, status eywa.RiteStatus)
+
+func (b *EventBus) PublishVigilAcquired(ctx context.Context, memoryKey, operatorID string)
+
+func (b *EventBus) PublishVigilReleased(ctx context.Context, memoryKey string)
+
+type EventHandler struct {
+	// Has unexported fields.
+}
+    Synchronous webhook event handler.
+
+func NewEventHandler(weave *eywa.Weave) *EventHandler
+
+func (h *EventHandler) ProcessEvent(c *fiber.Ctx) error
+    ProcessEvent handles POST /api/v1/events/:event_key synchronously.
+
+    Response codes:
+      - 200: all events succeeded
+      - 207: mixed batch
+      - 422: all events failed
+      - 400: invalid payload or unknown event_key
+      - 500: infrastructure failure before processing
+
+type HealthCheck struct {
+	Name  string
+	Check func(ctx context.Context) error
+}
+    HealthCheck is a named readiness probe function. Return nil to signal the
+    component is healthy; return an error to signal failure.
+
+type HealthHandler struct {
+	// Has unexported fields.
+}
+    HealthHandler serves liveness (/health) and readiness (/ready) probes.
+    Register HealthChecks via NewHealthHandler to perform real connectivity
+    tests. If no checks are registered the /ready endpoint always returns 200.
+
+func NewHealthHandler(weave *eywa.Weave, checks ...HealthCheck) *HealthHandler
+    NewHealthHandler creates a HealthHandler. Pass HealthCheck values to perform
+    real component checks on the /ready endpoint.
+
+        h := fiber.NewHealthHandler(weave,
+            fiber.HealthCheck{Name: "redis", Check: func(ctx context.Context) error {
+                return redisClient.Ping(ctx).Err()
+            }},
+            fiber.HealthCheck{Name: "mongo", Check: func(ctx context.Context) error {
+                return db.Client().Ping(ctx, nil)
+            }},
+        )
+
+func (h *HealthHandler) Health(c *fiber.Ctx) error
+
+func (h *HealthHandler) Ready(c *fiber.Ctx) error
+
+type ManagementDeps struct {
+	// Auth — at least one required for management routes to be secured.
+	APIKeys        map[string]string   // Mode 1: static key→role map
+	OperatorAuth   *eywa.OperatorAuth  // Mode 2: built-in operator JWT
+	TokenValidator eywa.TokenValidator // Mode 3: external JWT / JWKS
+
+	// Chronicle read-only queries for the audit log and analytics endpoints.
+	ChronicleQueryRepo eywa.ChronicleQueryRepository
+
+	// Echo repositories for conversation history and real-time operator messaging.
+	EchoRepo      eywa.EchoRepository
+	EchoQueryRepo eywa.EchoQueryRepository
+
+	// Config management — live event-configuration cache and persistent engine config.
+	ConfigCache     *eywa.ConfigCache
+	WeaveConfigRepo eywa.WeaveConfigRepository
+
+	// HTTPToolRepo enables CRUD for HTTP tool definitions managed via the API.
+	HTTPToolRepo eywa.HTTPToolRepository
+
+	// Vigil — human-takeover seat management (operator takes over a conversation).
+	VigilRepo   eywa.VigilRepository
+	VigilConfig eywa.VigilConfig
+
+	// RiteRepo enables approval flow management (create, list, approve/reject Rites).
+	RiteRepo eywa.RiteRepository
+
+	// Real-time (SSE) — requires PubSub (Redis recommended).
+	// When set, enables GET /api/v1/sse/* endpoints and live fanout from
+	// Vigil and Rite handlers.
+	PubSub eywa.PubSub
+
+	// Imprint management — exposes GET/DELETE /api/v1/imprints.
+	ImprintRepo eywa.ImprintRepository
+}
+    ManagementDeps wires optional repositories and auth config into
+    RegisterManagementRoutes. Each route group is only registered when its
+    required dependency is non-nil.
+
+type MessageHandler struct {
+	// Has unexported fields.
+}
+    MessageHandler provides paginated echo (message) retrieval.
+
+func NewMessageHandler(echoRepo eywa.EchoRepository) *MessageHandler
+
+func (h *MessageHandler) GetMessages(c *fiber.Ctx) error
+    GetMessages handles GET /api/v1/messages.
+
+type RouteOption func(*routeOptions)
+
+func WithInternalMiddleware(handlers ...fiber.Handler) RouteOption
+    WithInternalMiddleware adds Fiber handlers that run before POST
+    /internal/execute-event. Use this for OIDC token verification, e.g.:
+
+        RegisterRoutes(app, weave, spiritRepo, echoRepo,
+            WithInternalMiddleware(gcp.NewCloudTasksOIDCMiddleware(audience)))
+
+type ScheduleHandler struct {
+	// Has unexported fields.
+}
+
+func NewScheduleHandler(weave *eywa.Weave) *ScheduleHandler
+
+func (h *ScheduleHandler) Cancel(c *fiber.Ctx) error
+    Cancel handles DELETE /api/v1/schedule/:id.
+
+func (h *ScheduleHandler) ListPending(c *fiber.Ctx) error
+    ListPending handles GET /api/v1/schedule.
+
+func (h *ScheduleHandler) ScheduleByEventKey(c *fiber.Ctx) error
+    ScheduleByEventKey handles POST /api/v1/events/:event_key/schedule.
+
+type SpiritManagementHandler struct {
+	// Has unexported fields.
+}
+
+func NewSpiritManagementHandler(spiritRepo eywa.SpiritRepository) *SpiritManagementHandler
+
+func (h *SpiritManagementHandler) ActivateSpirit(c *fiber.Ctx) error
+
+func (h *SpiritManagementHandler) CreateSpirit(c *fiber.Ctx) error
+
+func (h *SpiritManagementHandler) DeactivateSpirit(c *fiber.Ctx) error
+
+func (h *SpiritManagementHandler) DeleteSpirit(c *fiber.Ctx) error
+
+func (h *SpiritManagementHandler) GetSpirit(c *fiber.Ctx) error
+
+func (h *SpiritManagementHandler) GetSpiritVersions(c *fiber.Ctx) error
+    GetSpiritVersions returns the full version history for a Spirit, newest
+    first.
+
+func (h *SpiritManagementHandler) ListSpirits(c *fiber.Ctx) error
+
+func (h *SpiritManagementHandler) UpdateSpirit(c *fiber.Ctx) error
+
