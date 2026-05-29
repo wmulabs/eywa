@@ -25,7 +25,7 @@ func (r *ChronicleRepository) FindByID(ctx context.Context, id string) (*eywa.Ch
 		if err == mongodriver.ErrNoDocuments {
 			return nil, eywa.ErrNotFound
 		}
-		return nil, err
+		return nil, fmt.Errorf("decode chronicle: %w", err)
 	}
 	return &ch, nil
 }
@@ -35,7 +35,7 @@ func (r *ChronicleRepository) List(ctx context.Context, opts eywa.ChronicleListO
 
 	total, err := r.collection.CountDocuments(ctx, filter)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("count chronicles: %w", err)
 	}
 
 	page := opts.Page
@@ -58,13 +58,13 @@ func (r *ChronicleRepository) List(ctx context.Context, opts eywa.ChronicleListO
 
 	cursor, err := r.collection.Find(ctx, filter, findOpts)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("find chronicles: %w", err)
 	}
-	defer cursor.Close(ctx)
+	defer cursor.Close(ctx) //nolint:errcheck
 
 	var results []*eywa.Chronicle
 	if err := cursor.All(ctx, &results); err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("decode chronicle results: %w", err)
 	}
 	return results, total, nil
 }
@@ -98,9 +98,9 @@ func (r *ChronicleRepository) AggregateTokens(ctx context.Context, spiritName st
 
 	cursor, err := r.collection.Aggregate(ctx, pipeline)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("aggregate chronicle tokens: %w", err)
 	}
-	defer cursor.Close(ctx)
+	defer cursor.Close(ctx) //nolint:errcheck
 
 	type tokenResult struct {
 		ID struct {
@@ -113,7 +113,7 @@ func (r *ChronicleRepository) AggregateTokens(ctx context.Context, spiritName st
 
 	var raw []tokenResult
 	if err := cursor.All(ctx, &raw); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decode chronicle aggregation: %w", err)
 	}
 
 	result := make([]eywa.TokenSeries, len(raw))
@@ -170,9 +170,9 @@ func (r *ChronicleRepository) AggregateActions(ctx context.Context, spiritName s
 
 	cursor, err := r.collection.Aggregate(ctx, pipeline)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("aggregate chronicles: %w", err)
 	}
-	defer cursor.Close(ctx)
+	defer cursor.Close(ctx) //nolint:errcheck
 
 	type actionResult struct {
 		ActionName   string  `bson:"action_name"`
@@ -184,7 +184,7 @@ func (r *ChronicleRepository) AggregateActions(ctx context.Context, spiritName s
 
 	var raw []actionResult
 	if err := cursor.All(ctx, &raw); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decode chronicle aggregation: %w", err)
 	}
 
 	result := make([]eywa.ActionStats, len(raw))
@@ -225,9 +225,9 @@ func (r *ChronicleRepository) AggregateSpirits(ctx context.Context, from, to tim
 
 	cursor, err := r.collection.Aggregate(ctx, pipeline)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("aggregate chronicle stats: %w", err)
 	}
-	defer cursor.Close(ctx)
+	defer cursor.Close(ctx) //nolint:errcheck
 
 	type spiritResult struct {
 		SpiritName    string  `bson:"spirit_name"`
@@ -238,7 +238,7 @@ func (r *ChronicleRepository) AggregateSpirits(ctx context.Context, from, to tim
 
 	var raw []spiritResult
 	if err := cursor.All(ctx, &raw); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decode chronicle stats: %w", err)
 	}
 
 	result := make([]eywa.SpiritStats, len(raw))

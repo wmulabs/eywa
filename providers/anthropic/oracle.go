@@ -16,9 +16,6 @@ const (
 
 	defaultMaxRetries = 3
 	defaultTimeout    = 60 // seconds
-
-	// defaultImageMimeType is used when no MIME type is present on an attachment.
-	defaultImageMimeType = "image/jpeg"
 )
 
 type AnthropicOracle struct {
