@@ -2,6 +2,7 @@ package mongo
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	eywa "github.com/wmulabs/eywa"
@@ -56,7 +57,10 @@ func (r *OperatorRepository) Create(ctx context.Context, op *eywa.Operator) erro
 	op.CreatedAt = now
 	op.UpdatedAt = now
 	_, err := r.collection.InsertOne(ctx, op)
-	return err
+	if err != nil {
+		return fmt.Errorf("insert operator: %w", err)
+	}
+	return nil
 }
 
 func (r *OperatorRepository) FindByEmail(ctx context.Context, email string) (*eywa.Operator, error) {
@@ -65,7 +69,10 @@ func (r *OperatorRepository) FindByEmail(ctx context.Context, email string) (*ey
 	if err == mongodriver.ErrNoDocuments {
 		return nil, &eywa.NotFoundError{Entity: "operator", ID: email}
 	}
-	return &op, err
+	if err != nil {
+		return nil, fmt.Errorf("decode operator: %w", err)
+	}
+	return &op, nil
 }
 
 func (r *OperatorRepository) FindByID(ctx context.Context, id string) (*eywa.Operator, error) {
@@ -74,7 +81,10 @@ func (r *OperatorRepository) FindByID(ctx context.Context, id string) (*eywa.Ope
 	if err == mongodriver.ErrNoDocuments {
 		return nil, &eywa.NotFoundError{Entity: "operator", ID: id}
 	}
-	return &op, err
+	if err != nil {
+		return nil, fmt.Errorf("decode operator: %w", err)
+	}
+	return &op, nil
 }
 
 func (r *OperatorRepository) List(ctx context.Context, page, limit int) ([]*eywa.Operator, int64, error) {
@@ -88,7 +98,7 @@ func (r *OperatorRepository) List(ctx context.Context, page, limit int) ([]*eywa
 
 	total, err := r.collection.CountDocuments(ctx, bson.M{})
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("count operators: %w", err)
 	}
 
 	cursor, err := r.collection.Find(ctx, bson.M{},
@@ -98,13 +108,13 @@ func (r *OperatorRepository) List(ctx context.Context, page, limit int) ([]*eywa
 			SetLimit(int64(limit)),
 	)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("find operators: %w", err)
 	}
-	defer cursor.Close(ctx)
+	defer cursor.Close(ctx) //nolint:errcheck
 
 	var ops []*eywa.Operator
 	if err := cursor.All(ctx, &ops); err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("decode operators: %w", err)
 	}
 	return ops, total, nil
 }
@@ -122,7 +132,7 @@ func (r *OperatorRepository) Update(ctx context.Context, op *eywa.Operator) erro
 	}
 	res, err := r.collection.UpdateOne(ctx, bson.M{"_id": op.ID}, update)
 	if err != nil {
-		return err
+		return fmt.Errorf("update operator: %w", err)
 	}
 	if res.MatchedCount == 0 {
 		return &eywa.NotFoundError{Entity: "operator", ID: op.ID}
@@ -139,7 +149,7 @@ func (r *OperatorRepository) Deactivate(ctx context.Context, id string) error {
 	}
 	res, err := r.collection.UpdateOne(ctx, bson.M{"_id": id}, update)
 	if err != nil {
-		return err
+		return fmt.Errorf("deactivate operator: %w", err)
 	}
 	if res.MatchedCount == 0 {
 		return &eywa.NotFoundError{Entity: "operator", ID: id}

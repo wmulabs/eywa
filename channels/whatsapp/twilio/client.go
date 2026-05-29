@@ -267,7 +267,7 @@ func (c *TwilioClient) waitForTerminalStatus(ctx context.Context, sid string) er
 func (c *TwilioClient) fetchMessageStatus(sid string) (status, errorMessage string, errorCode int, err error) {
 	msg, err := c.client.Api.FetchMessage(sid, &twilioApi.FetchMessageParams{})
 	if err != nil {
-		return "", "", 0, err
+		return "", "", 0, fmt.Errorf("fetch message status %s: %w", sid, err)
 	}
 
 	if msg.Status != nil {
@@ -383,7 +383,7 @@ func (c *TwilioClient) DownloadMedia(ctx context.Context, mediaID string) (data 
 	if err != nil {
 		return nil, "", eywa.NewInfrastructureError("failed to download media", err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, maxAPIResponseBytes))
@@ -441,7 +441,7 @@ func formatMessageWithButtons(message string, buttons []any) string {
 	for i, btn := range buttons {
 		if m, ok := btn.(map[string]any); ok {
 			title, _ := m["title"].(string)
-			sb.WriteString(fmt.Sprintf("\n%d. %s", i+1, title))
+			fmt.Fprintf(&sb, "\n%d. %s", i+1, title)
 		}
 	}
 

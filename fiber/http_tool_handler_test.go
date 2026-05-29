@@ -292,7 +292,7 @@ func TestHTTPToolHandler_List_NilSlice_Returns200WithEmptyItems(t *testing.T) {
 	_ = repo
 }
 
-type stubNilHTTPToolRepo struct{ *stubHTTPToolRepo }
+type stubNilHTTPToolRepo struct{}
 
 func (s *stubNilHTTPToolRepo) List(_ context.Context) ([]eywa.HTTPTool, error) { return nil, nil }
 func (s *stubNilHTTPToolRepo) FindBySpiritID(_ context.Context, _ string) ([]eywa.HTTPTool, error) {
