@@ -16,6 +16,7 @@ package vertexai
 
 import (
 	"context"
+	"fmt"
 
 	gemini "github.com/wmulabs/eywa/providers/gemini"
 )
@@ -29,5 +30,9 @@ type Oracle = gemini.GeminiOracle
 // NewOracle creates an Oracle for Vertex AI using ADC.
 // project is your GCP project ID; location is the region (e.g. "us-central1").
 func NewOracle(ctx context.Context, project, location string) (*Oracle, error) {
-	return gemini.NewVertexOracle(ctx, project, location)
+	oracle, err := gemini.NewVertexOracle(ctx, project, location)
+	if err != nil {
+		return nil, fmt.Errorf("create vertex oracle: %w", err)
+	}
+	return oracle, nil
 }

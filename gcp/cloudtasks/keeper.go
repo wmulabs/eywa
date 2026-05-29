@@ -69,7 +69,10 @@ func (s *CloudTasksKeeper) Cancel(ctx context.Context, taskID string) error {
 	if isNotFound(err) {
 		return nil
 	}
-	return err
+	if err != nil {
+		return fmt.Errorf("delete task: %w", err)
+	}
+	return nil
 }
 
 func (s *CloudTasksKeeper) buildHTTPRequest(body []byte) *cloudtaskspb.HttpRequest {

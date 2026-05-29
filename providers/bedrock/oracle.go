@@ -117,11 +117,7 @@ func (o *BedrockOracle) GenerateResponse(ctx context.Context, req *eywa.OracleRe
 	}
 
 	if req.UseTools && len(req.Tools) > 0 {
-		toolCfg, err := o.convertTools(req.Tools)
-		if err != nil {
-			return nil, err
-		}
-		input.ToolConfig = toolCfg
+		input.ToolConfig = o.convertTools(req.Tools)
 	}
 
 	output, err := o.client.Converse(ctx, input)
@@ -258,7 +254,7 @@ func (o *BedrockOracle) imageBlock(att eywa.LLMAttachment) types.ContentBlock {
 
 // ── Tool conversion ───────────────────────────────────────────────────────────
 
-func (o *BedrockOracle) convertTools(tools []eywa.OracleTool) (*types.ToolConfiguration, error) {
+func (o *BedrockOracle) convertTools(tools []eywa.OracleTool) *types.ToolConfiguration {
 	bedTools := make([]types.Tool, 0, len(tools))
 
 	for _, t := range tools {
@@ -273,7 +269,7 @@ func (o *BedrockOracle) convertTools(tools []eywa.OracleTool) (*types.ToolConfig
 		})
 	}
 
-	return &types.ToolConfiguration{Tools: bedTools}, nil
+	return &types.ToolConfiguration{Tools: bedTools}
 }
 
 // ── Response parsing ──────────────────────────────────────────────────────────

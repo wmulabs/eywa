@@ -2,6 +2,7 @@ package mongo
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	eywa "github.com/wmulabs/eywa"
@@ -109,13 +110,13 @@ func httpDocumentToTool(doc httpToolDocument) eywa.HTTPTool {
 func (r *HTTPToolRepository) List(ctx context.Context) ([]eywa.HTTPTool, error) {
 	cursor, err := r.collection.Find(ctx, bson.M{})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("find http tools: %w", err)
 	}
-	defer cursor.Close(ctx)
+	defer cursor.Close(ctx) //nolint:errcheck
 
 	var docs []httpToolDocument
 	if err := cursor.All(ctx, &docs); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decode http tools: %w", err)
 	}
 
 	tools := make([]eywa.HTTPTool, len(docs))
@@ -128,13 +129,13 @@ func (r *HTTPToolRepository) List(ctx context.Context) ([]eywa.HTTPTool, error) 
 func (r *HTTPToolRepository) FindBySpiritID(ctx context.Context, spiritID string) ([]eywa.HTTPTool, error) {
 	cursor, err := r.collection.Find(ctx, bson.M{"spirit_ids": spiritID})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("find http tools by spirit id: %w", err)
 	}
-	defer cursor.Close(ctx)
+	defer cursor.Close(ctx) //nolint:errcheck
 
 	var docs []httpToolDocument
 	if err := cursor.All(ctx, &docs); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decode http tools by spirit id: %w", err)
 	}
 
 	tools := make([]eywa.HTTPTool, len(docs))
@@ -151,7 +152,7 @@ func (r *HTTPToolRepository) FindByID(ctx context.Context, id string) (*eywa.HTT
 		if err == mongodriver.ErrNoDocuments {
 			return nil, eywa.ErrNotFound
 		}
-		return nil, err
+		return nil, fmt.Errorf("decode http tool: %w", err)
 	}
 	tool := httpDocumentToTool(doc)
 	return &tool, nil
@@ -160,14 +161,17 @@ func (r *HTTPToolRepository) FindByID(ctx context.Context, id string) (*eywa.HTT
 func (r *HTTPToolRepository) Save(ctx context.Context, tool eywa.HTTPTool) error {
 	doc := httpToolToDocument(tool)
 	_, err := r.collection.InsertOne(ctx, doc)
-	return err
+	if err != nil {
+		return fmt.Errorf("insert http tool: %w", err)
+	}
+	return nil
 }
 
 func (r *HTTPToolRepository) Update(ctx context.Context, tool eywa.HTTPTool) error {
 	doc := httpToolToDocument(tool)
 	result, err := r.collection.ReplaceOne(ctx, bson.M{"_id": tool.ID}, doc, options.Replace().SetUpsert(false))
 	if err != nil {
-		return err
+		return fmt.Errorf("replace http tool: %w", err)
 	}
 	if result.MatchedCount == 0 {
 		return eywa.ErrNotFound
@@ -178,7 +182,7 @@ func (r *HTTPToolRepository) Update(ctx context.Context, tool eywa.HTTPTool) err
 func (r *HTTPToolRepository) Delete(ctx context.Context, id string) error {
 	result, err := r.collection.DeleteOne(ctx, bson.M{"_id": id})
 	if err != nil {
-		return err
+		return fmt.Errorf("delete http tool: %w", err)
 	}
 	if result.DeletedCount == 0 {
 		return eywa.ErrNotFound
