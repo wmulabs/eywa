@@ -8,6 +8,7 @@ import (
 
 	eywa "github.com/wmulabs/eywa"
 	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -22,7 +23,7 @@ type MemoryRepository struct {
 
 func NewMemoryRepository(client *redis.Client, serviceName, environment string, memoryTTLSeconds int, tracer trace.Tracer) eywa.MemoryRepository {
 	if tracer == nil {
-		tracer = trace.NewNoopTracerProvider().Tracer("eywa")
+		tracer = noop.NewTracerProvider().Tracer("eywa")
 	}
 	return &MemoryRepository{
 		client:      client,
@@ -54,13 +55,13 @@ func (r *MemoryRepository) GetMemory(ctx context.Context, key string) (*eywa.Mem
 			return nil, fmt.Errorf("memory not found: %s", key)
 		}
 		log.Errorw("error getting memory", "error", err, "key", key)
-		return nil, err
+		return nil, fmt.Errorf("get memory: %w", err)
 	}
 
 	var memory eywa.Memory
 	if err := json.Unmarshal([]byte(data), &memory); err != nil {
 		log.Errorw("error unmarshaling memory", "error", err, "key", key)
-		return nil, err
+		return nil, fmt.Errorf("unmarshal memory: %w", err)
 	}
 
 	return &memory, nil
@@ -77,13 +78,13 @@ func (r *MemoryRepository) SaveMemory(ctx context.Context, key string, memory *e
 	data, err := json.Marshal(memory)
 	if err != nil {
 		log.Errorw("error marshaling memory", "error", err, "key", key)
-		return err
+		return fmt.Errorf("marshal memory: %w", err)
 	}
 
 	redisKey := r.prefixKey(key)
 	if err := r.client.Set(ctx, redisKey, data, r.memoryTTL).Err(); err != nil {
 		log.Errorw("error saving memory", "error", err, "key", key)
-		return err
+		return fmt.Errorf("set memory: %w", err)
 	}
 
 	log.Infow("memory saved", "key", key, "ttl", r.memoryTTL)
@@ -99,7 +100,7 @@ func (r *MemoryRepository) DeleteMemory(ctx context.Context, key string) error {
 	redisKey := r.prefixKey(key)
 	if err := r.client.Del(ctx, redisKey).Err(); err != nil {
 		log.Errorw("error deleting memory", "error", err, "key", key)
-		return err
+		return fmt.Errorf("delete memory: %w", err)
 	}
 
 	log.Infow("memory deleted", "key", key)
