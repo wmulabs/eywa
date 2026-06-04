@@ -4,7 +4,7 @@ go 1.26.3
 
 require (
 	github.com/wmulabs/eywa v1.0.0
-	google.golang.org/genai v1.58.0
+	google.golang.org/genai v1.59.0
 )
 
 require (
@@ -40,6 +40,5 @@ require (
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
 
 replace github.com/wmulabs/eywa => ../../
