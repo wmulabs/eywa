@@ -92,7 +92,7 @@ When `weave.ProcessEventByKey(ctx, eventKey, pulse)` is called, the Pulse runs t
 ```
 
 > [!NOTE]
-> Optional steps are only inserted into the pipeline when the corresponding component is wired in the WeaveBuilder (e.g. RateLimit requires `WithRateLimiter`, Archivist requires `WithArchivist` or `WithDefaultLLMArchivist`).
+> Optional steps are only inserted into the pipeline when the corresponding component is wired in the WeaveBuilder (e.g. IdempotencyCheck requires `WithIdempotencyStore`, RateLimit requires `WithRateLimiter`, Archivist requires `WithArchivist` or `WithDefaultLLMArchivist`).
 
 ### Step Failure Modes
 

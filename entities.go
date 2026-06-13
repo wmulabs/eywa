@@ -196,9 +196,10 @@ var (
 
 // Response status constants returned in Response.Status.
 const (
-	ResponseSuccess = entities.ResponseSuccess
-	ResponsePartial = entities.ResponsePartial
-	ResponseFailed  = entities.ResponseFailed
+	ResponseSuccess   = entities.ResponseSuccess
+	ResponsePartial   = entities.ResponsePartial
+	ResponseFailed    = entities.ResponseFailed
+	ResponseDuplicate = entities.ResponseDuplicate
 )
 
 // Ritual lifecycle status constants.
