@@ -49,3 +49,5 @@ docs/superpowers/
 
 # Git worktrees
 .worktrees/
+# Local review/working tracker — not part of the repo
+docs/review/FIX_PROGRESS.md
