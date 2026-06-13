@@ -101,6 +101,71 @@ func TestBondManager_ExtendLock_HeldLock_Succeeds(t *testing.T) {
 	}
 }
 
+// Bug #4: a contended acquire must fail fast (false, nil), not retry until the caller's
+// timeout — retrying misclassifies contention as a retriable infrastructure error.
+func TestBondManager_AcquireLock_Contended_FailsFast(t *testing.T) {
+	client, _ := newBondClient(t)
+	bond := NewBondManager(client)
+
+	if acquired, err := bond.AcquireLock(context.Background(), "lock:ff", 30*time.Second); err != nil || !acquired {
+		t.Fatalf("initial acquire failed: err=%v acquired=%v", err, acquired)
+	}
+
+	start := time.Now()
+	acquired, err := bond.AcquireLock(context.Background(), "lock:ff", 30*time.Second)
+	elapsed := time.Since(start)
+
+	if acquired {
+		t.Error("expected contended acquire to fail")
+	}
+	if err != nil {
+		t.Errorf("contended acquire must return (false, nil), got err=%v", err)
+	}
+	if elapsed > 500*time.Millisecond {
+		t.Errorf("expected fail-fast (<500ms), took %v — redsync retries not disabled", elapsed)
+	}
+}
+
+// Bug #3: ExtendLock must renew the Redis key to the new TTL, not re-apply the acquire TTL.
+func TestBondManager_ExtendLock_AppliesNewTTL(t *testing.T) {
+	client, mr := newBondClient(t)
+	bond := NewBondManager(client)
+
+	if acquired, err := bond.AcquireLock(context.Background(), "lock:ttl", 10*time.Second); err != nil || !acquired {
+		t.Fatalf("acquire failed: err=%v acquired=%v", err, acquired)
+	}
+
+	if err := bond.ExtendLock(context.Background(), "lock:ttl", 60*time.Second); err != nil {
+		t.Fatalf("extend failed: %v", err)
+	}
+
+	// Before the fix, redsync re-applied the original 10s expiry; now it must be ~60s.
+	if ttl := mr.TTL("lock:ttl"); ttl <= 10*time.Second {
+		t.Errorf("expected TTL renewed to ~60s, got %v", ttl)
+	}
+}
+
+// After extending, releasing must still work — recreating the mutex preserves ownership.
+func TestBondManager_ExtendThenRelease_Succeeds(t *testing.T) {
+	client, _ := newBondClient(t)
+	bond := NewBondManager(client)
+
+	if acquired, err := bond.AcquireLock(context.Background(), "lock:er", 10*time.Second); err != nil || !acquired {
+		t.Fatalf("acquire failed: err=%v acquired=%v", err, acquired)
+	}
+	if err := bond.ExtendLock(context.Background(), "lock:er", 30*time.Second); err != nil {
+		t.Fatalf("extend failed: %v", err)
+	}
+	if err := bond.ReleaseLock(context.Background(), "lock:er"); err != nil {
+		t.Errorf("release after extend failed: %v", err)
+	}
+
+	// Lock is free again.
+	if acquired, _ := bond.AcquireLock(context.Background(), "lock:er", 10*time.Second); !acquired {
+		t.Error("expected re-acquire after release to succeed")
+	}
+}
+
 func TestBondManager_AcquireLock_DifferentKeys_Independent(t *testing.T) {
 	client, _ := newBondClient(t)
 	bond := NewBondManager(client)
