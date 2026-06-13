@@ -139,10 +139,12 @@ func (s *NotificationStep) callOracle(ctx context.Context, state *ProcessingStat
 		return "", fmt.Errorf("get oracle provider: %w", err)
 	}
 
+	// Use buildSystemPrompt so the notifier sees the event Knowledge — same context the template
+	// mode renders from. Without it, webhook-triggered notifiers (empty UserMessage) have nothing to act on.
 	req := ports.OracleRequest{
 		Model:        state.Spirit.ModelConfig.Model,
 		Temperature:  state.Spirit.ModelConfig.Temperature,
-		SystemPrompt: state.Spirit.SystemPrompt,
+		SystemPrompt: buildSystemPrompt(state.Spirit, state.Event),
 		Messages: []ports.OracleMessage{
 			{
 				Role:    ports.RoleUser,
