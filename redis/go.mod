@@ -8,7 +8,7 @@ require (
 	github.com/go-redsync/redsync/v4 v4.16.0
 	github.com/redis/go-redis/extra/redisotel/v9 v9.20.0
 	github.com/redis/go-redis/v9 v9.20.0
-	github.com/wmulabs/eywa v1.0.0
+	github.com/wmulabs/eywa v1.0.1
 	go.opentelemetry.io/otel/trace v1.44.0
 	go.uber.org/zap v1.28.0
 )
@@ -34,6 +34,5 @@ require (
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
 
 replace github.com/wmulabs/eywa => ../
