@@ -5,7 +5,7 @@ go 1.26.4
 require (
 	github.com/weaviate/weaviate v1.37.6
 	github.com/weaviate/weaviate-go-client/v5 v5.7.3
-	github.com/wmulabs/eywa v1.0.0
+	github.com/wmulabs/eywa v1.0.1
 )
 
 require (
@@ -63,6 +63,5 @@ require (
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
 
 replace github.com/wmulabs/eywa => ../../
