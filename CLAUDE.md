@@ -347,9 +347,19 @@ done
 
 ## Before You Push — Run the CI Gates Locally
 
-CI fails the PR on any of the gates below. Always reproduce them locally **before
-pushing** so nothing bounces back. Toolchain must match `go.mod` (currently `go 1.26.4`);
-if the local default differs, prefix commands with `GOTOOLCHAIN=go1.26.4`.
+A versioned `pre-push` hook in `.githooks/` runs these gates automatically for every
+**touched** module (plus repo-wide gofmt and API-snapshot checks). Enable it once per clone:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+It follows `go.mod`'s pinned Go version via `GOTOOLCHAIN=auto`. Emergency bypass:
+`git push --no-verify` (CI still enforces everything).
+
+CI fails the PR on any of the gates below. The hook reproduces them, but you can also run
+them by hand. Toolchain must match `go.mod` (currently `go 1.26.4`); if the local default
+differs, prefix commands with `GOTOOLCHAIN=go1.26.4`.
 
 When code changes, run these in order — stop and fix at the first failure:
 
