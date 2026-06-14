@@ -69,6 +69,21 @@ func IsMemoryBusy(err error) bool {
 	return errors.As(err, &oe) && oe.Code == "MEMORY_BUSY"
 }
 
+// ErrDuplicateEvent is returned when a Pulse with an already-processed IdempotencyKey arrives.
+// Non-retriable — the event was handled in a previous cycle; acknowledge the delivery and drop it.
+func ErrDuplicateEvent(idempotencyKey string) error {
+	return &OrchestrationError{
+		Code:      "DUPLICATE_EVENT",
+		Message:   fmt.Sprintf("event with idempotency key '%s' was already processed", idempotencyKey),
+		Retriable: false,
+	}
+}
+
+func IsDuplicateEvent(err error) bool {
+	var oe *OrchestrationError
+	return errors.As(err, &oe) && oe.Code == "DUPLICATE_EVENT"
+}
+
 func ErrScoutFailed(err error) error {
 	return &OrchestrationError{
 		Code:    "SCOUT_FAILED",

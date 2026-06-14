@@ -32,6 +32,7 @@ type WeaveBuilder struct {
 	interactionLogRepo   ports.ChronicleRepository
 	distributedLock      ports.Bond
 	lockTTLExplicit      bool
+	idempotencyStore     ports.IdempotencyStore
 	rateLimiter          ports.Limiter
 	messageInbox         ports.Inbox
 	asyncDispatcher      ports.Keeper
@@ -149,6 +150,16 @@ func (b *WeaveBuilder) WithBond(lock ports.Bond) *WeaveBuilder {
 // Use NewRedisRateLimiter from the redis infrastructure package to create the implementation.
 func (b *WeaveBuilder) WithRateLimiter(rl ports.Limiter) *WeaveBuilder {
 	b.rateLimiter = rl
+	return b
+}
+
+// WithIdempotencyStore enables duplicate-event suppression.
+// When configured, an IdempotencyCheck step runs after Validation and drops any Pulse whose
+// IdempotencyKey was already processed within WeaveConfig.IdempotencyTTL. This guards against
+// webhook redelivery (e.g. WhatsApp), which the Bond alone does not cover for sequential duplicates.
+// Use redis.NewIdempotencyStore for multi-instance deployments, or NewInMemoryIdempotencyStore for single-instance.
+func (b *WeaveBuilder) WithIdempotencyStore(store ports.IdempotencyStore) *WeaveBuilder {
+	b.idempotencyStore = store
 	return b
 }
 
@@ -668,6 +679,9 @@ func (b *WeaveBuilder) Build() (*Weave, error) {
 	}
 	if b.vigilRepo != nil {
 		engine.vigilRepo = b.vigilRepo
+	}
+	if b.idempotencyStore != nil {
+		engine.idempotencyStore = b.idempotencyStore
 	}
 	if b.riteRepo != nil {
 		if err := engine.RegisterAction(actions.NewRequestRiteAction(b.riteRepo, b.pubSub)); err != nil {

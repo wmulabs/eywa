@@ -29,9 +29,10 @@ See the _examples directory for runnable examples.
 CONSTANTS
 
 const (
-	ResponseSuccess = entities.ResponseSuccess
-	ResponsePartial = entities.ResponsePartial
-	ResponseFailed  = entities.ResponseFailed
+	ResponseSuccess   = entities.ResponseSuccess
+	ResponsePartial   = entities.ResponsePartial
+	ResponseFailed    = entities.ResponseFailed
+	ResponseDuplicate = entities.ResponseDuplicate
 )
     Response status constants returned in Response.Status.
 
@@ -229,6 +230,11 @@ var (
 	// Use for single-instance deployments, local development, and tests.
 	// For multi-instance production use redis.NewBondManager from the redis sub-module.
 	NewNoOpBond = orchestrator.NewNoOpBond
+
+	// NewInMemoryIdempotencyStore returns an in-process IdempotencyStore for duplicate-event
+	// suppression. Use for single-instance deployments and tests. For multi-instance production
+	// use redis.NewIdempotencyStore from the redis sub-module.
+	NewInMemoryIdempotencyStore = orchestrator.NewInMemoryIdempotencyStore
 )
 var (
 	// GenerateID returns a new random unique identifier string.
@@ -557,6 +563,12 @@ type HTTPToolRepository = ports.HTTPToolRepository
 
 type HTTPToolTestResult = orchestrator.HTTPToolTestResult
     HTTPToolTestResult holds the outcome of a single HTTPTool test execution.
+
+type IdempotencyStore = ports.IdempotencyStore
+    IdempotencyStore is the duplicate-suppression port. It records processed
+    IdempotencyKeys so redelivered webhooks (e.g. WhatsApp) are handled at most
+    once. Wire via WeaveBuilder.WithIdempotencyStore. Use the Redis adapter for
+    multi-instance deployments.
 
 type Imprint = entities.Imprint
     Imprint is a persistent user fact stored across sessions. Spirits read

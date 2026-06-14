@@ -167,4 +167,9 @@ var (
 	// Use for single-instance deployments, local development, and tests.
 	// For multi-instance production use redis.NewBondManager from the redis sub-module.
 	NewNoOpBond = orchestrator.NewNoOpBond
+
+	// NewInMemoryIdempotencyStore returns an in-process IdempotencyStore for duplicate-event
+	// suppression. Use for single-instance deployments and tests. For multi-instance production
+	// use redis.NewIdempotencyStore from the redis sub-module.
+	NewInMemoryIdempotencyStore = orchestrator.NewInMemoryIdempotencyStore
 )

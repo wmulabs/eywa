@@ -1,9 +1,9 @@
 module github.com/wmulabs/eywa/mongo
 
-go 1.26.3
+go 1.26.4
 
 require (
-	github.com/wmulabs/eywa v1.0.0
+	github.com/wmulabs/eywa v1.0.1
 	go.mongodb.org/mongo-driver v1.17.9
 	go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/mongo/otelmongo v0.69.0
 	go.opentelemetry.io/otel/trace v1.44.0
@@ -35,6 +35,5 @@ require (
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
 
 replace github.com/wmulabs/eywa => ../

@@ -376,7 +376,7 @@ func TestCreateToolResultBlock_FallsBackToToolName(t *testing.T) {
 
 func TestBuildContentBlocks_TextContent(t *testing.T) {
 	msg := eywa.OracleMessage{Role: eywa.RoleUser, Content: "hello"}
-	blocks := oracle().buildContentBlocks(msg, &eywa.OracleRequest{})
+	blocks := oracle().buildContentBlocks(msg, &eywa.OracleRequest{}, true)
 	if len(blocks) != 1 {
 		t.Errorf("expected 1 block for text content, got %d", len(blocks))
 	}
@@ -384,7 +384,7 @@ func TestBuildContentBlocks_TextContent(t *testing.T) {
 
 func TestBuildContentBlocks_EmptyContent_NoBlocks(t *testing.T) {
 	msg := eywa.OracleMessage{Role: eywa.RoleUser, Content: ""}
-	blocks := oracle().buildContentBlocks(msg, &eywa.OracleRequest{})
+	blocks := oracle().buildContentBlocks(msg, &eywa.OracleRequest{}, true)
 	if len(blocks) != 0 {
 		t.Errorf("expected 0 blocks for empty content, got %d", len(blocks))
 	}
@@ -395,7 +395,7 @@ func TestBuildContentBlocks_WithToolCalls(t *testing.T) {
 		Role:      eywa.RoleAssistant,
 		ToolCalls: []eywa.OracleToolCall{{ID: "t1", Name: "fn", Arguments: map[string]any{}}},
 	}
-	blocks := oracle().buildContentBlocks(msg, &eywa.OracleRequest{})
+	blocks := oracle().buildContentBlocks(msg, &eywa.OracleRequest{}, true)
 	if len(blocks) != 1 {
 		t.Errorf("expected 1 block for tool call, got %d", len(blocks))
 	}
@@ -403,23 +403,61 @@ func TestBuildContentBlocks_WithToolCalls(t *testing.T) {
 
 func TestBuildContentBlocks_ToolRole_WithContent_AddsResultBlock(t *testing.T) {
 	msg := eywa.OracleMessage{Role: eywa.RoleTool, Content: "result", ToolCallID: "tc1"}
-	blocks := oracle().buildContentBlocks(msg, &eywa.OracleRequest{})
+	blocks := oracle().buildContentBlocks(msg, &eywa.OracleRequest{}, true)
 	// Content is non-empty → text block added; RoleTool + Content != "" → tool result block added.
 	if len(blocks) != 2 {
 		t.Errorf("expected 2 blocks (text + tool result), got %d", len(blocks))
 	}
 }
 
-func TestBuildContentBlocks_UserWithAttachments(t *testing.T) {
+func TestBuildContentBlocks_LastUserWithAttachments(t *testing.T) {
 	msg := eywa.OracleMessage{Role: eywa.RoleUser, Content: "look at this"}
 	req := &eywa.OracleRequest{
 		Attachments: []eywa.LLMAttachment{
 			{Type: eywa.ArtifactTypeImage, Data: []byte{0xFF, 0xD8}, MimeType: "image/jpeg"},
 		},
 	}
-	blocks := oracle().buildContentBlocks(msg, req)
+	blocks := oracle().buildContentBlocks(msg, req, true)
 	if len(blocks) != 2 { // text + image
 		t.Errorf("expected 2 blocks (text+image), got %d", len(blocks))
+	}
+}
+
+func TestBuildContentBlocks_NonLastUser_OmitsAttachments(t *testing.T) {
+	msg := eywa.OracleMessage{Role: eywa.RoleUser, Content: "earlier turn"}
+	req := &eywa.OracleRequest{
+		Attachments: []eywa.LLMAttachment{
+			{Type: eywa.ArtifactTypeImage, Data: []byte{0xFF, 0xD8}, MimeType: "image/jpeg"},
+		},
+	}
+	blocks := oracle().buildContentBlocks(msg, req, false)
+	if len(blocks) != 1 { // text only — image must not repeat on prior turns
+		t.Errorf("expected 1 block (text only), got %d", len(blocks))
+	}
+}
+
+// Attachments must land only on the last user message across a multi-turn history,
+// not be duplicated onto every user turn.
+func TestConvertMessages_AttachmentsOnlyOnLastUserMessage(t *testing.T) {
+	req := &eywa.OracleRequest{
+		Messages: []eywa.OracleMessage{
+			{Role: eywa.RoleUser, Content: "first"},
+			{Role: eywa.RoleAssistant, Content: "ok"},
+			{Role: eywa.RoleUser, Content: "second, see image"},
+		},
+		Attachments: []eywa.LLMAttachment{
+			{Type: eywa.ArtifactTypeImage, Data: []byte{0xFF, 0xD8}, MimeType: "image/jpeg"},
+		},
+	}
+	msgs := oracle().convertMessages(req)
+	if len(msgs) != 3 {
+		t.Fatalf("expected 3 messages, got %d", len(msgs))
+	}
+	if got := len(msgs[0].Content); got != 1 {
+		t.Errorf("first user message: expected 1 block (text only), got %d", got)
+	}
+	if got := len(msgs[2].Content); got != 2 {
+		t.Errorf("last user message: expected 2 blocks (text+image), got %d", got)
 	}
 }
 

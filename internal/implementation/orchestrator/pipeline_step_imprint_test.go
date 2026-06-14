@@ -40,8 +40,9 @@ func (r *stubImprintRepo) Prune(_ context.Context, _, _ string, _ int) error {
 }
 
 type stubOracle struct {
-	resp *ports.OracleResponse
-	err  error
+	resp   *ports.OracleResponse
+	err    error
+	gotReq *ports.OracleRequest // captures the last request for assertions
 }
 
 var _ ports.Oracle = (*stubOracle)(nil)
@@ -53,7 +54,8 @@ func (o *stubOracle) GetConfig() map[string]any       { return nil }
 func (o *stubOracle) SupportsImages(_ string) bool    { return false }
 func (o *stubOracle) SupportsAudio(_ string) bool     { return false }
 func (o *stubOracle) SupportsDocuments(_ string) bool { return false }
-func (o *stubOracle) GenerateResponse(_ context.Context, _ *ports.OracleRequest) (*ports.OracleResponse, error) {
+func (o *stubOracle) GenerateResponse(_ context.Context, req *ports.OracleRequest) (*ports.OracleResponse, error) {
+	o.gotReq = req
 	return o.resp, o.err
 }
 

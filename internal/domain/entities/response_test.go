@@ -54,6 +54,25 @@ func TestNewPartialResponse(t *testing.T) {
 	}
 }
 
+func TestNewDuplicateResponse(t *testing.T) {
+	r := NewDuplicateResponse("evt-dup", "chan:user")
+	if r == nil {
+		t.Fatal("NewDuplicateResponse returned nil")
+	}
+	if r.Status != ResponseDuplicate {
+		t.Errorf("Status = %q, want %q", r.Status, ResponseDuplicate)
+	}
+	if r.EventID != "evt-dup" {
+		t.Errorf("EventID = %q, want %q", r.EventID, "evt-dup")
+	}
+	if r.MemoryKey != "chan:user" {
+		t.Errorf("MemoryKey = %q, want %q", r.MemoryKey, "chan:user")
+	}
+	if r.Timestamp.IsZero() {
+		t.Error("Timestamp should not be zero")
+	}
+}
+
 func TestNewErrorResponse(t *testing.T) {
 	r := NewErrorResponse("evt-3", "chan:user", "something went wrong")
 	if r == nil {

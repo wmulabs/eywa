@@ -1,11 +1,11 @@
 module github.com/wmulabs/eywa/gcp/cloudtasks
 
-go 1.26.3
+go 1.26.4
 
 require (
 	cloud.google.com/go/cloudtasks v1.18.0
 	github.com/gofiber/fiber/v2 v2.52.13
-	github.com/wmulabs/eywa v1.0.0
+	github.com/wmulabs/eywa v1.0.1
 	google.golang.org/api v0.282.0
 	google.golang.org/grpc v1.81.1
 	google.golang.org/protobuf v1.36.11
@@ -55,6 +55,5 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260526163538-3dc84a4a5aaa // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
 
 replace github.com/wmulabs/eywa => ../../

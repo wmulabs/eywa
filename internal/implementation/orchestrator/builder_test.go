@@ -90,6 +90,18 @@ func TestWeaveBuilder_WithBond(t *testing.T) {
 	}
 }
 
+func TestWeaveBuilder_WithIdempotencyStore(t *testing.T) {
+	b := NewWeaveBuilder(context.Background())
+	store := NewInMemoryIdempotencyStore()
+	got := b.WithIdempotencyStore(store)
+	if got != b {
+		t.Error("expected fluent builder")
+	}
+	if b.idempotencyStore != store {
+		t.Error("expected idempotencyStore to be set")
+	}
+}
+
 func TestWeaveBuilder_WithRateLimiter(t *testing.T) {
 	b := NewWeaveBuilder(context.Background())
 	rl := &stubRateLimiter{}

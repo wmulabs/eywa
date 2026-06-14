@@ -63,6 +63,11 @@ type WeaveConfig struct {
 	// Must be > InboxMinWindow to leave time for the inbox drain and memory update.
 	MessageCoalescingTimeout time.Duration `json:"message_coalescing_timeout"`
 
+	// IdempotencyTTL is the window during which a Pulse with a repeated IdempotencyKey is
+	// treated as a duplicate and dropped. Only applies when an IdempotencyStore is wired.
+	// Size it above the provider's redelivery window (WhatsApp retries for up to ~24h).
+	IdempotencyTTL time.Duration `json:"idempotency_ttl"`
+
 	MaxSessionKeyLength  int `json:"max_session_key_length"`
 	MaxUserMessageLength int `json:"max_user_message_length"`
 	MaxEventContextSize  int `json:"max_event_context_size"`
@@ -105,6 +110,8 @@ func DefaultWeaveConfig() *WeaveConfig {
 
 		InboxMinWindow:           0,
 		MessageCoalescingTimeout: 10 * time.Second,
+
+		IdempotencyTTL: 24 * time.Hour,
 
 		MaxSessionKeyLength:  256,
 		MaxUserMessageLength: 50000,

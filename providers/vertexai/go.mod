@@ -1,6 +1,6 @@
 module github.com/wmulabs/eywa/providers/vertexai
 
-go 1.26.3
+go 1.26.4
 
 require github.com/wmulabs/eywa/providers/gemini v0.0.0
 
@@ -20,7 +20,7 @@ require (
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/nyaruka/phonenumbers v1.7.5 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
-	github.com/wmulabs/eywa v1.0.0 // indirect
+	github.com/wmulabs/eywa v1.0.1 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.69.0 // indirect
 	go.opentelemetry.io/otel v1.44.0 // indirect
@@ -40,9 +40,6 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace (
-	github.com/wmulabs/eywa => ../../
-	github.com/wmulabs/eywa/providers/gemini => ../gemini
-)
+replace github.com/wmulabs/eywa/providers/gemini => ../gemini
 
 replace github.com/wmulabs/eywa => ../../

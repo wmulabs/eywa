@@ -61,6 +61,7 @@ type Weave struct {
 	archivistKeepRecent int // 0 = derived as threshold/2
 
 	distributedLock      ports.Bond
+	idempotencyStore     ports.IdempotencyStore
 	rateLimiter          ports.Limiter
 	messageInbox         ports.Inbox
 	asyncDispatcher      ports.Keeper
@@ -476,10 +477,17 @@ func (e *Weave) processEventWithConfig(ctx context.Context, event *entities.Puls
 	}
 
 	if pipelineErr != nil {
-		log.Errorw("pipeline execution failed", "error", pipelineErr)
-
 		state.ProcessingStatus = statusFromError(pipelineErr)
 		_ = e.logInteraction(ctx, state)
+
+		// A duplicate is an idempotent no-op, not a failure: report success with nil error so
+		// callers and Cloud Tasks acknowledge the delivery without retrying.
+		if IsDuplicateEvent(pipelineErr) {
+			log.Infow("duplicate event ignored", "event_id", event.ID, "memory_key", event.MemoryKey)
+			return entities.NewDuplicateResponse(event.ID, event.MemoryKey), nil
+		}
+
+		log.Errorw("pipeline execution failed", "error", pipelineErr)
 
 		errResult := entities.NewErrorResponse(event.ID, event.MemoryKey,
 			fmt.Sprintf("processing failed: %v", pipelineErr))
@@ -530,6 +538,10 @@ func (e *Weave) buildProcessingPipeline() *Pipeline {
 	// --- Validation & rate limiting
 	pipeline.
 		AddStep(NewValidationStep(e.validator, e.config.LockAcquireTimeout, e.logger))
+
+	if e.idempotencyStore != nil {
+		pipeline.AddStep(NewIdempotencyStep(e.idempotencyStore, e.config.IdempotencyTTL, e.config.LockAcquireTimeout, e.logger))
+	}
 
 	if e.rateLimiter != nil {
 		pipeline.AddStep(NewRateLimitStep(e.rateLimiter, e.config.LockAcquireTimeout, e.logger))
@@ -940,6 +952,8 @@ func statusFromError(err error) string {
 		return "rate_limited"
 	case "VALIDATION_FAILED", "PROMPT_INJECTION_DETECTED":
 		return "validation_failed"
+	case "DUPLICATE_EVENT":
+		return "duplicate"
 	case "MEMORY_BUSY":
 		return "session_busy"
 	case "SESSION_HELD":
