@@ -345,6 +345,51 @@ done
 
 ---
 
+## Before You Push — Run the CI Gates Locally
+
+CI fails the PR on any of the gates below. Always reproduce them locally **before
+pushing** so nothing bounces back. Toolchain must match `go.mod` (currently `go 1.26.4`);
+if the local default differs, prefix commands with `GOTOOLCHAIN=go1.26.4`.
+
+When code changes, run these in order — stop and fix at the first failure:
+
+```bash
+# 1. Tests + coverage thresholds (root ≥80%, fiber/mongo/redis ≥70%)
+go test . ./internal/... -coverprofile=coverage.out -covermode=atomic -race
+go tool cover -func=coverage.out | grep '^total:'   # must be ≥ 80%
+for mod in fiber mongo redis; do
+  (cd "$mod" && go test ./... -coverprofile=coverage.out -covermode=atomic -race \
+     && go tool cover -func=coverage.out | grep '^total:')   # must be ≥ 70%
+done
+
+# 2. vet + gofmt
+go vet ./...
+gofmt -l .            # any output = violation; run `gofmt -w .` to fix
+
+# 3. govulncheck (root + sub-modules)
+govulncheck ./...
+
+# 4. golangci-lint (root + every sub-module)
+golangci-lint run ./...
+
+# 5. API stability — regenerate snapshots if the public surface changed intentionally
+go doc -all github.com/wmulabs/eywa > .api-snapshot.txt
+for mod in fiber mongo redis mcp; do
+  (cd "$mod" && go doc -all .) > .api-snapshots/${mod}.txt
+done
+git diff --stat .api-snapshot.txt .api-snapshots/   # commit if changed
+```
+
+**Coverage is a hard gate, not a suggestion.** New exported code needs tests in the
+same change. Codecov also enforces *patch* coverage (diff hit ≥ ~90%) on the PR — a
+green local total does not guarantee the patch target, so cover every new branch you add.
+
+**API snapshot drift** means the public surface changed. Regenerate the affected snapshot,
+commit it, and confirm whether it is a MINOR (additive) or MAJOR (breaking) change per
+`CONTRIBUTING.md`. `feat:`/`fix:` conventional commits drive the version bump via release-please.
+
+---
+
 ## Commit Conventions
 
 Conventional commits. Scope = sub-module when relevant.
