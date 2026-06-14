@@ -9,9 +9,10 @@ import (
 type ResponseStatus string
 
 const (
-	ResponseSuccess ResponseStatus = "success"
-	ResponsePartial ResponseStatus = "partial_success"
-	ResponseFailed  ResponseStatus = "failed"
+	ResponseSuccess   ResponseStatus = "success"
+	ResponsePartial   ResponseStatus = "partial_success"
+	ResponseFailed    ResponseStatus = "failed"
+	ResponseDuplicate ResponseStatus = "duplicate"
 )
 
 type ActionResult struct {
@@ -62,6 +63,19 @@ func NewPartialResponse(eventID, sessionKey, spiritUsed string, actionsExecuted 
 		ActionResults:   actionResults,
 		Message:         "Pulse processed with some Action failures",
 		Timestamp:       helpers.NowUTC(),
+	}
+}
+
+// NewDuplicateResponse marks an event that was dropped because its IdempotencyKey was
+// already processed. It is a successful idempotent no-op — callers (and Cloud Tasks) should
+// acknowledge it without retrying.
+func NewDuplicateResponse(eventID, sessionKey string) *Response {
+	return &Response{
+		Status:    ResponseDuplicate,
+		EventID:   eventID,
+		MemoryKey: sessionKey,
+		Message:   "duplicate event ignored (already processed)",
+		Timestamp: helpers.NowUTC(),
 	}
 }
 

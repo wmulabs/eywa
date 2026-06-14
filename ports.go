@@ -86,6 +86,11 @@ type (
 	// Limiter is the rate-limiting port. Implement to throttle Pulse processing per user.
 	Limiter = ports.Limiter
 
+	// IdempotencyStore is the duplicate-suppression port. It records processed IdempotencyKeys
+	// so redelivered webhooks (e.g. WhatsApp) are handled at most once. Wire via
+	// WeaveBuilder.WithIdempotencyStore. Use the Redis adapter for multi-instance deployments.
+	IdempotencyStore = ports.IdempotencyStore
+
 	// Keeper is the scheduler port. It enqueues Pulses for future delivery and handles
 	// async dispatch. Use the Cloud Tasks adapter for GCP workloads.
 	Keeper = ports.Keeper

@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -137,6 +138,26 @@ func TestNotificationStep_LLMMode_SendsResponse(t *testing.T) {
 	}
 	if state.Response != "Notification text" {
 		t.Errorf("unexpected response: %q", state.Response)
+	}
+}
+
+func TestNotificationStep_LLMMode_InjectsKnowledgeIntoPrompt(t *testing.T) {
+	voice := &stubVoice{}
+	reg := &stubVoiceRegistry{voice: voice}
+	oracle := &stubOracle{resp: &ports.OracleResponse{Content: "ok"}}
+	factory := &stubOracleFactory{oracle: oracle}
+	step := NewNotificationStep(reg, factory, time.Second, testLogger(t))
+	state := notifierState("notifier", "whatsapp", "llm")
+	state.Event.Knowledge["order_status"] = "delivered"
+
+	if err := step.Execute(context.Background(), state); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if oracle.gotReq == nil {
+		t.Fatal("expected oracle to receive a request")
+	}
+	if !strings.Contains(oracle.gotReq.SystemPrompt, "delivered") {
+		t.Errorf("expected event Knowledge in system prompt, got: %q", oracle.gotReq.SystemPrompt)
 	}
 }
 

@@ -1027,6 +1027,28 @@ func TestProcessEventByKey_PipelineError_ReturnsErrorResponse(t *testing.T) {
 	}
 }
 
+// TestProcessEventByKey_DuplicateEvent_Dropped proves a redelivered Pulse (same IdempotencyKey)
+// is dropped at the IdempotencyCheck step — before SpiritLoad, which would otherwise fail.
+func TestProcessEventByKey_DuplicateEvent_Dropped(t *testing.T) {
+	e := newPipelineWeave(t)
+	e.idempotencyStore = NewInMemoryIdempotencyStore()
+	e.pipeline = e.buildProcessingPipeline()
+
+	first := &entities.Pulse{MemoryKey: "user:1", ID: "evt-1", IdempotencyKey: "wamid.ABC", UserMessage: "hi"}
+	if _, firstErr := e.ProcessEventByKey(context.Background(), "test_event", first); firstErr == nil {
+		t.Fatal("expected first delivery to fail downstream at SpiritLoad")
+	}
+
+	redelivery := &entities.Pulse{MemoryKey: "user:1", ID: "evt-2", IdempotencyKey: "wamid.ABC", UserMessage: "hi"}
+	resp, err := e.ProcessEventByKey(context.Background(), "test_event", redelivery)
+	if err != nil {
+		t.Fatalf("duplicate must be an idempotent no-op (nil error), got %v", err)
+	}
+	if resp.Status != entities.ResponseDuplicate {
+		t.Errorf("expected ResponseDuplicate, got %s", resp.Status)
+	}
+}
+
 // TestProcessMultipleEventsByKey_PipelineError exercises the goroutine fan-out path:
 // each event fails at SpiritLoad, results collected via WaitGroup.
 func TestProcessMultipleEventsByKey_PipelineError_ReturnsResults(t *testing.T) {

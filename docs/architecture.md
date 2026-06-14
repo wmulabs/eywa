@@ -87,12 +87,12 @@ When `weave.ProcessEventByKey(ctx, eventKey, pulse)` is called, the Pulse runs t
 │ 16. VoiceDelivery       ← send response via registered Voice               │
 │ 17. Chronicle           ← write audit log to ChronicleRepository           │
 │                                                                             │
-│  Lock is released after step 14 (Persistence), before Chronicle            │
+│  Lock is released after the full pipeline completes (incl. Chronicle)      │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 > [!NOTE]
-> Optional steps are only inserted into the pipeline when the corresponding component is wired in the WeaveBuilder (e.g. RateLimit requires `WithRateLimiter`, Archivist requires `WithArchivist` or `WithDefaultLLMArchivist`).
+> Optional steps are only inserted into the pipeline when the corresponding component is wired in the WeaveBuilder (e.g. IdempotencyCheck requires `WithIdempotencyStore`, RateLimit requires `WithRateLimiter`, Archivist requires `WithArchivist` or `WithDefaultLLMArchivist`).
 
 ### Step Failure Modes
 
@@ -386,8 +386,8 @@ The Bond ensures that for a given MemoryKey, only one Pulse processes at a time:
 
 1. Lock acquired at step 5 (LockAcquisition) with configurable TTL
 2. Lock is automatically extended during long Oracle calls
-3. Released at step 14 (after Persistence, before Chronicle)
-4. If lock acquisition times out: pipeline fails with `ErrMemoryBusy`
+3. Released after the full pipeline completes (including Chronicle and post-response steps), in a fresh context so caller cancellation cannot skip the release
+4. If the lock is already held, acquisition fails fast with `ErrMemoryBusy` (non-retriable) — when an Inbox is configured the message is buffered for the next cycle
 
 > [!NOTE]
 > If the SubjectKey changes mid-processing (via `update_subject` Action), the Weave acquires an additional lock for the new key before accessing Memory.

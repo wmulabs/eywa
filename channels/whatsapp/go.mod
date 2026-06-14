@@ -1,6 +1,6 @@
 module github.com/wmulabs/eywa/channels/whatsapp
 
-go 1.26.3
+go 1.26.4
 
 require (
 	github.com/twilio/twilio-go v1.30.9
