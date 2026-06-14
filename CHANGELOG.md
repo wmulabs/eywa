@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1](https://github.com/wmulabs/eywa/compare/v1.0.0...v1.0.1) (2026-06-14)
+
+
+### Bug Fixes
+
+* v1 review bug fixes and prod cleanup ([#63](https://github.com/wmulabs/eywa/issues/63)) ([0982f92](https://github.com/wmulabs/eywa/commit/0982f92dd05738ac668ad8a4dc50846355819eef))
+
 ## [Unreleased]
 
 ## [1.0.0] - 2026-05-28
