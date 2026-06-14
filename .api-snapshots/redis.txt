@@ -15,6 +15,10 @@ var (
 FUNCTIONS
 
 func NewBondManager(client *redis.Client) eywa.Bond
+func NewIdempotencyStore(client *redis.Client) eywa.IdempotencyStore
+    NewIdempotencyStore creates a Redis-backed IdempotencyStore for
+    cross-instance duplicate suppression.
+
 func NewInbox(client *redis.Client, ttl time.Duration) eywa.Inbox
     NewInbox creates a new inbox backed by the provided Redis client. ttl
     controls how long buffered messages are retained (recommended: 10s).
@@ -42,6 +46,19 @@ func (r *BondManager) ExtendLock(ctx context.Context, key string, ttl time.Durat
 func (r *BondManager) ReleaseLock(ctx context.Context, key string) error
     ReleaseLock uses the stored mutex instance for a clean unlock. If the lock
     has already expired or was never acquired, returns nil.
+
+type IdempotencyStore struct {
+	// Has unexported fields.
+}
+    IdempotencyStore implements eywa.IdempotencyStore using Redis SETNX. The
+    first Seen call for a key sets it with the given TTL and reports false (not
+    a duplicate); subsequent calls within the TTL window find the key present
+    and report true.
+
+func (s *IdempotencyStore) Seen(ctx context.Context, key string, ttl time.Duration) (bool, error)
+    Seen records key via SETNX with ttl and reports whether it was already
+    present. SetNX returns true when the key was set (first occurrence),
+    so a duplicate is the inverse.
 
 type InboxManager struct {
 	// Has unexported fields.
