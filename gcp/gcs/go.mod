@@ -2,7 +2,7 @@ module github.com/wmulabs/eywa/gcp/gcs
 
 go 1.26.4
 
-require cloud.google.com/go/storage v1.62.2
+require cloud.google.com/go/storage v1.62.3
 
 require (
 	cel.dev/expr v0.25.2 // indirect
@@ -52,6 +52,5 @@ require (
 	google.golang.org/grpc v1.81.1 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 )
-
 
 replace github.com/wmulabs/eywa => ../../
