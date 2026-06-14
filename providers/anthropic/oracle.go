@@ -267,8 +267,8 @@ func (p *AnthropicOracle) SupportsDocuments(model string) bool {
 func (p *AnthropicOracle) convertMessages(req *eywa.OracleRequest) []anthropic.MessageParam {
 	messages := make([]anthropic.MessageParam, 0, len(req.Messages))
 
-	for _, msg := range req.Messages {
-		contentBlocks := p.buildContentBlocks(msg, req)
+	for i, msg := range req.Messages {
+		contentBlocks := p.buildContentBlocks(msg, req, i == len(req.Messages)-1)
 
 		if len(contentBlocks) > 0 {
 			messages = append(messages, anthropic.MessageParam{
@@ -281,14 +281,16 @@ func (p *AnthropicOracle) convertMessages(req *eywa.OracleRequest) []anthropic.M
 	return messages
 }
 
-func (p *AnthropicOracle) buildContentBlocks(msg eywa.OracleMessage, req *eywa.OracleRequest) []anthropic.ContentBlockParamUnion {
+// buildContentBlocks converts a message to Anthropic content blocks. Attachments are added only
+// to the last message (when it is a user turn) to avoid resending media on every prior turn.
+func (p *AnthropicOracle) buildContentBlocks(msg eywa.OracleMessage, req *eywa.OracleRequest, isLast bool) []anthropic.ContentBlockParamUnion {
 	var contentBlocks []anthropic.ContentBlockParamUnion
 
 	if msg.Content != "" {
 		contentBlocks = append(contentBlocks, anthropic.NewTextBlock(msg.Content))
 	}
 
-	if msg.Role == eywa.RoleUser && len(req.Attachments) > 0 {
+	if isLast && msg.Role == eywa.RoleUser && len(req.Attachments) > 0 {
 		imageBlocks := p.convertAttachmentsToImageBlocks(req.Attachments)
 		contentBlocks = append(contentBlocks, imageBlocks...)
 	}

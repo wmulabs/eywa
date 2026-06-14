@@ -63,12 +63,19 @@ func (r *BondManager) AcquireLock(ctx context.Context, key string, ttl time.Dura
 	r.reapExpired()
 	r.mu.Unlock()
 
-	mutex := r.rs.NewMutex(key, redsync.WithExpiry(ttl))
+	// WithTries(1) fails fast: a contended lock returns ErrFailed immediately instead of
+	// retrying (redsync defaults to 32 attempts), which would exhaust the caller's
+	// LockAcquireTimeout and surface as a retriable infra error. Fast contention maps to
+	// ErrMemoryBusy upstream — the message is already buffered in the Inbox for the next cycle.
+	mutex := r.rs.NewMutex(key, redsync.WithExpiry(ttl), redsync.WithTries(1))
 
 	// Redis I/O happens outside the map lock.
 	err := mutex.LockContext(ctx)
 	if err != nil {
-		if errors.Is(err, redsync.ErrFailed) {
+		// Contention surfaces as ErrFailed (retries exhausted) or *ErrTaken (single-try quorum
+		// loss with WithTries(1)). Both mean "held elsewhere" — return (false, nil), not an error.
+		var errTaken *redsync.ErrTaken
+		if errors.Is(err, redsync.ErrFailed) || errors.As(err, &errTaken) {
 			log.Debugw("lock already held by another instance", "key", key)
 			return false, nil
 		}
@@ -121,9 +128,6 @@ func (r *BondManager) ExtendLock(ctx context.Context, key string, ttl time.Durat
 
 	r.mu.Lock()
 	entry, exists := r.entries[key]
-	if exists {
-		entry.expiresAt = time.Now().Add(ttl)
-	}
 	r.mu.Unlock()
 
 	if !exists {
@@ -131,8 +135,13 @@ func (r *BondManager) ExtendLock(ctx context.Context, key string, ttl time.Durat
 		return fmt.Errorf("%w: %s", ErrBondLockNotFound, key)
 	}
 
-	// Redis I/O happens outside the map lock.
-	ok, err := entry.mutex.ExtendContext(ctx)
+	// redsync's ExtendContext re-applies the expiry fixed at mutex creation, so it cannot honor a
+	// new TTL on its own. Recreate the mutex with the same lock value and the requested expiry,
+	// then extend: the touch script matches on value (preserving ownership) and renews the Redis
+	// key to exactly ttl. Redis I/O happens outside the map lock.
+	mutex := r.rs.NewMutex(key, redsync.WithValue(entry.mutex.Value()), redsync.WithExpiry(ttl), redsync.WithTries(1))
+
+	ok, err := mutex.ExtendContext(ctx)
 	if err != nil {
 		log.Errorw("failed to extend lock", "key", key, "error", err)
 		return fmt.Errorf("%w: %w", ErrBondExtendFailed, err)
@@ -142,6 +151,15 @@ func (r *BondManager) ExtendLock(ctx context.Context, key string, ttl time.Durat
 		log.Warnw("lock extension failed - lock may not exist or is not held by us", "key", key)
 		return fmt.Errorf("%w: %s", ErrBondExtendFailed, key)
 	}
+
+	// Update local state only after Redis confirms the extension, and only if the entry is still
+	// the one we extended (guards against a concurrent release/re-acquire replacing it).
+	r.mu.Lock()
+	if cur, ok := r.entries[key]; ok && cur == entry {
+		cur.mutex = mutex
+		cur.expiresAt = time.Now().Add(ttl)
+	}
+	r.mu.Unlock()
 
 	log.Infow("lock extended", "key", key, "ttl", ttl)
 	return nil
