@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -47,5 +48,24 @@ func TestInMemoryIdempotencyStore_DistinctKeys(t *testing.T) {
 	seen, _ := store.Seen(ctx, "b", time.Minute)
 	if seen {
 		t.Error("distinct keys must be independent")
+	}
+}
+
+func TestInMemoryIdempotencyStore_AtCap_FailsOpen(t *testing.T) {
+	s := &inMemoryIdempotencyStore{seen: make(map[string]time.Time, maxInMemoryIdempotencyKeys)}
+	future := time.Now().Add(time.Hour)
+	for i := 0; i < maxInMemoryIdempotencyKeys; i++ {
+		s.seen[strconv.Itoa(i)] = future
+	}
+
+	seen, err := s.Seen(context.Background(), "overflow", time.Minute)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if seen {
+		t.Error("at cap a new key must fail open (seen=false)")
+	}
+	if _, stored := s.seen["overflow"]; stored {
+		t.Error("at cap the new key must not be stored")
 	}
 }

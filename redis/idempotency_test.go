@@ -58,6 +58,21 @@ func TestIdempotencyStore_Seen_ExpiredKeyIsNotDuplicate(t *testing.T) {
 	}
 }
 
+func TestIdempotencyStore_Seen_ConnectionError_ReturnsError(t *testing.T) {
+	client, mr := newIdempotencyClient(t)
+	store := NewIdempotencyStore(client)
+
+	mr.Close()
+
+	seen, err := store.Seen(context.Background(), "wamid.ABC", time.Minute)
+	if err == nil {
+		t.Error("expected error when Redis unreachable")
+	}
+	if seen {
+		t.Error("expected seen=false on connection error")
+	}
+}
+
 func TestIdempotencyStore_Seen_DistinctKeysIndependent(t *testing.T) {
 	client, _ := newIdempotencyClient(t)
 	store := NewIdempotencyStore(client)
