@@ -1,6 +1,6 @@
 module github.com/wmulabs/eywa/gcp/gcs
 
-go 1.26.2
+go 1.26.4
 
 require cloud.google.com/go/storage v1.62.2
 
