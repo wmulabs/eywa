@@ -761,6 +761,10 @@ type PathfinderRegistry = ports.PathfinderRegistry
     PathfinderRegistry holds the set of Pathfinders available to the Weave
     engine.
 
+type ProgressPolicy = orchestrator.ProgressPolicy
+    ProgressPolicy configures reasoning-loop stall detection. Set on
+    WeaveBuilder.WithProgressPolicy.
+
 type PubSub = ports.PubSub
     PubSub is the publish/subscribe port used by ConfigCache for live-update
     notifications when event configurations change.
