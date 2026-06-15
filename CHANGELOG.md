@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0](https://github.com/wmulabs/eywa/compare/v1.5.0...v1.6.0) (2026-06-15)
+
+
+### Features
+
+* **orchestrator:** add a turn-scoped plan/scratchpad for multi-step tasks ([#77](https://github.com/wmulabs/eywa/issues/77)) ([f99fccd](https://github.com/wmulabs/eywa/commit/f99fccd8772993ba5c8517b6cbfd66d5e2496158))
+
 ## [1.5.0](https://github.com/wmulabs/eywa/compare/v1.4.0...v1.5.0) (2026-06-15)
 
 
