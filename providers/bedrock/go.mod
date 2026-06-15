@@ -7,7 +7,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.32.25
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.24
 	github.com/aws/aws-sdk-go-v2/service/bedrockruntime v1.53.5
-	github.com/wmulabs/eywa v1.2.0
+	github.com/wmulabs/eywa v1.3.0
 )
 
 require (
