@@ -789,6 +789,10 @@ type RecurrenceConfig = entities.RecurrenceConfig
     RecurrenceConfig defines cron-based recurrence for a Ritual (timezone,
     expression, max runs, end date).
 
+type ReflectionPolicy = orchestrator.ReflectionPolicy
+    ReflectionPolicy configures the pre-delivery self-critique pass. Set on
+    WeaveBuilder.WithReflectionPolicy.
+
 type Response = entities.Response
     Response is the result returned by Weave.ProcessEventByKey. It contains the
     assistant message, which Spirit was used, Actions executed, and token usage.

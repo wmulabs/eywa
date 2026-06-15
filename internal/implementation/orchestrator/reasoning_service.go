@@ -85,6 +85,7 @@ type ReasoningService struct {
 	toolResultLimits     ports.ToolResultLimits // zero MaxChars = shaping disabled
 	progressPolicy       ProgressPolicy         // disabled by default
 	compressionPolicy    CompressionPolicy      // disabled by default
+	reflectionPolicy     ReflectionPolicy       // disabled by default
 	logger               *zap.SugaredLogger
 	tracer               trace.Tracer
 }
@@ -133,6 +134,11 @@ func (r *ReasoningService) SetProgressPolicy(policy ProgressPolicy) {
 // SetCompressionPolicy enables in-loop working-context compression. Disabled by default.
 func (r *ReasoningService) SetCompressionPolicy(policy CompressionPolicy) {
 	r.compressionPolicy = policy
+}
+
+// SetReflectionPolicy enables a self-critique pass before delivering a draft answer. Disabled by default.
+func (r *ReasoningService) SetReflectionPolicy(policy ReflectionPolicy) {
+	r.reflectionPolicy = policy
 }
 
 // synthesizeFinal makes one tools-stripped LLM call to produce a closing answer when the loop
@@ -189,6 +195,7 @@ func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (
 	// old-topic ledger across a topic change.
 	iterBoundaries := []int{}
 	topicSwitchedThisTurn := false
+	reflectionRounds := 0
 
 	stallWindow := 0
 	if r.progressPolicy.Enabled {
@@ -253,6 +260,22 @@ func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (
 
 		if len(llmResp.ToolCalls) == 0 {
 			if r.isTerminalResponse(llmResp) {
+				if r.reflectionPolicy.Enabled && reflectionRounds < r.reflectionPolicy.MaxRounds && !result.ResponseDelivered {
+					pass, issues, usage := r.reflect(ctx, provider, req, workingContext)
+					result.accumulateTokens(usage)
+					if !pass {
+						reflectionRounds++
+						iterLog.ReflectionIssues = issues
+						workingContext = append(workingContext, reflectionRevisionMessage(issues))
+						result.WorkingContext = workingContext
+						r.logger.Infow("reflection requested a revision",
+							"issues", issues,
+							"round", reflectionRounds,
+						)
+						appendIter(&iterLog, iterStart)
+						continue
+					}
+				}
 				result.FinalResponse = llmResp.Content
 				result.FinalSession = req.Session
 				appendIter(&iterLog, iterStart)

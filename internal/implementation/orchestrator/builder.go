@@ -195,6 +195,14 @@ func (b *WeaveBuilder) WithCompressionPolicy(policy CompressionPolicy) *WeaveBui
 	return b
 }
 
+// WithReflectionPolicy enables a self-critique pass: before delivering a draft answer the model
+// reviews its own output and, on a "revise" verdict, gets one more iteration to fix it (bounded by
+// MaxRounds). Reflection always fails open. Disabled by default.
+func (b *WeaveBuilder) WithReflectionPolicy(policy ReflectionPolicy) *WeaveBuilder {
+	b.config.ReflectionPolicy = policy
+	return b
+}
+
 // WithMessageInbox enables message coalescing by providing a MessageInbox implementation.
 // When configured, messages arriving while a session is locked are buffered in the inbox
 // and merged into a single user turn at the start of the next processing cycle.
