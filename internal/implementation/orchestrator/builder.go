@@ -211,6 +211,14 @@ func (b *WeaveBuilder) WithGroundingPolicy(policy GroundingPolicy) *WeaveBuilder
 	return b
 }
 
+// WithPlanPolicy enables a turn-scoped plan/scratchpad the model maintains via the update_plan
+// action; the current plan is injected each iteration and incomplete plans block a premature stop.
+// Disabled by default.
+func (b *WeaveBuilder) WithPlanPolicy(policy PlanPolicy) *WeaveBuilder {
+	b.config.PlanPolicy = policy
+	return b
+}
+
 // WithMessageInbox enables message coalescing by providing a MessageInbox implementation.
 // When configured, messages arriving while a session is locked are buffered in the inbox
 // and merged into a single user turn at the start of the next processing cycle.

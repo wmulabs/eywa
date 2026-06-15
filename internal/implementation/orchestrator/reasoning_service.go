@@ -49,6 +49,9 @@ type ReasoningResult struct {
 
 	// Citations holds the validated Lore chunk IDs the final answer referenced, when grounding is enabled.
 	Citations []string
+
+	// Plan is the final state of the agent's plan/scratchpad, when the plan policy is enabled.
+	Plan []entities.PlanItem
 }
 
 func (r *ReasoningResult) accumulateTokens(usage ports.OracleUsage) {
@@ -90,6 +93,7 @@ type ReasoningService struct {
 	compressionPolicy    CompressionPolicy      // disabled by default
 	reflectionPolicy     ReflectionPolicy       // disabled by default
 	groundingPolicy      GroundingPolicy        // disabled by default
+	planPolicy           PlanPolicy             // disabled by default
 	logger               *zap.SugaredLogger
 	tracer               trace.Tracer
 }
@@ -150,6 +154,11 @@ func (r *ReasoningService) SetGroundingPolicy(policy GroundingPolicy) {
 	r.groundingPolicy = policy
 }
 
+// SetPlanPolicy enables the turn-scoped plan/scratchpad maintained via update_plan. Disabled by default.
+func (r *ReasoningService) SetPlanPolicy(policy PlanPolicy) {
+	r.planPolicy = policy
+}
+
 // synthesizeFinal makes one tools-stripped LLM call to produce a closing answer when the loop
 // stalls or hits the iteration cap. Tokens are accounted into result; on error it falls back to
 // the configured max-iterations message.
@@ -206,11 +215,21 @@ func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (
 	topicSwitchedThisTurn := false
 	reflectionRounds := 0
 	groundingRevised := false
+	planNudged := false
 
 	// When grounding is enabled and Lore was retrieved, instruct the model to cite sources.
 	// Ephemeral for the turn — req is turn-scoped.
 	if r.groundingPolicy.Enabled && retrievedLoreContext(req) != "" {
 		req.SystemPrompt += groundingAddendum
+	}
+
+	// plan is nil unless the plan policy is enabled; the model maintains it via update_plan.
+	var plan *planState
+	if r.planPolicy.Enabled {
+		plan = newPlanState(r.planPolicy.MaxItems)
+		if r.planPolicy.Required {
+			req.SystemPrompt += planRequiredInstruction
+		}
 	}
 
 	stallWindow := 0
@@ -252,6 +271,10 @@ func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (
 		}
 
 		activeActions, closingHint := resolveIterationActions(actions, bannedActions, infraTerminal)
+		if plan != nil {
+			// The current plan is injected ephemerally each iteration — always up to date, never persisted.
+			closingHint = plan.render() + closingHint
+		}
 		llmResp, err := r.callLLM(ctx, provider, req, workingContext, activeActions, closingHint)
 		if err != nil {
 			iterLog.Errors = append(iterLog.Errors, fmt.Sprintf("LLM call failed: %v", err))
@@ -276,6 +299,16 @@ func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (
 
 		if len(llmResp.ToolCalls) == 0 {
 			if r.isTerminalResponse(llmResp) {
+				if plan != nil && !planNudged && !result.ResponseDelivered {
+					if inc := plan.incomplete(); len(inc) > 0 {
+						planNudged = true
+						workingContext = append(workingContext, planNudgeMessage(inc))
+						result.WorkingContext = workingContext
+						r.logger.Infow("plan has incomplete items, nudging before delivery", "open", inc)
+						appendIter(&iterLog, iterStart)
+						continue
+					}
+				}
 				if r.reflectionPolicy.Enabled && reflectionRounds < r.reflectionPolicy.MaxRounds && !result.ResponseDelivered {
 					pass, issues, usage := r.reflect(ctx, provider, req, workingContext)
 					result.accumulateTokens(usage)
@@ -310,6 +343,9 @@ func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (
 
 				result.FinalResponse = llmResp.Content
 				result.FinalSession = req.Session
+				if plan != nil {
+					result.Plan = plan.items
+				}
 				appendIter(&iterLog, iterStart)
 				r.logger.Infow("reasoning loop ended — terminal response",
 					"stop_reason", llmResp.StopReason,
@@ -334,7 +370,7 @@ func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (
 			return result, ErrToolBudgetExceeded(r.maxActionsPerCycle)
 		}
 
-		newBannedActions, isInfraTerminal, err := r.processActionCalls(ctx, provider, req, result, llmResp.ToolCalls, &iterLog, &workingContext, enforceVoiceDelivery)
+		newBannedActions, isInfraTerminal, err := r.processActionCalls(ctx, provider, req, result, llmResp.ToolCalls, &iterLog, &workingContext, enforceVoiceDelivery, plan)
 		for _, name := range newBannedActions {
 			if !bannedActions[name] {
 				bannedActions[name] = true
@@ -532,8 +568,9 @@ func (r *ReasoningService) processActionCalls(
 	iterLog *entities.IterationLog,
 	workingContext *[]ports.OracleMessage,
 	enforceVoiceDelivery bool,
+	plan *planState,
 ) (banned []string, infraTerminal bool, err error) {
-	results := r.executeAllActions(ctx, req, actionCalls)
+	results := r.executeActionsWithPlan(ctx, req, actionCalls, plan)
 
 	if len(results) != len(actionCalls) {
 		return nil, false, fmt.Errorf("executor returned %d results for %d action calls",
@@ -750,6 +787,10 @@ func (r *ReasoningService) availableActions(req *ReasoningRequest) []ports.Oracl
 
 	if r.summonService != nil && req.Spirit.IsOrchestrator() && len(req.Spirit.OrchestratorConfig.SubSpirits) > 0 {
 		actions = append(actions, summonSpiritTool(req.Spirit.OrchestratorConfig.SubSpirits))
+	}
+
+	if r.planPolicy.Enabled {
+		actions = append(actions, updatePlanTool())
 	}
 
 	return actions

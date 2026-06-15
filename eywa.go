@@ -69,6 +69,16 @@ type (
 	// Set on WeaveBuilder.WithGroundingPolicy.
 	GroundingPolicy = orchestrator.GroundingPolicy
 
+	// PlanPolicy configures the turn-scoped plan/scratchpad maintained via update_plan.
+	// Set on WeaveBuilder.WithPlanPolicy.
+	PlanPolicy = orchestrator.PlanPolicy
+
+	// PlanItem is one entry in the agent's plan/scratchpad.
+	PlanItem = entities.PlanItem
+
+	// PlanStatus is the lifecycle state of a PlanItem.
+	PlanStatus = entities.PlanStatus
+
 	// AppInfo carries service identity metadata logged with every Chronicle entry.
 	AppInfo = orchestrator.AppInfo
 
@@ -123,6 +133,14 @@ const (
 	GroundingReviseOnce = orchestrator.GroundingReviseOnce
 	GroundingAnnotate   = orchestrator.GroundingAnnotate
 	GroundingBlock      = orchestrator.GroundingBlock
+)
+
+// Plan item status constants for PlanItem.Status.
+const (
+	PlanPending    = entities.PlanPending
+	PlanInProgress = entities.PlanInProgress
+	PlanDone       = entities.PlanDone
+	PlanAbandoned  = entities.PlanAbandoned
 )
 
 var (
