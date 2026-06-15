@@ -83,6 +83,7 @@ type ReasoningService struct {
 	maxIterationsMessage string
 	maxActionsPerCycle   int                    // 0 = unlimited
 	toolResultLimits     ports.ToolResultLimits // zero MaxChars = shaping disabled
+	progressPolicy       ProgressPolicy         // disabled by default
 	logger               *zap.SugaredLogger
 	tracer               trace.Tracer
 }
@@ -123,6 +124,24 @@ func (r *ReasoningService) SetToolResultLimits(limits ports.ToolResultLimits) {
 	r.toolResultLimits = limits
 }
 
+// SetProgressPolicy enables stall detection and forced final synthesis. Disabled by default.
+func (r *ReasoningService) SetProgressPolicy(policy ProgressPolicy) {
+	r.progressPolicy = policy
+}
+
+// synthesizeFinal makes one tools-stripped LLM call to produce a closing answer when the loop
+// stalls or hits the iteration cap. Tokens are accounted into result; on error it falls back to
+// the configured max-iterations message.
+func (r *ReasoningService) synthesizeFinal(ctx context.Context, provider ports.Oracle, req *ReasoningRequest, workingContext []ports.OracleMessage, result *ReasoningResult) string {
+	resp, err := r.callLLM(ctx, provider, req, workingContext, nil, stallSynthesisInstruction)
+	if err != nil {
+		r.logger.Warnw("forced synthesis call failed, using fallback message", "error", err)
+		return r.maxIterationsMessage
+	}
+	result.accumulateTokens(resp.TokensUsed)
+	return resp.Content
+}
+
 // limitsFor resolves the result limits for an Action: a per-Action ToolResultShaper override when
 // implemented, otherwise the service default.
 func (r *ReasoningService) limitsFor(actionName string) ports.ToolResultLimits {
@@ -158,6 +177,12 @@ func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (
 	bannedActions := make(map[string]bool)
 	infraTerminal := false
 	totalActionCalls := 0
+
+	stallWindow := 0
+	if r.progressPolicy.Enabled {
+		stallWindow = r.progressPolicy.StallWindow
+	}
+	stall := newStallTracker(stallWindow)
 
 	result := &ReasoningResult{
 		Iterations:      []entities.IterationLog{},
@@ -266,6 +291,19 @@ func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (
 		)
 
 		result.WorkingContext = workingContext
+
+		if stall.observe(llmResp.ToolCalls) {
+			r.logger.Warnw("reasoning loop stalled, forcing final synthesis",
+				"memory_key", req.Event.MemoryKey,
+				"iteration", result.IterationsUsed,
+			)
+			result.FinalResponse = r.synthesizeFinal(ctx, provider, req, workingContext, result)
+			result.FinalError = fmt.Sprintf("reasoning stalled at iteration %d; forced final synthesis", result.IterationsUsed)
+			result.FinalSession = req.Session
+			appendIter(&iterLog, iterStart)
+			return result, nil
+		}
+
 		appendIter(&iterLog, iterStart)
 	}
 
@@ -273,9 +311,18 @@ func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (
 		"memory_key", req.Event.MemoryKey,
 		"iterations", result.IterationsUsed,
 	)
+	result.FinalSession = req.Session
+
+	// With stall detection enabled, exhausting the cap yields a forced synthesis instead of a
+	// canned message, so the user still gets a real answer built from the gathered context.
+	if r.progressPolicy.Enabled {
+		result.FinalResponse = r.synthesizeFinal(ctx, provider, req, workingContext, result)
+		result.FinalError = fmt.Sprintf("max iterations (%d) reached; forced final synthesis", r.maxIterations)
+		return result, nil
+	}
+
 	result.FinalResponse = r.maxIterationsMessage
 	result.FinalError = fmt.Sprintf("Max iterations (%d) reached without completion", r.maxIterations)
-	result.FinalSession = req.Session
 
 	return result, fmt.Errorf("max reasoning iterations (%d) reached without completion", r.maxIterations)
 }

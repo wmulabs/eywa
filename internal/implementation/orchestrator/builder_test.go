@@ -114,6 +114,17 @@ func TestWeaveBuilder_WithToolResultLimits(t *testing.T) {
 	}
 }
 
+func TestWeaveBuilder_WithProgressPolicy(t *testing.T) {
+	b := NewWeaveBuilder(context.Background())
+	got := b.WithProgressPolicy(ProgressPolicy{Enabled: true, StallWindow: 3})
+	if got != b {
+		t.Error("expected fluent builder")
+	}
+	if !b.config.ProgressPolicy.Enabled || b.config.ProgressPolicy.StallWindow != 3 {
+		t.Errorf("expected ProgressPolicy{Enabled:true, StallWindow:3}, got %+v", b.config.ProgressPolicy)
+	}
+}
+
 func TestWeaveBuilder_WithRateLimiter(t *testing.T) {
 	b := NewWeaveBuilder(context.Background())
 	rl := &stubRateLimiter{}

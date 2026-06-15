@@ -61,6 +61,10 @@ type WeaveConfig struct {
 	// A zero MaxChars (the default) disables shaping — no behavior change for existing agents.
 	ToolResultLimits ports.ToolResultLimits `json:"tool_result_limits"`
 
+	// ProgressPolicy detects a stalled reasoning loop (the model repeating Action calls it already
+	// made) and forces a final synthesis instead of spinning to the iteration cap. Disabled by default.
+	ProgressPolicy ProgressPolicy `json:"progress_policy"`
+
 	// InboxMinWindow is the minimum time elapsed from pipeline start before draining.
 	// Pipeline steps count toward the window; actual added wait = max(0, InboxMinWindow - elapsed).
 	// 0 disables the wait (coalescing still occurs for messages already in the inbox).

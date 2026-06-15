@@ -179,6 +179,14 @@ func (b *WeaveBuilder) WithToolResultLimits(limits ports.ToolResultLimits) *Weav
 	return b
 }
 
+// WithProgressPolicy enables reasoning-loop stall detection: when the model keeps repeating Action
+// calls it already made, the loop forces a final synthesis instead of spinning to the iteration cap.
+// Disabled by default.
+func (b *WeaveBuilder) WithProgressPolicy(policy ProgressPolicy) *WeaveBuilder {
+	b.config.ProgressPolicy = policy
+	return b
+}
+
 // WithMessageInbox enables message coalescing by providing a MessageInbox implementation.
 // When configured, messages arriving while a session is locked are buffered in the inbox
 // and merged into a single user turn at the start of the next processing cycle.

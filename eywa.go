@@ -53,6 +53,10 @@ type (
 	// Set on WeaveBuilder.WithInputGuard.
 	GuardConfig = orchestrator.GuardConfig
 
+	// ProgressPolicy configures reasoning-loop stall detection.
+	// Set on WeaveBuilder.WithProgressPolicy.
+	ProgressPolicy = orchestrator.ProgressPolicy
+
 	// AppInfo carries service identity metadata logged with every Chronicle entry.
 	AppInfo = orchestrator.AppInfo
 
