@@ -158,6 +158,17 @@ func TestWeaveBuilder_WithGroundingPolicy(t *testing.T) {
 	}
 }
 
+func TestWeaveBuilder_WithHandoffPolicy(t *testing.T) {
+	b := NewWeaveBuilder(context.Background())
+	got := b.WithHandoffPolicy(HandoffPolicy{Enabled: true, Mode: HandoffRaiseVigil, MinConfidence: ConfidenceMedium})
+	if got != b {
+		t.Error("expected fluent builder")
+	}
+	if !b.config.HandoffPolicy.Enabled || b.config.HandoffPolicy.Mode != HandoffRaiseVigil {
+		t.Errorf("expected HandoffPolicy set, got %+v", b.config.HandoffPolicy)
+	}
+}
+
 func TestWeaveBuilder_WithPlanPolicy(t *testing.T) {
 	b := NewWeaveBuilder(context.Background())
 	got := b.WithPlanPolicy(PlanPolicy{Enabled: true, MaxItems: 8})

@@ -79,6 +79,16 @@ type (
 	// PlanStatus is the lifecycle state of a PlanItem.
 	PlanStatus = entities.PlanStatus
 
+	// HandoffPolicy configures confidence-gated human takeover.
+	// Set on WeaveBuilder.WithHandoffPolicy.
+	HandoffPolicy = orchestrator.HandoffPolicy
+
+	// HandoffMode selects the action taken on a low-confidence turn.
+	HandoffMode = orchestrator.HandoffMode
+
+	// Confidence is a turn's coarse, rule-based confidence band.
+	Confidence = orchestrator.Confidence
+
 	// AppInfo carries service identity metadata logged with every Chronicle entry.
 	AppInfo = orchestrator.AppInfo
 
@@ -141,6 +151,19 @@ const (
 	PlanInProgress = entities.PlanInProgress
 	PlanDone       = entities.PlanDone
 	PlanAbandoned  = entities.PlanAbandoned
+)
+
+// Handoff mode constants for HandoffPolicy.Mode.
+const (
+	HandoffRaiseVigil   = orchestrator.HandoffRaiseVigil
+	HandoffAnnotateOnly = orchestrator.HandoffAnnotateOnly
+)
+
+// Confidence band constants for HandoffPolicy.MinConfidence.
+const (
+	ConfidenceLow    = orchestrator.ConfidenceLow
+	ConfidenceMedium = orchestrator.ConfidenceMedium
+	ConfidenceHigh   = orchestrator.ConfidenceHigh
 )
 
 var (

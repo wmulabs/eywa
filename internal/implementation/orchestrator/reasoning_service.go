@@ -56,6 +56,12 @@ type ReasoningResult struct {
 
 	// Plan is the final state of the agent's plan/scratchpad, when the plan policy is enabled.
 	Plan []entities.PlanItem
+
+	// Confidence is the turn's rule-based confidence band, set when the handoff policy is enabled.
+	Confidence Confidence
+
+	// HandoffRaised is true when a low-confidence turn raised a human takeover instead of delivering.
+	HandoffRaised bool
 }
 
 func (r *ReasoningResult) accumulateTokens(usage ports.OracleUsage) {
@@ -111,6 +117,8 @@ type ReasoningService struct {
 	reflectionPolicy     ReflectionPolicy       // disabled by default
 	groundingPolicy      GroundingPolicy        // disabled by default
 	planPolicy           PlanPolicy             // disabled by default
+	handoffPolicy        HandoffPolicy          // disabled by default
+	handoffSink          HandoffSink            // optional; required for RaiseVigil mode
 	logger               *zap.SugaredLogger
 	tracer               trace.Tracer
 }
@@ -174,6 +182,16 @@ func (r *ReasoningService) SetGroundingPolicy(policy GroundingPolicy) {
 // SetPlanPolicy enables the turn-scoped plan/scratchpad maintained via update_plan. Disabled by default.
 func (r *ReasoningService) SetPlanPolicy(policy PlanPolicy) {
 	r.planPolicy = policy
+}
+
+// SetHandoffPolicy enables confidence-gated human takeover. Disabled by default.
+func (r *ReasoningService) SetHandoffPolicy(policy HandoffPolicy) {
+	r.handoffPolicy = policy
+}
+
+// SetHandoffSink wires the sink used to raise a takeover (RaiseVigil mode). Optional.
+func (r *ReasoningService) SetHandoffSink(sink HandoffSink) {
+	r.handoffSink = sink
 }
 
 // synthesizeFinal makes one tools-stripped LLM call to produce a closing answer when the loop
@@ -248,6 +266,7 @@ func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (
 	reflectionRounds := 0
 	groundingRevised := false
 	planNudged := false
+	criticalErrorCount := 0
 
 	// When grounding is enabled and Lore was retrieved, instruct the model to cite sources.
 	// Ephemeral for the turn — req is turn-scoped.
@@ -393,6 +412,18 @@ func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (
 					}
 				}
 
+				if r.handoffPolicy.Enabled && !result.ResponseDelivered {
+					if holding, raised := r.maybeHandoff(ctx, req, result, llmResp.Content, criticalErrorCount, reflectionRounds); raised {
+						result.FinalResponse = holding
+						result.FinalSession = req.Session
+						if plan != nil {
+							result.Plan = plan.items
+						}
+						appendIter(&iterLog, iterStart)
+						return result, nil
+					}
+				}
+
 				result.FinalResponse = llmResp.Content
 				result.FinalSession = req.Session
 				if plan != nil {
@@ -430,6 +461,9 @@ func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (
 			}
 		}
 		iterLog.BannedActions = newBannedActions
+		if len(newBannedActions) > 0 || isInfraTerminal {
+			criticalErrorCount++
+		}
 		if isInfraTerminal {
 			infraTerminal = true
 		}
