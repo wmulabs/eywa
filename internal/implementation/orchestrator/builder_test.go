@@ -158,6 +158,17 @@ func TestWeaveBuilder_WithGroundingPolicy(t *testing.T) {
 	}
 }
 
+func TestWeaveBuilder_WithPlanPolicy(t *testing.T) {
+	b := NewWeaveBuilder(context.Background())
+	got := b.WithPlanPolicy(PlanPolicy{Enabled: true, MaxItems: 8})
+	if got != b {
+		t.Error("expected fluent builder")
+	}
+	if !b.config.PlanPolicy.Enabled || b.config.PlanPolicy.MaxItems != 8 {
+		t.Errorf("expected PlanPolicy set, got %+v", b.config.PlanPolicy)
+	}
+}
+
 func TestWeaveBuilder_WithRateLimiter(t *testing.T) {
 	b := NewWeaveBuilder(context.Background())
 	rl := &stubRateLimiter{}

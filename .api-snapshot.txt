@@ -81,6 +81,14 @@ const (
     Grounding violation action constants for GroundingPolicy.OnViolation.
 
 const (
+	PlanPending    = entities.PlanPending
+	PlanInProgress = entities.PlanInProgress
+	PlanDone       = entities.PlanDone
+	PlanAbandoned  = entities.PlanAbandoned
+)
+    Plan item status constants for PlanItem.Status.
+
+const (
 	RoleUser      = ports.RoleUser
 	RoleAssistant = ports.RoleAssistant
 	RoleSystem    = ports.RoleSystem
@@ -779,6 +787,16 @@ type Pathfinder = ports.Pathfinder
 type PathfinderRegistry = ports.PathfinderRegistry
     PathfinderRegistry holds the set of Pathfinders available to the Weave
     engine.
+
+type PlanItem = entities.PlanItem
+    PlanItem is one entry in the agent's plan/scratchpad.
+
+type PlanPolicy = orchestrator.PlanPolicy
+    PlanPolicy configures the turn-scoped plan/scratchpad maintained via
+    update_plan. Set on WeaveBuilder.WithPlanPolicy.
+
+type PlanStatus = entities.PlanStatus
+    PlanStatus is the lifecycle state of a PlanItem.
 
 type ProgressPolicy = orchestrator.ProgressPolicy
     ProgressPolicy configures reasoning-loop stall detection. Set on
