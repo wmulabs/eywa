@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0](https://github.com/wmulabs/eywa/compare/v1.0.1...v1.1.0) (2026-06-15)
+
+
+### Features
+
+* **orchestrator:** bound Action result size in the reasoning context ([#66](https://github.com/wmulabs/eywa/issues/66)) ([c5545c5](https://github.com/wmulabs/eywa/commit/c5545c531674b7267f93f85f285da55d31593ae5))
+
 ## [1.0.1](https://github.com/wmulabs/eywa/compare/v1.0.0...v1.0.1) (2026-06-14)
 
 
