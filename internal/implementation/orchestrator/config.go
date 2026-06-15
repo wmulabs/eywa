@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/wmulabs/eywa/internal/domain/ports"
 )
 
 // GuardConfig controls input validation checks applied before each Pulse enters the pipeline.
@@ -54,6 +56,24 @@ type WeaveConfig struct {
 	// Prevents runaway Spirits from burning tokens in infinite Action loops. 0 disables the limit.
 	MaxActionsPerCycle int         `json:"max_actions_per_cycle"`
 	InputGuard         GuardConfig `json:"input_guard"`
+
+	// ToolResultLimits bounds how much a single Action result contributes to the reasoning context.
+	// A zero MaxChars (the default) disables shaping — no behavior change for existing agents.
+	ToolResultLimits ports.ToolResultLimits `json:"tool_result_limits"`
+
+	// ProgressPolicy detects a stalled reasoning loop (the model repeating Action calls it already
+	// made) and forces a final synthesis instead of spinning to the iteration cap. Disabled by default.
+	ProgressPolicy ProgressPolicy `json:"progress_policy"`
+
+	// CompressionPolicy bounds the reasoning working-context size by summarizing the oldest
+	// completed iterations into an evidence ledger. Disabled by default.
+	CompressionPolicy CompressionPolicy `json:"compression_policy"`
+
+	// ReflectionPolicy enables a self-critique pass before a draft answer is delivered. Disabled by default.
+	ReflectionPolicy ReflectionPolicy `json:"reflection_policy"`
+
+	// GroundingPolicy enforces source citation for RAG answers when Lore was retrieved. Disabled by default.
+	GroundingPolicy GroundingPolicy `json:"grounding_policy"`
 
 	// InboxMinWindow is the minimum time elapsed from pipeline start before draining.
 	// Pipeline steps count toward the window; actual added wait = max(0, InboxMinWindow - elapsed).

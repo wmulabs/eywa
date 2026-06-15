@@ -53,6 +53,22 @@ type (
 	// Set on WeaveBuilder.WithInputGuard.
 	GuardConfig = orchestrator.GuardConfig
 
+	// ProgressPolicy configures reasoning-loop stall detection.
+	// Set on WeaveBuilder.WithProgressPolicy.
+	ProgressPolicy = orchestrator.ProgressPolicy
+
+	// CompressionPolicy configures in-loop working-context compression.
+	// Set on WeaveBuilder.WithCompressionPolicy.
+	CompressionPolicy = orchestrator.CompressionPolicy
+
+	// ReflectionPolicy configures the pre-delivery self-critique pass.
+	// Set on WeaveBuilder.WithReflectionPolicy.
+	ReflectionPolicy = orchestrator.ReflectionPolicy
+
+	// GroundingPolicy configures source-citation enforcement for RAG answers.
+	// Set on WeaveBuilder.WithGroundingPolicy.
+	GroundingPolicy = orchestrator.GroundingPolicy
+
 	// AppInfo carries service identity metadata logged with every Chronicle entry.
 	AppInfo = orchestrator.AppInfo
 
@@ -97,6 +113,16 @@ type (
 	// TrialRunner executes eval suites against a live Weave, scoring responses with
 	// deterministic and LLM-as-judge Scorers.
 	TrialRunner = trial.TrialRunner
+
+	// GroundingViolationAction selects what GroundingPolicy does when a RAG answer fails to cite sources.
+	GroundingViolationAction = orchestrator.GroundingViolationAction
+)
+
+// Grounding violation action constants for GroundingPolicy.OnViolation.
+const (
+	GroundingReviseOnce = orchestrator.GroundingReviseOnce
+	GroundingAnnotate   = orchestrator.GroundingAnnotate
+	GroundingBlock      = orchestrator.GroundingBlock
 )
 
 var (

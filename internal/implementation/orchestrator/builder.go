@@ -171,6 +171,46 @@ func (b *WeaveBuilder) WithInputGuard(cfg GuardConfig) *WeaveBuilder {
 	return b
 }
 
+// WithToolResultLimits bounds how much a single Action result contributes to the reasoning context.
+// Large results are shaped (truncated, or summarized via the Oracle) before re-entering the model's
+// window; the full result is always kept in the audit log. A zero MaxChars disables shaping.
+func (b *WeaveBuilder) WithToolResultLimits(limits ports.ToolResultLimits) *WeaveBuilder {
+	b.config.ToolResultLimits = limits
+	return b
+}
+
+// WithProgressPolicy enables reasoning-loop stall detection: when the model keeps repeating Action
+// calls it already made, the loop forces a final synthesis instead of spinning to the iteration cap.
+// Disabled by default.
+func (b *WeaveBuilder) WithProgressPolicy(policy ProgressPolicy) *WeaveBuilder {
+	b.config.ProgressPolicy = policy
+	return b
+}
+
+// WithCompressionPolicy bounds the reasoning working-context size: when it exceeds MaxContextChars,
+// the oldest completed iterations are summarized into an evidence ledger while recent iterations stay
+// verbatim. Disabled by default.
+func (b *WeaveBuilder) WithCompressionPolicy(policy CompressionPolicy) *WeaveBuilder {
+	b.config.CompressionPolicy = policy
+	return b
+}
+
+// WithReflectionPolicy enables a self-critique pass: before delivering a draft answer the model
+// reviews its own output and, on a "revise" verdict, gets one more iteration to fix it (bounded by
+// MaxRounds). Reflection always fails open. Disabled by default.
+func (b *WeaveBuilder) WithReflectionPolicy(policy ReflectionPolicy) *WeaveBuilder {
+	b.config.ReflectionPolicy = policy
+	return b
+}
+
+// WithGroundingPolicy enforces source citation for RAG Spirits: when Lore is retrieved for a turn,
+// the answer must cite the retrieved chunks ([chunk:<id>]). On a violation the policy revises once,
+// annotates, or blocks. Disabled by default.
+func (b *WeaveBuilder) WithGroundingPolicy(policy GroundingPolicy) *WeaveBuilder {
+	b.config.GroundingPolicy = policy
+	return b
+}
+
 // WithMessageInbox enables message coalescing by providing a MessageInbox implementation.
 // When configured, messages arriving while a session is locked are buffered in the inbox
 // and merged into a single user turn at the start of the next processing cycle.

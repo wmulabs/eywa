@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0](https://github.com/wmulabs/eywa/compare/v1.4.0...v1.5.0) (2026-06-15)
+
+
+### Features
+
+* **orchestrator:** enforce source citations for RAG answers (grounding) ([#70](https://github.com/wmulabs/eywa/issues/70)) ([ed9c7e7](https://github.com/wmulabs/eywa/commit/ed9c7e7f09b28e5e2ee2ea536272871ad90c1660))
+
+## [1.4.0](https://github.com/wmulabs/eywa/compare/v1.3.0...v1.4.0) (2026-06-15)
+
+
+### Features
+
+* **orchestrator:** add gated self-critique (reflection) before delivery ([#69](https://github.com/wmulabs/eywa/issues/69)) ([eb0dcf5](https://github.com/wmulabs/eywa/commit/eb0dcf52fa56a8bca5be0c40283eb6e650ea5ff1))
+
+## [1.3.0](https://github.com/wmulabs/eywa/compare/v1.2.0...v1.3.0) (2026-06-15)
+
+
+### Features
+
+* **orchestrator:** compress the reasoning working context in long loops ([#68](https://github.com/wmulabs/eywa/issues/68)) ([f6c760a](https://github.com/wmulabs/eywa/commit/f6c760a06a7d3861a8067f330cc2e491846cc2d2))
+
+## [1.2.0](https://github.com/wmulabs/eywa/compare/v1.1.0...v1.2.0) (2026-06-15)
+
+
+### Features
+
+* **orchestrator:** detect reasoning stalls and force a final synthesis ([#67](https://github.com/wmulabs/eywa/issues/67)) ([1cfbb5a](https://github.com/wmulabs/eywa/commit/1cfbb5a7d69047c4ffbdb4ae301abbd83a332937))
+
+## [1.1.0](https://github.com/wmulabs/eywa/compare/v1.0.1...v1.1.0) (2026-06-15)
+
+
+### Features
+
+* **orchestrator:** bound Action result size in the reasoning context ([#66](https://github.com/wmulabs/eywa/issues/66)) ([c5545c5](https://github.com/wmulabs/eywa/commit/c5545c531674b7267f93f85f285da55d31593ae5))
+
 ## [1.0.1](https://github.com/wmulabs/eywa/compare/v1.0.0...v1.0.1) (2026-06-14)
 
 

@@ -48,6 +48,17 @@ type (
 	// Create with NewActionRegistry; pass via WeaveBuilder.WithActionRegistry.
 	ActionRegistry = ports.ActionRegistry
 
+	// ToolResultLimits bounds how much a single Action result contributes to the reasoning
+	// context. Pass via WeaveBuilder.WithToolResultLimits.
+	ToolResultLimits = ports.ToolResultLimits
+
+	// ToolShapeStrategy selects how an oversized Action result is reduced (truncate or summarize).
+	ToolShapeStrategy = ports.ToolShapeStrategy
+
+	// ToolResultShaper is an optional interface an Action may implement to override the global
+	// ToolResultLimits for its own results.
+	ToolResultShaper = ports.ToolResultShaper
+
 	// Scout is the context-enrichment port. Implement it to inject knowledge into
 	// a Pulse before Spirit selection. Register via ScoutRegistry.Register.
 	Scout = ports.Scout
@@ -281,6 +292,12 @@ const (
 	ActionRetrieval    = ports.ActionRetrieval
 	ActionModification = ports.ActionModification
 	ActionGeneral      = ports.ActionGeneral
+)
+
+// Tool-result shaping strategy constants for ToolResultLimits.Strategy.
+const (
+	ToolShapeTruncate  = ports.ToolShapeTruncate
+	ToolShapeSummarize = ports.ToolShapeSummarize
 )
 
 // Operator role constants for AuthClaims.Role.

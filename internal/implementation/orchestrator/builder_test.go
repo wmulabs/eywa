@@ -102,6 +102,62 @@ func TestWeaveBuilder_WithIdempotencyStore(t *testing.T) {
 	}
 }
 
+func TestWeaveBuilder_WithToolResultLimits(t *testing.T) {
+	b := NewWeaveBuilder(context.Background())
+	limits := ports.ToolResultLimits{MaxChars: 8000, Strategy: ports.ToolShapeTruncate}
+	got := b.WithToolResultLimits(limits)
+	if got != b {
+		t.Error("expected fluent builder")
+	}
+	if b.config.ToolResultLimits.MaxChars != 8000 {
+		t.Errorf("expected config ToolResultLimits.MaxChars 8000, got %d", b.config.ToolResultLimits.MaxChars)
+	}
+}
+
+func TestWeaveBuilder_WithProgressPolicy(t *testing.T) {
+	b := NewWeaveBuilder(context.Background())
+	got := b.WithProgressPolicy(ProgressPolicy{Enabled: true, StallWindow: 3})
+	if got != b {
+		t.Error("expected fluent builder")
+	}
+	if !b.config.ProgressPolicy.Enabled || b.config.ProgressPolicy.StallWindow != 3 {
+		t.Errorf("expected ProgressPolicy{Enabled:true, StallWindow:3}, got %+v", b.config.ProgressPolicy)
+	}
+}
+
+func TestWeaveBuilder_WithCompressionPolicy(t *testing.T) {
+	b := NewWeaveBuilder(context.Background())
+	got := b.WithCompressionPolicy(CompressionPolicy{Enabled: true, MaxContextChars: 40000, KeepRecent: 2})
+	if got != b {
+		t.Error("expected fluent builder")
+	}
+	if !b.config.CompressionPolicy.Enabled || b.config.CompressionPolicy.MaxContextChars != 40000 {
+		t.Errorf("expected CompressionPolicy set, got %+v", b.config.CompressionPolicy)
+	}
+}
+
+func TestWeaveBuilder_WithReflectionPolicy(t *testing.T) {
+	b := NewWeaveBuilder(context.Background())
+	got := b.WithReflectionPolicy(ReflectionPolicy{Enabled: true, MaxRounds: 2})
+	if got != b {
+		t.Error("expected fluent builder")
+	}
+	if !b.config.ReflectionPolicy.Enabled || b.config.ReflectionPolicy.MaxRounds != 2 {
+		t.Errorf("expected ReflectionPolicy set, got %+v", b.config.ReflectionPolicy)
+	}
+}
+
+func TestWeaveBuilder_WithGroundingPolicy(t *testing.T) {
+	b := NewWeaveBuilder(context.Background())
+	got := b.WithGroundingPolicy(GroundingPolicy{Enabled: true, MinCitations: 1, OnViolation: GroundingReviseOnce})
+	if got != b {
+		t.Error("expected fluent builder")
+	}
+	if !b.config.GroundingPolicy.Enabled || b.config.GroundingPolicy.MinCitations != 1 {
+		t.Errorf("expected GroundingPolicy set, got %+v", b.config.GroundingPolicy)
+	}
+}
+
 func TestWeaveBuilder_WithRateLimiter(t *testing.T) {
 	b := NewWeaveBuilder(context.Background())
 	rl := &stubRateLimiter{}

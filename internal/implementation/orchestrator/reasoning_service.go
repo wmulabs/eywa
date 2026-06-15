@@ -46,6 +46,9 @@ type ReasoningResult struct {
 	// ResponseDelivered is true when a VoiceDelivery-category Action succeeded.
 	// When set, the interaction is complete and Pub/Sub must ACK even if a later pipeline step fails.
 	ResponseDelivered bool
+
+	// Citations holds the validated Lore chunk IDs the final answer referenced, when grounding is enabled.
+	Citations []string
 }
 
 func (r *ReasoningResult) accumulateTokens(usage ports.OracleUsage) {
@@ -81,7 +84,12 @@ type ReasoningService struct {
 	summonService        *SummonService // optional; enables summon_spirit for orchestrators
 	maxIterations        int
 	maxIterationsMessage string
-	maxActionsPerCycle   int // 0 = unlimited
+	maxActionsPerCycle   int                    // 0 = unlimited
+	toolResultLimits     ports.ToolResultLimits // zero MaxChars = shaping disabled
+	progressPolicy       ProgressPolicy         // disabled by default
+	compressionPolicy    CompressionPolicy      // disabled by default
+	reflectionPolicy     ReflectionPolicy       // disabled by default
+	groundingPolicy      GroundingPolicy        // disabled by default
 	logger               *zap.SugaredLogger
 	tracer               trace.Tracer
 }
@@ -116,6 +124,56 @@ func (r *ReasoningService) SetSummonService(s *SummonService) {
 	r.summonService = s
 }
 
+// SetToolResultLimits configures the default bound applied to each Action result before it enters
+// the reasoning context. A zero MaxChars (the default) disables shaping.
+func (r *ReasoningService) SetToolResultLimits(limits ports.ToolResultLimits) {
+	r.toolResultLimits = limits
+}
+
+// SetProgressPolicy enables stall detection and forced final synthesis. Disabled by default.
+func (r *ReasoningService) SetProgressPolicy(policy ProgressPolicy) {
+	r.progressPolicy = policy
+}
+
+// SetCompressionPolicy enables in-loop working-context compression. Disabled by default.
+func (r *ReasoningService) SetCompressionPolicy(policy CompressionPolicy) {
+	r.compressionPolicy = policy
+}
+
+// SetReflectionPolicy enables a self-critique pass before delivering a draft answer. Disabled by default.
+func (r *ReasoningService) SetReflectionPolicy(policy ReflectionPolicy) {
+	r.reflectionPolicy = policy
+}
+
+// SetGroundingPolicy enables source-citation enforcement for RAG answers. Disabled by default.
+func (r *ReasoningService) SetGroundingPolicy(policy GroundingPolicy) {
+	r.groundingPolicy = policy
+}
+
+// synthesizeFinal makes one tools-stripped LLM call to produce a closing answer when the loop
+// stalls or hits the iteration cap. Tokens are accounted into result; on error it falls back to
+// the configured max-iterations message.
+func (r *ReasoningService) synthesizeFinal(ctx context.Context, provider ports.Oracle, req *ReasoningRequest, workingContext []ports.OracleMessage, result *ReasoningResult) string {
+	resp, err := r.callLLM(ctx, provider, req, workingContext, nil, stallSynthesisInstruction)
+	if err != nil {
+		r.logger.Warnw("forced synthesis call failed, using fallback message", "error", err)
+		return r.maxIterationsMessage
+	}
+	result.accumulateTokens(resp.TokensUsed)
+	return resp.Content
+}
+
+// limitsFor resolves the result limits for an Action: a per-Action ToolResultShaper override when
+// implemented, otherwise the service default.
+func (r *ReasoningService) limitsFor(actionName string) ports.ToolResultLimits {
+	if action, err := r.actionExecutor.GetAction(actionName); err == nil {
+		if shaper, ok := action.(ports.ToolResultShaper); ok {
+			return shaper.ResultLimit()
+		}
+	}
+	return r.toolResultLimits
+}
+
 func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (*ReasoningResult, error) {
 	ctx, span := r.tracer.Start(ctx, "ReasoningService/Execute")
 	defer span.End()
@@ -140,6 +198,26 @@ func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (
 	bannedActions := make(map[string]bool)
 	infraTerminal := false
 	totalActionCalls := 0
+
+	// Iteration boundaries (working-context length after each iteration) drive context compression
+	// at safe points; topicSwitchedThisTurn disables compression for the turn to avoid carrying an
+	// old-topic ledger across a topic change.
+	iterBoundaries := []int{}
+	topicSwitchedThisTurn := false
+	reflectionRounds := 0
+	groundingRevised := false
+
+	// When grounding is enabled and Lore was retrieved, instruct the model to cite sources.
+	// Ephemeral for the turn — req is turn-scoped.
+	if r.groundingPolicy.Enabled && retrievedLoreContext(req) != "" {
+		req.SystemPrompt += groundingAddendum
+	}
+
+	stallWindow := 0
+	if r.progressPolicy.Enabled {
+		stallWindow = r.progressPolicy.StallWindow
+	}
+	stall := newStallTracker(stallWindow)
 
 	result := &ReasoningResult{
 		Iterations:      []entities.IterationLog{},
@@ -198,6 +276,38 @@ func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (
 
 		if len(llmResp.ToolCalls) == 0 {
 			if r.isTerminalResponse(llmResp) {
+				if r.reflectionPolicy.Enabled && reflectionRounds < r.reflectionPolicy.MaxRounds && !result.ResponseDelivered {
+					pass, issues, usage := r.reflect(ctx, provider, req, workingContext)
+					result.accumulateTokens(usage)
+					if !pass {
+						reflectionRounds++
+						iterLog.ReflectionIssues = issues
+						workingContext = append(workingContext, reflectionRevisionMessage(issues))
+						result.WorkingContext = workingContext
+						r.logger.Infow("reflection requested a revision",
+							"issues", issues,
+							"round", reflectionRounds,
+						)
+						appendIter(&iterLog, iterStart)
+						continue
+					}
+				}
+				if r.groundingPolicy.Enabled && !result.ResponseDelivered {
+					revise, blocked := r.enforceGrounding(req, llmResp.Content, result)
+					if revise && !groundingRevised {
+						groundingRevised = true
+						workingContext = append(workingContext, citationRevisionMessage())
+						result.WorkingContext = workingContext
+						appendIter(&iterLog, iterStart)
+						continue
+					}
+					if blocked {
+						result.FinalSession = req.Session
+						appendIter(&iterLog, iterStart)
+						return result, nil
+					}
+				}
+
 				result.FinalResponse = llmResp.Content
 				result.FinalSession = req.Session
 				appendIter(&iterLog, iterStart)
@@ -224,7 +334,7 @@ func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (
 			return result, ErrToolBudgetExceeded(r.maxActionsPerCycle)
 		}
 
-		newBannedActions, isInfraTerminal, err := r.processActionCalls(ctx, req, result, llmResp.ToolCalls, &iterLog, &workingContext, enforceVoiceDelivery)
+		newBannedActions, isInfraTerminal, err := r.processActionCalls(ctx, provider, req, result, llmResp.ToolCalls, &iterLog, &workingContext, enforceVoiceDelivery)
 		for _, name := range newBannedActions {
 			if !bannedActions[name] {
 				bannedActions[name] = true
@@ -243,11 +353,34 @@ func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (
 			return result, err
 		}
 
+		prevTopic := activeTopic
 		workingContext, activeTopic, conversationOffset = r.handleTopicSwitch(
 			ctx, req, workingContext, conversationOffset, activeTopic,
 		)
+		if activeTopic != prevTopic {
+			topicSwitchedThisTurn = true
+		}
 
 		result.WorkingContext = workingContext
+
+		if stall.observe(llmResp.ToolCalls) {
+			r.logger.Warnw("reasoning loop stalled, forcing final synthesis",
+				"memory_key", req.Event.MemoryKey,
+				"iteration", result.IterationsUsed,
+			)
+			result.FinalResponse = r.synthesizeFinal(ctx, provider, req, workingContext, result)
+			result.FinalError = fmt.Sprintf("reasoning stalled at iteration %d; forced final synthesis", result.IterationsUsed)
+			result.FinalSession = req.Session
+			appendIter(&iterLog, iterStart)
+			return result, nil
+		}
+
+		if r.compressionPolicy.Enabled && !topicSwitchedThisTurn {
+			iterBoundaries = append(iterBoundaries, len(workingContext))
+			workingContext, iterBoundaries = r.maybeCompress(ctx, provider, req, workingContext, conversationOffset, iterBoundaries, result)
+			result.WorkingContext = workingContext
+		}
+
 		appendIter(&iterLog, iterStart)
 	}
 
@@ -255,9 +388,18 @@ func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (
 		"memory_key", req.Event.MemoryKey,
 		"iterations", result.IterationsUsed,
 	)
+	result.FinalSession = req.Session
+
+	// With stall detection enabled, exhausting the cap yields a forced synthesis instead of a
+	// canned message, so the user still gets a real answer built from the gathered context.
+	if r.progressPolicy.Enabled {
+		result.FinalResponse = r.synthesizeFinal(ctx, provider, req, workingContext, result)
+		result.FinalError = fmt.Sprintf("max iterations (%d) reached; forced final synthesis", r.maxIterations)
+		return result, nil
+	}
+
 	result.FinalResponse = r.maxIterationsMessage
 	result.FinalError = fmt.Sprintf("Max iterations (%d) reached without completion", r.maxIterations)
-	result.FinalSession = req.Session
 
 	return result, fmt.Errorf("max reasoning iterations (%d) reached without completion", r.maxIterations)
 }
@@ -383,6 +525,7 @@ func (r *ReasoningService) callLLM(
 //   - err: non-nil only on hard stop (critical infra error, EnforceVoiceDelivery = false)
 func (r *ReasoningService) processActionCalls(
 	ctx context.Context,
+	provider ports.Oracle,
 	req *ReasoningRequest,
 	result *ReasoningResult,
 	actionCalls []ports.OracleToolCall,
@@ -401,7 +544,7 @@ func (r *ReasoningService) processActionCalls(
 		actionResult := results[i]
 
 		if actionResult.Error == nil {
-			r.handleActionSuccess(call, actionResult, result, workingContext)
+			r.handleActionSuccess(ctx, provider, req, call, actionResult, result, workingContext)
 		} else {
 			iterLog.Errors = append(iterLog.Errors, fmt.Sprintf("%s: %v", call.Name, actionResult.Error))
 			isBanned, isInfraTerminal, handleErr := r.handleActionError(call, actionResult, workingContext, enforceVoiceDelivery)
@@ -509,14 +652,19 @@ func (r *ReasoningService) executeSummonCall(ctx context.Context, call ports.Ora
 }
 
 func (r *ReasoningService) handleActionSuccess(
+	ctx context.Context,
+	provider ports.Oracle,
+	req *ReasoningRequest,
 	call ports.OracleToolCall,
 	actionResult ActionResult,
 	result *ReasoningResult,
 	workingContext *[]ports.OracleMessage,
 ) {
+	// The full result is preserved in the audit log (buildActionCallLog); only the message that
+	// re-enters the reasoning context is shaped, to protect the model's window on large results.
 	*workingContext = append(*workingContext, ports.OracleMessage{
 		Role:       ports.RoleTool,
-		Content:    actionResult.Result,
+		Content:    r.shapeResultForContext(ctx, provider, req, call.Name, actionResult.Result, result),
 		ToolCallID: call.ID,
 		ToolName:   call.Name,
 	})
