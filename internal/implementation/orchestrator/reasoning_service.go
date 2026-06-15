@@ -81,7 +81,8 @@ type ReasoningService struct {
 	summonService        *SummonService // optional; enables summon_spirit for orchestrators
 	maxIterations        int
 	maxIterationsMessage string
-	maxActionsPerCycle   int // 0 = unlimited
+	maxActionsPerCycle   int                    // 0 = unlimited
+	toolResultLimits     ports.ToolResultLimits // zero MaxChars = shaping disabled
 	logger               *zap.SugaredLogger
 	tracer               trace.Tracer
 }
@@ -114,6 +115,23 @@ func NewReasoningService(
 
 func (r *ReasoningService) SetSummonService(s *SummonService) {
 	r.summonService = s
+}
+
+// SetToolResultLimits configures the default bound applied to each Action result before it enters
+// the reasoning context. A zero MaxChars (the default) disables shaping.
+func (r *ReasoningService) SetToolResultLimits(limits ports.ToolResultLimits) {
+	r.toolResultLimits = limits
+}
+
+// limitsFor resolves the result limits for an Action: a per-Action ToolResultShaper override when
+// implemented, otherwise the service default.
+func (r *ReasoningService) limitsFor(actionName string) ports.ToolResultLimits {
+	if action, err := r.actionExecutor.GetAction(actionName); err == nil {
+		if shaper, ok := action.(ports.ToolResultShaper); ok {
+			return shaper.ResultLimit()
+		}
+	}
+	return r.toolResultLimits
 }
 
 func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (*ReasoningResult, error) {
@@ -224,7 +242,7 @@ func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (
 			return result, ErrToolBudgetExceeded(r.maxActionsPerCycle)
 		}
 
-		newBannedActions, isInfraTerminal, err := r.processActionCalls(ctx, req, result, llmResp.ToolCalls, &iterLog, &workingContext, enforceVoiceDelivery)
+		newBannedActions, isInfraTerminal, err := r.processActionCalls(ctx, provider, req, result, llmResp.ToolCalls, &iterLog, &workingContext, enforceVoiceDelivery)
 		for _, name := range newBannedActions {
 			if !bannedActions[name] {
 				bannedActions[name] = true
@@ -383,6 +401,7 @@ func (r *ReasoningService) callLLM(
 //   - err: non-nil only on hard stop (critical infra error, EnforceVoiceDelivery = false)
 func (r *ReasoningService) processActionCalls(
 	ctx context.Context,
+	provider ports.Oracle,
 	req *ReasoningRequest,
 	result *ReasoningResult,
 	actionCalls []ports.OracleToolCall,
@@ -401,7 +420,7 @@ func (r *ReasoningService) processActionCalls(
 		actionResult := results[i]
 
 		if actionResult.Error == nil {
-			r.handleActionSuccess(call, actionResult, result, workingContext)
+			r.handleActionSuccess(ctx, provider, req, call, actionResult, result, workingContext)
 		} else {
 			iterLog.Errors = append(iterLog.Errors, fmt.Sprintf("%s: %v", call.Name, actionResult.Error))
 			isBanned, isInfraTerminal, handleErr := r.handleActionError(call, actionResult, workingContext, enforceVoiceDelivery)
@@ -509,14 +528,19 @@ func (r *ReasoningService) executeSummonCall(ctx context.Context, call ports.Ora
 }
 
 func (r *ReasoningService) handleActionSuccess(
+	ctx context.Context,
+	provider ports.Oracle,
+	req *ReasoningRequest,
 	call ports.OracleToolCall,
 	actionResult ActionResult,
 	result *ReasoningResult,
 	workingContext *[]ports.OracleMessage,
 ) {
+	// The full result is preserved in the audit log (buildActionCallLog); only the message that
+	// re-enters the reasoning context is shaped, to protect the model's window on large results.
 	*workingContext = append(*workingContext, ports.OracleMessage{
 		Role:       ports.RoleTool,
-		Content:    actionResult.Result,
+		Content:    r.shapeResultForContext(ctx, provider, req, call.Name, actionResult.Result, result),
 		ToolCallID: call.ID,
 		ToolName:   call.Name,
 	})

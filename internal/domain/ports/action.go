@@ -49,6 +49,33 @@ type Action interface {
 	GetCategory() ActionCategory
 }
 
+// ToolShapeStrategy selects how an oversized Action result is reduced before it enters
+// the reasoning context.
+type ToolShapeStrategy string
+
+const (
+	// ToolShapeTruncate keeps the head and tail of the result and drops the middle.
+	ToolShapeTruncate ToolShapeStrategy = "truncate"
+	// ToolShapeSummarize asks the Oracle to summarize the result, falling back to truncation on error.
+	ToolShapeSummarize ToolShapeStrategy = "summarize"
+)
+
+// ToolResultLimits bounds how much a single Action result contributes to the reasoning context.
+// The full result is always preserved in the audit log; only the message sent back to the Oracle
+// is shaped. A zero MaxChars disables shaping (no behavior change).
+type ToolResultLimits struct {
+	MaxChars int
+	Strategy ToolShapeStrategy
+	KeepHead int
+	KeepTail int
+}
+
+// ToolResultShaper is an optional interface an Action may implement to override the global
+// ToolResultLimits for its own results.
+type ToolResultShaper interface {
+	ResultLimit() ToolResultLimits
+}
+
 type ActionRegistry interface {
 	Register(action Action) error
 	// RegisterMultiple returns an error on the first duplicate found.
