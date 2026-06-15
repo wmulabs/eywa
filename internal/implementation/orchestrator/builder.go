@@ -187,6 +187,14 @@ func (b *WeaveBuilder) WithProgressPolicy(policy ProgressPolicy) *WeaveBuilder {
 	return b
 }
 
+// WithCompressionPolicy bounds the reasoning working-context size: when it exceeds MaxContextChars,
+// the oldest completed iterations are summarized into an evidence ledger while recent iterations stay
+// verbatim. Disabled by default.
+func (b *WeaveBuilder) WithCompressionPolicy(policy CompressionPolicy) *WeaveBuilder {
+	b.config.CompressionPolicy = policy
+	return b
+}
+
 // WithMessageInbox enables message coalescing by providing a MessageInbox implementation.
 // When configured, messages arriving while a session is locked are buffered in the inbox
 // and merged into a single user turn at the start of the next processing cycle.

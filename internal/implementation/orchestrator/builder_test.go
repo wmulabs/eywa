@@ -125,6 +125,17 @@ func TestWeaveBuilder_WithProgressPolicy(t *testing.T) {
 	}
 }
 
+func TestWeaveBuilder_WithCompressionPolicy(t *testing.T) {
+	b := NewWeaveBuilder(context.Background())
+	got := b.WithCompressionPolicy(CompressionPolicy{Enabled: true, MaxContextChars: 40000, KeepRecent: 2})
+	if got != b {
+		t.Error("expected fluent builder")
+	}
+	if !b.config.CompressionPolicy.Enabled || b.config.CompressionPolicy.MaxContextChars != 40000 {
+		t.Errorf("expected CompressionPolicy set, got %+v", b.config.CompressionPolicy)
+	}
+}
+
 func TestWeaveBuilder_WithRateLimiter(t *testing.T) {
 	b := NewWeaveBuilder(context.Background())
 	rl := &stubRateLimiter{}

@@ -84,6 +84,7 @@ type ReasoningService struct {
 	maxActionsPerCycle   int                    // 0 = unlimited
 	toolResultLimits     ports.ToolResultLimits // zero MaxChars = shaping disabled
 	progressPolicy       ProgressPolicy         // disabled by default
+	compressionPolicy    CompressionPolicy      // disabled by default
 	logger               *zap.SugaredLogger
 	tracer               trace.Tracer
 }
@@ -127,6 +128,11 @@ func (r *ReasoningService) SetToolResultLimits(limits ports.ToolResultLimits) {
 // SetProgressPolicy enables stall detection and forced final synthesis. Disabled by default.
 func (r *ReasoningService) SetProgressPolicy(policy ProgressPolicy) {
 	r.progressPolicy = policy
+}
+
+// SetCompressionPolicy enables in-loop working-context compression. Disabled by default.
+func (r *ReasoningService) SetCompressionPolicy(policy CompressionPolicy) {
+	r.compressionPolicy = policy
 }
 
 // synthesizeFinal makes one tools-stripped LLM call to produce a closing answer when the loop
@@ -177,6 +183,12 @@ func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (
 	bannedActions := make(map[string]bool)
 	infraTerminal := false
 	totalActionCalls := 0
+
+	// Iteration boundaries (working-context length after each iteration) drive context compression
+	// at safe points; topicSwitchedThisTurn disables compression for the turn to avoid carrying an
+	// old-topic ledger across a topic change.
+	iterBoundaries := []int{}
+	topicSwitchedThisTurn := false
 
 	stallWindow := 0
 	if r.progressPolicy.Enabled {
@@ -286,9 +298,13 @@ func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (
 			return result, err
 		}
 
+		prevTopic := activeTopic
 		workingContext, activeTopic, conversationOffset = r.handleTopicSwitch(
 			ctx, req, workingContext, conversationOffset, activeTopic,
 		)
+		if activeTopic != prevTopic {
+			topicSwitchedThisTurn = true
+		}
 
 		result.WorkingContext = workingContext
 
@@ -302,6 +318,12 @@ func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (
 			result.FinalSession = req.Session
 			appendIter(&iterLog, iterStart)
 			return result, nil
+		}
+
+		if r.compressionPolicy.Enabled && !topicSwitchedThisTurn {
+			iterBoundaries = append(iterBoundaries, len(workingContext))
+			workingContext, iterBoundaries = r.maybeCompress(ctx, provider, req, workingContext, conversationOffset, iterBoundaries, result)
+			result.WorkingContext = workingContext
 		}
 
 		appendIter(&iterLog, iterStart)

@@ -500,6 +500,10 @@ type CompiledGuard = entities.CompiledGuard
     CompiledGuard is a pre-compiled Guard ready for fast evaluation in the
     pipeline.
 
+type CompressionPolicy = orchestrator.CompressionPolicy
+    CompressionPolicy configures in-loop working-context compression. Set on
+    WeaveBuilder.WithCompressionPolicy.
+
 type Conduit = ports.Conduit
     Conduit is the MCP client port. It connects to an external MCP server,
     discovers its tools, and makes them available as Actions in the Weave.

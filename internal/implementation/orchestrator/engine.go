@@ -139,6 +139,7 @@ func newWeaveWithConfig(
 	reasoningService := NewReasoningService(oracleFactory, actionExecutor, memoryManager, config.MaxReasoningIterations, config.MaxIterationsMessage, config.MaxActionsPerCycle, logger, tracer)
 	reasoningService.SetToolResultLimits(config.ToolResultLimits)
 	reasoningService.SetProgressPolicy(config.ProgressPolicy)
+	reasoningService.SetCompressionPolicy(config.CompressionPolicy)
 	validator := NewEventValidator(config, logger, tracer)
 
 	engine := &Weave{
