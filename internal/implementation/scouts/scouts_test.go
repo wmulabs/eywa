@@ -3,6 +3,7 @@ package scouts
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/wmulabs/eywa/internal/domain/entities"
@@ -242,6 +243,24 @@ func TestLoreScout_Harvest_InjectsChunks(t *testing.T) {
 	}
 	if len(val.(string)) == 0 {
 		t.Error("expected non-empty lore context")
+	}
+}
+
+func TestLoreScout_Harvest_FormatsChunkIDForCitation(t *testing.T) {
+	embedder := &stubLoreEmbedder{embeddings: [][]float32{{0.1, 0.2}}}
+	repo := &stubLoreRepo{lores: []entities.Lore{{ID: "lore-1", Name: "product-kb"}}}
+	store := &stubLoreStore{chunks: []entities.LoreChunk{
+		{ID: "chunk-42", LoreID: "lore-1", Content: "Product info here"},
+	}}
+	s := NewLoreScout(repo, store, embedder, 5, 0.7)
+	pulse := &entities.Pulse{UserMessage: "test", Knowledge: map[string]any{}}
+
+	if err := s.Harvest(context.Background(), pulse, []string{"lore-1"}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	ctx := pulse.Knowledge[loreContextKey].(string)
+	if !strings.Contains(ctx, `id="chunk-42"`) {
+		t.Errorf("expected chunk id emitted for citation grounding, got %q", ctx)
 	}
 }
 

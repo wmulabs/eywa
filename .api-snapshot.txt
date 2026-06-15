@@ -74,6 +74,13 @@ const (
     Action error type constants for ActionError.Type.
 
 const (
+	GroundingReviseOnce = orchestrator.GroundingReviseOnce
+	GroundingAnnotate   = orchestrator.GroundingAnnotate
+	GroundingBlock      = orchestrator.GroundingBlock
+)
+    Grounding violation action constants for GroundingPolicy.OnViolation.
+
+const (
 	RoleUser      = ports.RoleUser
 	RoleAssistant = ports.RoleAssistant
 	RoleSystem    = ports.RoleSystem
@@ -548,6 +555,14 @@ type ExecutorConfig = entities.ExecutorConfig
 
 type Eye = ports.Eye
     Eye is the image analysis port used by a Lens implementation.
+
+type GroundingPolicy = orchestrator.GroundingPolicy
+    GroundingPolicy configures source-citation enforcement for RAG answers.
+    Set on WeaveBuilder.WithGroundingPolicy.
+
+type GroundingViolationAction = orchestrator.GroundingViolationAction
+    GroundingViolationAction selects what GroundingPolicy does when a RAG answer
+    fails to cite sources.
 
 type Guard = entities.Guard
     Guard holds allow/block rules for a single field (e.g. ContactPhone).

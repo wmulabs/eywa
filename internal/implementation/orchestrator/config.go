@@ -72,6 +72,9 @@ type WeaveConfig struct {
 	// ReflectionPolicy enables a self-critique pass before a draft answer is delivered. Disabled by default.
 	ReflectionPolicy ReflectionPolicy `json:"reflection_policy"`
 
+	// GroundingPolicy enforces source citation for RAG answers when Lore was retrieved. Disabled by default.
+	GroundingPolicy GroundingPolicy `json:"grounding_policy"`
+
 	// InboxMinWindow is the minimum time elapsed from pipeline start before draining.
 	// Pipeline steps count toward the window; actual added wait = max(0, InboxMinWindow - elapsed).
 	// 0 disables the wait (coalescing still occurs for messages already in the inbox).

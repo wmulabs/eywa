@@ -2,6 +2,10 @@ package entities
 
 import "time"
 
+// LoreContextKnowledgeKey is the Pulse.Knowledge key under which LoreScout stores the formatted
+// retrieved chunks. Shared so the reasoning loop can read it for citation grounding.
+const LoreContextKnowledgeKey = "_lore_context"
+
 type Lore struct {
 	ID          string    `bson:"_id" json:"id"`
 	Name        string    `bson:"name" json:"name"`

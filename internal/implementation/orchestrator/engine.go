@@ -141,6 +141,7 @@ func newWeaveWithConfig(
 	reasoningService.SetProgressPolicy(config.ProgressPolicy)
 	reasoningService.SetCompressionPolicy(config.CompressionPolicy)
 	reasoningService.SetReflectionPolicy(config.ReflectionPolicy)
+	reasoningService.SetGroundingPolicy(config.GroundingPolicy)
 	validator := NewEventValidator(config, logger, tracer)
 
 	engine := &Weave{
