@@ -100,6 +100,12 @@ const (
     Action category constants for Action.GetCategory.
 
 const (
+	ToolShapeTruncate  = ports.ToolShapeTruncate
+	ToolShapeSummarize = ports.ToolShapeSummarize
+)
+    Tool-result shaping strategy constants for ToolResultLimits.Strategy.
+
+const (
 	RoleAdmin    = ports.RoleAdmin
 	RoleOperator = ports.RoleOperator
 )
@@ -885,6 +891,18 @@ type TokenSeries = ports.TokenSeries
 type TokenValidator = ports.TokenValidator
     TokenValidator authenticates inbound API requests. Implementations include
     NewAPIKeyValidator, NewJWTValidator, and NewJWKSValidator.
+
+type ToolResultLimits = ports.ToolResultLimits
+    ToolResultLimits bounds how much a single Action result contributes to the
+    reasoning context. Pass via WeaveBuilder.WithToolResultLimits.
+
+type ToolResultShaper = ports.ToolResultShaper
+    ToolResultShaper is an optional interface an Action may implement to
+    override the global ToolResultLimits for its own results.
+
+type ToolShapeStrategy = ports.ToolShapeStrategy
+    ToolShapeStrategy selects how an oversized Action result is reduced
+    (truncate or summarize).
 
 type TrialCase = entities.TrialCase
     TrialCase is a single eval test case with input, context, and scoring

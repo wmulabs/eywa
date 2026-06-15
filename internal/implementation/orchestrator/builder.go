@@ -171,6 +171,14 @@ func (b *WeaveBuilder) WithInputGuard(cfg GuardConfig) *WeaveBuilder {
 	return b
 }
 
+// WithToolResultLimits bounds how much a single Action result contributes to the reasoning context.
+// Large results are shaped (truncated, or summarized via the Oracle) before re-entering the model's
+// window; the full result is always kept in the audit log. A zero MaxChars disables shaping.
+func (b *WeaveBuilder) WithToolResultLimits(limits ports.ToolResultLimits) *WeaveBuilder {
+	b.config.ToolResultLimits = limits
+	return b
+}
+
 // WithMessageInbox enables message coalescing by providing a MessageInbox implementation.
 // When configured, messages arriving while a session is locked are buffered in the inbox
 // and merged into a single user turn at the start of the next processing cycle.

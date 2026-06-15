@@ -137,6 +137,7 @@ func newWeaveWithConfig(
 		WithMemoryReconstruction(config.EnableMemoryReconstruction, config.MemoryReconstructionLimit)
 	messageManager := NewMessageManager(messageRepo, logger, tracer)
 	reasoningService := NewReasoningService(oracleFactory, actionExecutor, memoryManager, config.MaxReasoningIterations, config.MaxIterationsMessage, config.MaxActionsPerCycle, logger, tracer)
+	reasoningService.SetToolResultLimits(config.ToolResultLimits)
 	validator := NewEventValidator(config, logger, tracer)
 
 	engine := &Weave{

@@ -102,6 +102,18 @@ func TestWeaveBuilder_WithIdempotencyStore(t *testing.T) {
 	}
 }
 
+func TestWeaveBuilder_WithToolResultLimits(t *testing.T) {
+	b := NewWeaveBuilder(context.Background())
+	limits := ports.ToolResultLimits{MaxChars: 8000, Strategy: ports.ToolShapeTruncate}
+	got := b.WithToolResultLimits(limits)
+	if got != b {
+		t.Error("expected fluent builder")
+	}
+	if b.config.ToolResultLimits.MaxChars != 8000 {
+		t.Errorf("expected config ToolResultLimits.MaxChars 8000, got %d", b.config.ToolResultLimits.MaxChars)
+	}
+}
+
 func TestWeaveBuilder_WithRateLimiter(t *testing.T) {
 	b := NewWeaveBuilder(context.Background())
 	rl := &stubRateLimiter{}
