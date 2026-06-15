@@ -8,7 +8,7 @@ require (
 	github.com/go-redsync/redsync/v4 v4.16.0
 	github.com/redis/go-redis/extra/redisotel/v9 v9.20.1
 	github.com/redis/go-redis/v9 v9.20.1
-	github.com/wmulabs/eywa v1.4.0
+	github.com/wmulabs/eywa v1.5.0
 	go.opentelemetry.io/otel/trace v1.44.0
 	go.uber.org/zap v1.28.0
 )
