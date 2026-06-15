@@ -144,13 +144,6 @@ func main() {
 	fmt.Println("        built-in: retry, deduplication, OIDC auth")
 }
 
-func makePulse(channel, user, message string) *eywa.Pulse {
-	return eywa.NewPulse(eywa.MemoryKey{Channel: channel, User: user}).
-		WithUserMessage(message).
-		WithSource("webhook").
-		Build()
-}
-
 func truncate(s string, n int) string {
 	if len(s) <= n {
 		return s
