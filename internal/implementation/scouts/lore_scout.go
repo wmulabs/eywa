@@ -9,7 +9,7 @@ import (
 	"github.com/wmulabs/eywa/internal/domain/ports"
 )
 
-const loreContextKey = "_lore_context"
+const loreContextKey = entities.LoreContextKnowledgeKey
 
 // LoreScout retrieves relevant Lore chunks for the Pulse's UserMessage via vector search.
 // It is injected automatically by SpiritScoutStep when Spirit.LoreIDs is non-empty.
@@ -85,7 +85,8 @@ func formatChunks(lores []entities.Lore, chunks []entities.LoreChunk) string {
 		if name == "" {
 			name = chunk.LoreID
 		}
-		fmt.Fprintf(&sb, "<lore name=%q>\n%s\n</lore>\n", name, chunk.Content)
+		// id is emitted so the model can cite sources as [chunk:<id>] when grounding is enabled.
+		fmt.Fprintf(&sb, "<lore name=%q id=%q>\n%s\n</lore>\n", name, chunk.ID, chunk.Content)
 	}
 	return strings.TrimSpace(sb.String())
 }

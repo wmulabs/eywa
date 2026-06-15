@@ -203,6 +203,14 @@ func (b *WeaveBuilder) WithReflectionPolicy(policy ReflectionPolicy) *WeaveBuild
 	return b
 }
 
+// WithGroundingPolicy enforces source citation for RAG Spirits: when Lore is retrieved for a turn,
+// the answer must cite the retrieved chunks ([chunk:<id>]). On a violation the policy revises once,
+// annotates, or blocks. Disabled by default.
+func (b *WeaveBuilder) WithGroundingPolicy(policy GroundingPolicy) *WeaveBuilder {
+	b.config.GroundingPolicy = policy
+	return b
+}
+
 // WithMessageInbox enables message coalescing by providing a MessageInbox implementation.
 // When configured, messages arriving while a session is locked are buffered in the inbox
 // and merged into a single user turn at the start of the next processing cycle.

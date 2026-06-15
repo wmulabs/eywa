@@ -46,6 +46,9 @@ type ReasoningResult struct {
 	// ResponseDelivered is true when a VoiceDelivery-category Action succeeded.
 	// When set, the interaction is complete and Pub/Sub must ACK even if a later pipeline step fails.
 	ResponseDelivered bool
+
+	// Citations holds the validated Lore chunk IDs the final answer referenced, when grounding is enabled.
+	Citations []string
 }
 
 func (r *ReasoningResult) accumulateTokens(usage ports.OracleUsage) {
@@ -86,6 +89,7 @@ type ReasoningService struct {
 	progressPolicy       ProgressPolicy         // disabled by default
 	compressionPolicy    CompressionPolicy      // disabled by default
 	reflectionPolicy     ReflectionPolicy       // disabled by default
+	groundingPolicy      GroundingPolicy        // disabled by default
 	logger               *zap.SugaredLogger
 	tracer               trace.Tracer
 }
@@ -139,6 +143,11 @@ func (r *ReasoningService) SetCompressionPolicy(policy CompressionPolicy) {
 // SetReflectionPolicy enables a self-critique pass before delivering a draft answer. Disabled by default.
 func (r *ReasoningService) SetReflectionPolicy(policy ReflectionPolicy) {
 	r.reflectionPolicy = policy
+}
+
+// SetGroundingPolicy enables source-citation enforcement for RAG answers. Disabled by default.
+func (r *ReasoningService) SetGroundingPolicy(policy GroundingPolicy) {
+	r.groundingPolicy = policy
 }
 
 // synthesizeFinal makes one tools-stripped LLM call to produce a closing answer when the loop
@@ -196,6 +205,13 @@ func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (
 	iterBoundaries := []int{}
 	topicSwitchedThisTurn := false
 	reflectionRounds := 0
+	groundingRevised := false
+
+	// When grounding is enabled and Lore was retrieved, instruct the model to cite sources.
+	// Ephemeral for the turn — req is turn-scoped.
+	if r.groundingPolicy.Enabled && retrievedLoreContext(req) != "" {
+		req.SystemPrompt += groundingAddendum
+	}
 
 	stallWindow := 0
 	if r.progressPolicy.Enabled {
@@ -276,6 +292,22 @@ func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (
 						continue
 					}
 				}
+				if r.groundingPolicy.Enabled && !result.ResponseDelivered {
+					revise, blocked := r.enforceGrounding(req, llmResp.Content, result)
+					if revise && !groundingRevised {
+						groundingRevised = true
+						workingContext = append(workingContext, citationRevisionMessage())
+						result.WorkingContext = workingContext
+						appendIter(&iterLog, iterStart)
+						continue
+					}
+					if blocked {
+						result.FinalSession = req.Session
+						appendIter(&iterLog, iterStart)
+						return result, nil
+					}
+				}
+
 				result.FinalResponse = llmResp.Content
 				result.FinalSession = req.Session
 				appendIter(&iterLog, iterStart)
