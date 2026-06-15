@@ -106,10 +106,16 @@ func (s Spirit) NeedsMessageCoalescing() bool {
 }
 
 type SpiritModel struct {
-	Provider    string         `bson:"provider" json:"provider"`
-	Model       string         `bson:"model" json:"model"`
-	Temperature float64        `bson:"temperature" json:"temperature"`
-	MaxTokens   int            `bson:"max_tokens,omitempty" json:"max_tokens,omitempty"`
-	TopP        float64        `bson:"top_p,omitempty" json:"top_p,omitempty"`
+	Provider    string  `bson:"provider" json:"provider"`
+	Model       string  `bson:"model" json:"model"`
+	Temperature float64 `bson:"temperature" json:"temperature"`
+	MaxTokens   int     `bson:"max_tokens,omitempty" json:"max_tokens,omitempty"`
+	TopP        float64 `bson:"top_p,omitempty" json:"top_p,omitempty"`
+
+	// DraftModel is an optional cheaper model used for intermediate, mechanical reasoning steps
+	// (tool selection / reading results). The primary Model always produces the final answer.
+	// When unset or equal to Model, the loop uses a single model — identical to prior behavior.
+	DraftModel string `bson:"draft_model,omitempty" json:"draft_model,omitempty"`
+
 	ExtraConfig map[string]any `bson:"extra_config,omitempty" json:"extra_config,omitempty"`
 }

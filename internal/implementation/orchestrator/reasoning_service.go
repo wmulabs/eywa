@@ -38,6 +38,10 @@ type ReasoningResult struct {
 	IterationsUsed int
 	TokensUsed     ports.OracleUsage
 
+	// TokensByModel attributes token usage per model when model tiering is enabled; the aggregate
+	// remains in TokensUsed. Empty when tiering is off.
+	TokensByModel map[string]ports.OracleUsage
+
 	// FinalSession is the session at the end of the reasoning loop.
 	// May differ from the input session when an Action triggered a topic switch mid-loop.
 	// PersistenceStep must use this value — not the original state.Session.
@@ -58,6 +62,19 @@ func (r *ReasoningResult) accumulateTokens(usage ports.OracleUsage) {
 	r.TokensUsed.PromptTokens += usage.PromptTokens
 	r.TokensUsed.CompletionTokens += usage.CompletionTokens
 	r.TokensUsed.TotalTokens += usage.TotalTokens
+}
+
+// accumulateModelTokens adds usage to both the aggregate and the per-model breakdown.
+func (r *ReasoningResult) accumulateModelTokens(model string, usage ports.OracleUsage) {
+	r.accumulateTokens(usage)
+	if r.TokensByModel == nil {
+		r.TokensByModel = make(map[string]ports.OracleUsage)
+	}
+	cur := r.TokensByModel[model]
+	cur.PromptTokens += usage.PromptTokens
+	cur.CompletionTokens += usage.CompletionTokens
+	cur.TotalTokens += usage.TotalTokens
+	r.TokensByModel[model] = cur
 }
 
 // Closing hints are appended ephemerally to the system prompt — never stored in conversation history.
@@ -162,14 +179,29 @@ func (r *ReasoningService) SetPlanPolicy(policy PlanPolicy) {
 // synthesizeFinal makes one tools-stripped LLM call to produce a closing answer when the loop
 // stalls or hits the iteration cap. Tokens are accounted into result; on error it falls back to
 // the configured max-iterations message.
+// synthesizeFinal makes one tools-stripped call on the primary model to produce a closing answer
+// when the loop stalls or hits the iteration cap. The primary is always the strong tier, so no
+// escalation flag is needed. On error it falls back to the configured max-iterations message.
 func (r *ReasoningService) synthesizeFinal(ctx context.Context, provider ports.Oracle, req *ReasoningRequest, workingContext []ports.OracleMessage, result *ReasoningResult) string {
-	resp, err := r.callLLM(ctx, provider, req, workingContext, nil, stallSynthesisInstruction)
+	resp, err := r.callLLM(ctx, provider, req, workingContext, nil, stallSynthesisInstruction, "")
 	if err != nil {
 		r.logger.Warnw("forced synthesis call failed, using fallback message", "error", err)
 		return r.maxIterationsMessage
 	}
-	result.accumulateTokens(resp.TokensUsed)
+	r.accrueTokens(req, result, "", resp.TokensUsed)
 	return resp.Content
+}
+
+// accrueTokens records usage on the aggregate, plus a per-model bucket when tiering is active.
+func (r *ReasoningService) accrueTokens(req *ReasoningRequest, result *ReasoningResult, model string, usage ports.OracleUsage) {
+	if !r.tieringActive(req) {
+		result.accumulateTokens(usage)
+		return
+	}
+	if model == "" {
+		model = req.Spirit.ModelConfig.Model
+	}
+	result.accumulateModelTokens(model, usage)
 }
 
 // limitsFor resolves the result limits for an Action: a per-Action ToolResultShaper override when
@@ -238,6 +270,13 @@ func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (
 	}
 	stall := newStallTracker(stallWindow)
 
+	// With model tiering, tool-using iterations run on the cheaper draft model; the terminal answer
+	// is re-synthesized on the strong model below. draftModel is "" (primary) when tiering is off.
+	draftModel := ""
+	if r.tieringActive(req) {
+		draftModel = r.tierDraftModel(req)
+	}
+
 	result := &ReasoningResult{
 		Iterations:      []entities.IterationLog{},
 		ExecutionErrors: []string{},
@@ -275,7 +314,7 @@ func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (
 			// The current plan is injected ephemerally each iteration — always up to date, never persisted.
 			closingHint = plan.render() + closingHint
 		}
-		llmResp, err := r.callLLM(ctx, provider, req, workingContext, activeActions, closingHint)
+		llmResp, err := r.callLLM(ctx, provider, req, workingContext, activeActions, closingHint, draftModel)
 		if err != nil {
 			iterLog.Errors = append(iterLog.Errors, fmt.Sprintf("LLM call failed: %v", err))
 			appendIter(&iterLog, iterStart)
@@ -288,7 +327,7 @@ func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (
 		iterLog.PromptTokens = llmResp.TokensUsed.PromptTokens
 		iterLog.CompletionTokens = llmResp.TokensUsed.CompletionTokens
 		iterLog.TotalTokens = llmResp.TokensUsed.TotalTokens
-		result.accumulateTokens(llmResp.TokensUsed)
+		r.accrueTokens(req, result, draftModel, llmResp.TokensUsed)
 
 		workingContext = append(workingContext, ports.OracleMessage{
 			Role:      ports.RoleAssistant,
@@ -299,6 +338,19 @@ func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (
 
 		if len(llmResp.ToolCalls) == 0 {
 			if r.isTerminalResponse(llmResp) {
+				// The draft model concluded; re-synthesize the user-facing answer on the primary
+				// (strong) model — tools stripped — so the quality gates below evaluate what is
+				// actually delivered. An empty model targets the primary.
+				if r.tieringActive(req) && !result.ResponseDelivered {
+					if strongResp, serr := r.callLLM(ctx, provider, req, workingContext, nil, "", ""); serr == nil {
+						r.accrueTokens(req, result, "", strongResp.TokensUsed)
+						llmResp.Content = strongResp.Content
+						workingContext[len(workingContext)-1].Content = strongResp.Content
+						result.WorkingContext = workingContext
+					} else {
+						r.logger.Warnw("primary-model synthesis failed, keeping draft answer", "error", serr)
+					}
+				}
 				if plan != nil && !planNudged && !result.ResponseDelivered {
 					if inc := plan.incomplete(); len(inc) > 0 {
 						planNudged = true
@@ -526,6 +578,9 @@ func (r *ReasoningService) initializeWorkingContext(req *ReasoningRequest) []por
 
 // callLLM assembles the LLM request and delegates to the provider.
 // closingHint is appended to the system prompt when non-empty — never stored in conversation history.
+// callLLM issues one generation. model selects the target model; an empty model uses the Spirit's
+// primary. When model differs from the primary, the provider is resolved for that model so draft and
+// strong tiers may even live on different providers.
 func (r *ReasoningService) callLLM(
 	ctx context.Context,
 	provider ports.Oracle,
@@ -533,20 +588,31 @@ func (r *ReasoningService) callLLM(
 	messages []ports.OracleMessage,
 	actions []ports.OracleTool,
 	closingHint string,
+	model string,
 ) (*ports.OracleResponse, error) {
+	if model == "" {
+		model = req.Spirit.ModelConfig.Model
+	}
+	useProvider := provider
+	if model != req.Spirit.ModelConfig.Model {
+		if p, err := r.oracleFactory.GetProviderForModel(model); err == nil && p != nil {
+			useProvider = p
+		}
+	}
+
 	systemPrompt := req.SystemPrompt
 	if closingHint != "" {
 		systemPrompt += closingHint
 	}
-	resp, err := provider.GenerateResponse(ctx, &ports.OracleRequest{
-		Model:        req.Spirit.ModelConfig.Model,
+	resp, err := useProvider.GenerateResponse(ctx, &ports.OracleRequest{
+		Model:        model,
 		SystemPrompt: systemPrompt,
 		Messages:     messages,
 		Tools:        actions,
 		Temperature:  req.Spirit.ModelConfig.Temperature,
 		MaxTokens:    req.Spirit.ModelConfig.MaxTokens,
 		UseTools:     len(actions) > 0,
-		Attachments:  media.ConvertToLLMAttachments(req.Event.Attachments, provider, req.Spirit.ModelConfig.Model),
+		Attachments:  media.ConvertToLLMAttachments(req.Event.Attachments, useProvider, model),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("oracle generate response: %w", err)
