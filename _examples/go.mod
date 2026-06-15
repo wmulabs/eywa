@@ -4,12 +4,12 @@ go 1.26.4
 
 require (
 	github.com/gofiber/fiber/v2 v2.52.13
-	github.com/wmulabs/eywa v1.3.0
-	github.com/wmulabs/eywa/fiber v1.3.0
-	github.com/wmulabs/eywa/mcp v1.3.0
-	github.com/wmulabs/eywa/mongo v1.3.0
-	github.com/wmulabs/eywa/providers/openai v1.3.0
-	github.com/wmulabs/eywa/redis v1.3.0
+	github.com/wmulabs/eywa v1.4.0
+	github.com/wmulabs/eywa/fiber v1.4.0
+	github.com/wmulabs/eywa/mcp v1.4.0
+	github.com/wmulabs/eywa/mongo v1.4.0
+	github.com/wmulabs/eywa/providers/openai v1.4.0
+	github.com/wmulabs/eywa/redis v1.4.0
 )
 
 require (
