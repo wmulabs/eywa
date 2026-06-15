@@ -57,6 +57,10 @@ type (
 	// Set on WeaveBuilder.WithProgressPolicy.
 	ProgressPolicy = orchestrator.ProgressPolicy
 
+	// CompressionPolicy configures in-loop working-context compression.
+	// Set on WeaveBuilder.WithCompressionPolicy.
+	CompressionPolicy = orchestrator.CompressionPolicy
+
 	// AppInfo carries service identity metadata logged with every Chronicle entry.
 	AppInfo = orchestrator.AppInfo
 

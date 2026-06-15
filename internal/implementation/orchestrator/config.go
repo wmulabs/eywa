@@ -65,6 +65,10 @@ type WeaveConfig struct {
 	// made) and forces a final synthesis instead of spinning to the iteration cap. Disabled by default.
 	ProgressPolicy ProgressPolicy `json:"progress_policy"`
 
+	// CompressionPolicy bounds the reasoning working-context size by summarizing the oldest
+	// completed iterations into an evidence ledger. Disabled by default.
+	CompressionPolicy CompressionPolicy `json:"compression_policy"`
+
 	// InboxMinWindow is the minimum time elapsed from pipeline start before draining.
 	// Pipeline steps count toward the window; actual added wait = max(0, InboxMinWindow - elapsed).
 	// 0 disables the wait (coalescing still occurs for messages already in the inbox).
