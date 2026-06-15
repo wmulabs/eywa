@@ -19,6 +19,7 @@ type IterationLog struct {
 	OracleResponse   string          `bson:"oracle_response"`
 	ActionCalls      []ActionCallLog `bson:"action_calls,omitempty"`
 	BannedActions    []string        `bson:"banned_actions,omitempty"`
+	ReflectionIssues []string        `bson:"reflection_issues,omitempty"`
 	Errors           []string        `bson:"errors,omitempty"`
 	PromptTokens     int             `bson:"prompt_tokens"`
 	CompletionTokens int             `bson:"completion_tokens"`

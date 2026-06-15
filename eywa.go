@@ -61,6 +61,10 @@ type (
 	// Set on WeaveBuilder.WithCompressionPolicy.
 	CompressionPolicy = orchestrator.CompressionPolicy
 
+	// ReflectionPolicy configures the pre-delivery self-critique pass.
+	// Set on WeaveBuilder.WithReflectionPolicy.
+	ReflectionPolicy = orchestrator.ReflectionPolicy
+
 	// AppInfo carries service identity metadata logged with every Chronicle entry.
 	AppInfo = orchestrator.AppInfo
 

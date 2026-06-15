@@ -136,6 +136,17 @@ func TestWeaveBuilder_WithCompressionPolicy(t *testing.T) {
 	}
 }
 
+func TestWeaveBuilder_WithReflectionPolicy(t *testing.T) {
+	b := NewWeaveBuilder(context.Background())
+	got := b.WithReflectionPolicy(ReflectionPolicy{Enabled: true, MaxRounds: 2})
+	if got != b {
+		t.Error("expected fluent builder")
+	}
+	if !b.config.ReflectionPolicy.Enabled || b.config.ReflectionPolicy.MaxRounds != 2 {
+		t.Errorf("expected ReflectionPolicy set, got %+v", b.config.ReflectionPolicy)
+	}
+}
+
 func TestWeaveBuilder_WithRateLimiter(t *testing.T) {
 	b := NewWeaveBuilder(context.Background())
 	rl := &stubRateLimiter{}

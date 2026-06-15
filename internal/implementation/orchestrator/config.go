@@ -69,6 +69,9 @@ type WeaveConfig struct {
 	// completed iterations into an evidence ledger. Disabled by default.
 	CompressionPolicy CompressionPolicy `json:"compression_policy"`
 
+	// ReflectionPolicy enables a self-critique pass before a draft answer is delivered. Disabled by default.
+	ReflectionPolicy ReflectionPolicy `json:"reflection_policy"`
+
 	// InboxMinWindow is the minimum time elapsed from pipeline start before draining.
 	// Pipeline steps count toward the window; actual added wait = max(0, InboxMinWindow - elapsed).
 	// 0 disables the wait (coalescing still occurs for messages already in the inbox).
