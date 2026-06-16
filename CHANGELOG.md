@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.0](https://github.com/wmulabs/eywa/compare/v1.9.0...v1.10.0) (2026-06-16)
+
+
+### Features
+
+* **orchestrator:** streaming reasoning spine (ExecuteStream) ([#86](https://github.com/wmulabs/eywa/issues/86)) ([51b5861](https://github.com/wmulabs/eywa/commit/51b5861d59a925c506a74264ba0b58523fb617a8))
+
 ## [1.9.0](https://github.com/wmulabs/eywa/compare/v1.8.0...v1.9.0) (2026-06-16)
 
 
