@@ -8,6 +8,7 @@ import (
 
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
+	"github.com/openai/openai-go/shared"
 	eywa "github.com/wmulabs/eywa"
 )
 
@@ -201,8 +202,22 @@ func (p *OpenAIOracle) GenerateResponse(ctx context.Context, req *eywa.OracleReq
 		return nil, fmt.Errorf("openai api error: %w", err)
 	}
 
-	return p.parseResponse(resp)
+	parsed, err := p.parseResponse(resp)
+	if err != nil {
+		return nil, err
+	}
+	if req.ResponseFormat != nil {
+		parsed.Structured = json.RawMessage(parsed.Content)
+	}
+	return parsed, nil
 }
+
+var _ eywa.StructuredOracle = (*OpenAIOracle)(nil)
+
+// SupportsStructuredOutput reports native JSON-schema support. OpenAI chat models support
+// response_format=json_schema; OpenAI-compatible endpoints behind this oracle may not, in which
+// case the caller's instruct-and-validate fallback takes over.
+func (p *OpenAIOracle) SupportsStructuredOutput(_ string) bool { return true }
 
 var _ eywa.StreamingOracle = (*OpenAIOracle)(nil)
 
@@ -255,8 +270,30 @@ func (p *OpenAIOracle) buildChatCompletionParams(req *eywa.OracleRequest) openai
 
 	p.addSamplingParameters(&params, req)
 	p.addTools(&params, req)
+	p.addResponseFormat(&params, req)
 
 	return params
+}
+
+func (p *OpenAIOracle) addResponseFormat(params *openai.ChatCompletionNewParams, req *eywa.OracleRequest) {
+	if req.ResponseFormat == nil {
+		return
+	}
+
+	name := req.ResponseFormat.Name
+	if name == "" {
+		name = "response"
+	}
+
+	params.ResponseFormat = openai.ChatCompletionNewParamsResponseFormatUnion{
+		OfJSONSchema: &shared.ResponseFormatJSONSchemaParam{
+			JSONSchema: shared.ResponseFormatJSONSchemaJSONSchemaParam{
+				Name:   name,
+				Schema: req.ResponseFormat.Schema,
+				Strict: openai.Bool(req.ResponseFormat.Strict),
+			},
+		},
+	}
 }
 
 func (p *OpenAIOracle) addSamplingParameters(params *openai.ChatCompletionNewParams, req *eywa.OracleRequest) {
