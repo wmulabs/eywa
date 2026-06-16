@@ -81,44 +81,11 @@ func TestIsTerminalResponse_Unknown(t *testing.T) {
 	}
 }
 
-// --- filterBannedActions ---
-
-func TestFilterBannedActions_EmptyBanned_ReturnsAll(t *testing.T) {
-	actions := []ports.OracleTool{{Name: "a"}, {Name: "b"}}
-	result := filterBannedActions(actions, map[string]bool{})
-	if len(result) != 2 {
-		t.Errorf("expected 2, got %d", len(result))
-	}
-}
-
-func TestFilterBannedActions_RemovesBanned(t *testing.T) {
-	actions := []ports.OracleTool{{Name: "a"}, {Name: "b"}, {Name: "c"}}
-	banned := map[string]bool{"b": true}
-	result := filterBannedActions(actions, banned)
-	if len(result) != 2 {
-		t.Fatalf("expected 2, got %d", len(result))
-	}
-	for _, a := range result {
-		if a.Name == "b" {
-			t.Error("banned action b must not be in result")
-		}
-	}
-}
-
-func TestFilterBannedActions_AllBanned_ReturnsEmpty(t *testing.T) {
-	actions := []ports.OracleTool{{Name: "a"}, {Name: "b"}}
-	banned := map[string]bool{"a": true, "b": true}
-	result := filterBannedActions(actions, banned)
-	if len(result) != 0 {
-		t.Errorf("expected 0, got %d", len(result))
-	}
-}
-
 // --- resolveIterationActions ---
 
 func TestResolveIterationActions_InfraTerminal_ReturnsNilAndInfraHint(t *testing.T) {
 	actions := []ports.OracleTool{{Name: "a"}}
-	result, hint := resolveIterationActions(actions, nil, true)
+	result, hint := resolveIterationActions(actions, true)
 	if result != nil {
 		t.Error("expected nil actions for infraTerminal")
 	}
@@ -127,21 +94,9 @@ func TestResolveIterationActions_InfraTerminal_ReturnsNilAndInfraHint(t *testing
 	}
 }
 
-func TestResolveIterationActions_BannedSet_FiltersAndReturnsHint(t *testing.T) {
+func TestResolveIterationActions_NoInfra_ReturnsAllWithEmptyHint(t *testing.T) {
 	actions := []ports.OracleTool{{Name: "a"}, {Name: "b"}}
-	banned := map[string]bool{"a": true}
-	result, hint := resolveIterationActions(actions, banned, false)
-	if len(result) != 1 || result[0].Name != "b" {
-		t.Errorf("expected only b, got %v", result)
-	}
-	if hint != closingInstruction {
-		t.Errorf("unexpected hint: %q", hint)
-	}
-}
-
-func TestResolveIterationActions_NoBan_NoInfra_ReturnsAllWithEmptyHint(t *testing.T) {
-	actions := []ports.OracleTool{{Name: "a"}, {Name: "b"}}
-	result, hint := resolveIterationActions(actions, map[string]bool{}, false)
+	result, hint := resolveIterationActions(actions, false)
 	if len(result) != 2 {
 		t.Errorf("expected 2, got %d", len(result))
 	}
