@@ -83,14 +83,8 @@ func (r *ReasoningResult) accumulateModelTokens(model string, usage ports.Oracle
 	r.TokensByModel[model] = cur
 }
 
-// Closing hints are appended ephemerally to the system prompt — never stored in conversation history.
-// closingInstruction: used after a critical business error; the LLM has the domain error in context.
-// infraClosingInstruction: used after a critical infra error on a conversational Spirit; details are withheld.
-const closingInstruction = "\n\n--- CLOSING INSTRUCTION ---\n" +
-	"A terminal error has occurred in this conversation turn. You must now\n" +
-	"communicate the result to the user and end the conversation.\n" +
-	"Do not attempt any further actions."
-
+// infraClosingInstruction is appended ephemerally after a critical infra error on a conversational
+// Spirit — never stored in conversation history; details are withheld from the user.
 const infraClosingInstruction = "\n\n--- CLOSING INSTRUCTION ---\n" +
 	"A technical error prevented this operation from completing. Apologize to the\n" +
 	"user and inform them that the service is temporarily unavailable.\n" +
@@ -297,8 +291,10 @@ func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (
 	activeTopic := sessionTopicKey(req.Session)
 	enforceVoiceDelivery := req.Spirit.EnforceVoiceDelivery
 
-	// bannedActions are scoped to this turn — critical failures of the same Action must not block unrelated Actions next turn.
-	bannedActions := make(map[string]bool)
+	// bannedSignatures are scoped to this turn: a critical business failure bans that exact
+	// (action, arguments) signature so the model can retry with corrected arguments but cannot
+	// re-run the identical failing call.
+	bannedSignatures := make(map[string]bool)
 	infraTerminal := false
 	totalActionCalls := 0
 
@@ -380,7 +376,7 @@ func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (
 			Errors:    []string{},
 		}
 
-		activeActions, closingHint := resolveIterationActions(actions, bannedActions, infraTerminal)
+		activeActions, closingHint := resolveIterationActions(actions, infraTerminal)
 		if plan != nil {
 			// The current plan is injected ephemerally each iteration — always up to date, never persisted.
 			closingHint = plan.render() + closingHint
@@ -505,15 +501,11 @@ func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (
 			return result, ErrToolBudgetExceeded(r.maxActionsPerCycle)
 		}
 
-		newBannedActions, isInfraTerminal, err := r.processActionCalls(ctx, provider, req, result, llmResp.ToolCalls, &iterLog, &workingContext, enforceVoiceDelivery, plan)
-		for _, name := range newBannedActions {
-			if !bannedActions[name] {
-				bannedActions[name] = true
-				r.logger.Warnw("Action banned for remainder of turn", "action", name)
-			}
+		newBanned, isInfraTerminal, err := r.processActionCalls(ctx, provider, req, result, llmResp.ToolCalls, &iterLog, &workingContext, enforceVoiceDelivery, plan, bannedSignatures)
+		for _, sig := range newBanned {
+			bannedSignatures[sig] = true
 		}
-		iterLog.BannedActions = newBannedActions
-		if len(newBannedActions) > 0 || isInfraTerminal {
+		if len(newBanned) > 0 || isInfraTerminal {
 			criticalErrorCount++
 		}
 		if isInfraTerminal {
@@ -721,15 +713,29 @@ func (r *ReasoningService) processActionCalls(
 	workingContext *[]ports.OracleMessage,
 	enforceVoiceDelivery bool,
 	plan *planState,
+	bannedSignatures map[string]bool,
 ) (banned []string, infraTerminal bool, err error) {
-	results := r.executeActionsWithPlan(ctx, req, actionCalls, plan)
-
-	if len(results) != len(actionCalls) {
-		return nil, false, fmt.Errorf("executor returned %d results for %d action calls",
-			len(results), len(actionCalls))
+	// Skip any call whose exact (action, arguments) signature already failed critically this turn —
+	// re-running it would just fail again. The Action stays available for corrected arguments.
+	toExec := make([]ports.OracleToolCall, 0, len(actionCalls))
+	for _, call := range actionCalls {
+		if bannedSignatures[callSignature(call)] {
+			*workingContext = append(*workingContext, bannedSignatureMessage(call))
+			iterLog.ActionCalls = append(iterLog.ActionCalls, buildActionCallLog(call, ActionResult{ActionName: call.Name}))
+			iterLog.BannedActions = append(iterLog.BannedActions, call.Name)
+			r.logger.Infow("skipped repeated failing call", "action", call.Name)
+			continue
+		}
+		toExec = append(toExec, call)
 	}
 
-	for i, call := range actionCalls {
+	results := r.executeActionsWithPlan(ctx, req, toExec, plan)
+	if len(results) != len(toExec) {
+		return nil, false, fmt.Errorf("executor returned %d results for %d action calls",
+			len(results), len(toExec))
+	}
+
+	for i, call := range toExec {
 		actionResult := results[i]
 
 		if actionResult.Error == nil {
@@ -742,7 +748,8 @@ func (r *ReasoningService) processActionCalls(
 				return banned, false, handleErr
 			}
 			if isBanned {
-				banned = append(banned, call.Name)
+				banned = append(banned, callSignature(call))
+				iterLog.BannedActions = append(iterLog.BannedActions, call.Name)
 			}
 			if isInfraTerminal {
 				infraTerminal = true
@@ -949,16 +956,14 @@ func (r *ReasoningService) availableActions(req *ReasoningRequest) []ports.Oracl
 }
 
 // resolveIterationActions returns the active Action set and closing hint for the current iteration.
-// The hint is ephemeral — it is never stored in conversation history.
-func resolveIterationActions(actions []ports.OracleTool, banned map[string]bool, infraTerminal bool) ([]ports.OracleTool, string) {
-	switch {
-	case infraTerminal:
+// The hint is ephemeral — it is never stored in conversation history. A critical infra error strips
+// all Actions and asks the model to close out; arg-aware bans are enforced at execution time, not by
+// removing tools, so the model can retry with corrected arguments.
+func resolveIterationActions(actions []ports.OracleTool, infraTerminal bool) ([]ports.OracleTool, string) {
+	if infraTerminal {
 		return nil, infraClosingInstruction
-	case len(banned) > 0:
-		return filterBannedActions(actions, banned), closingInstruction
-	default:
-		return actions, ""
 	}
+	return actions, ""
 }
 
 // actionErrorMessage builds the Action result the LLM receives on failure.
@@ -976,7 +981,7 @@ func actionErrorMessage(callID, name string, result ActionResult) ports.OracleMe
 	switch {
 	case result.IsCritical && errors.IsBusinessError(result.Error):
 		msg.Content = fmt.Sprintf(
-			"Business error: %s\nThis action has been blocked and cannot be called again in this conversation turn.",
+			"Business error: %s\nThe identical call will not be retried — correct the arguments or take a different approach.",
 			errors.MessageFor(result.Error),
 		)
 	case result.IsCritical:
@@ -990,18 +995,17 @@ func actionErrorMessage(callID, name string, result ActionResult) ports.OracleMe
 	return msg
 }
 
-// filterBannedActions returns Actions with banned entries removed.
-func filterBannedActions(actions []ports.OracleTool, banned map[string]bool) []ports.OracleTool {
-	if len(banned) == 0 {
-		return actions
+// bannedSignatureMessage is returned to the model when it repeats a call whose exact arguments
+// already failed critically this turn, nudging it toward corrected arguments or another approach.
+func bannedSignatureMessage(call ports.OracleToolCall) ports.OracleMessage {
+	return ports.OracleMessage{
+		Role:       ports.RoleTool,
+		ToolCallID: call.ID,
+		ToolName:   call.Name,
+		IsError:    true,
+		Content: "You already called this with identical arguments and it failed. " +
+			"Use different arguments or take another approach — it will not be retried as-is.",
 	}
-	filtered := make([]ports.OracleTool, 0, len(actions))
-	for _, a := range actions {
-		if !banned[a.Name] {
-			filtered = append(filtered, a)
-		}
-	}
-	return filtered
 }
 
 func buildActionCallLog(call ports.OracleToolCall, result ActionResult) entities.ActionCallLog {
