@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.15.0](https://github.com/wmulabs/eywa/compare/v1.14.0...v1.15.0) (2026-06-16)
+
+
+### Features
+
+* structured-output port surface + schema validation ([#96](https://github.com/wmulabs/eywa/issues/96)) ([2d1a529](https://github.com/wmulabs/eywa/commit/2d1a52943bc6e6ee17525441d354635d563694b1))
+
 ## [1.14.0](https://github.com/wmulabs/eywa/compare/v1.13.0...v1.14.0) (2026-06-16)
 
 
