@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.0](https://github.com/wmulabs/eywa/compare/v1.10.0...v1.11.0) (2026-06-16)
+
+
+### Features
+
+* **anthropic:** native token streaming (GenerateStream) ([#88](https://github.com/wmulabs/eywa/issues/88)) ([1c7ce2b](https://github.com/wmulabs/eywa/commit/1c7ce2be9850bf016f16fef41bb69ed38d93d021))
+
 ## [1.10.0](https://github.com/wmulabs/eywa/compare/v1.9.0...v1.10.0) (2026-06-16)
 
 
