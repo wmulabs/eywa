@@ -105,6 +105,53 @@ func (p *AnthropicOracle) GenerateResponse(ctx context.Context, req *eywa.Oracle
 	return p.parseResponse(resp)
 }
 
+var _ eywa.StreamingOracle = (*AnthropicOracle)(nil)
+
+// GenerateStream streams the assistant's text as it is generated, then a final Done event carrying
+// the assembled tool calls, usage, and stop reason. Tool-argument deltas are not emitted as text —
+// they are accumulated and surfaced as complete tool calls on Done, matching GenerateResponse.
+func (p *AnthropicOracle) GenerateStream(ctx context.Context, req *eywa.OracleRequest) (<-chan eywa.StreamEvent, error) {
+	params := p.buildRequestParams(req)
+	stream := p.client.Messages.NewStreaming(ctx, params)
+
+	events := make(chan eywa.StreamEvent)
+	go func() {
+		defer close(events)
+
+		var message anthropic.Message
+		for stream.Next() {
+			event := stream.Current()
+			if err := message.Accumulate(event); err != nil {
+				events <- eywa.StreamEvent{Type: eywa.StreamEventError, Err: fmt.Errorf("anthropic stream accumulate: %w", err)}
+				return
+			}
+			if delta, ok := event.AsAny().(anthropic.ContentBlockDeltaEvent); ok {
+				if text, ok := delta.Delta.AsAny().(anthropic.TextDelta); ok && text.Text != "" {
+					events <- eywa.StreamEvent{Type: eywa.StreamEventDelta, Delta: text.Text}
+				}
+			}
+		}
+		if err := stream.Err(); err != nil {
+			events <- eywa.StreamEvent{Type: eywa.StreamEventError, Err: fmt.Errorf("anthropic stream: %w", err)}
+			return
+		}
+
+		_, toolCalls, err := p.extractContentAndToolCalls(message.Content)
+		if err != nil {
+			events <- eywa.StreamEvent{Type: eywa.StreamEventError, Err: err}
+			return
+		}
+		events <- eywa.StreamEvent{
+			Type:       eywa.StreamEventDone,
+			ToolCalls:  toolCalls,
+			Usage:      p.extractTokenUsage(message.Usage),
+			StopReason: p.normalizeStopReason(string(message.StopReason)),
+		}
+	}()
+
+	return events, nil
+}
+
 func (p *AnthropicOracle) buildRequestParams(req *eywa.OracleRequest) anthropic.MessageNewParams {
 	params := anthropic.MessageNewParams{
 		Model:       req.Model,
