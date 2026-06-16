@@ -3,10 +3,14 @@ package gemini
 import (
 	"context"
 	"fmt"
+	"iter"
 
 	eywa "github.com/wmulabs/eywa"
 	"google.golang.org/genai"
 )
+
+// iterSeq is the streaming iterator type returned by the genai SDK's streaming methods.
+type iterSeq = iter.Seq2[*genai.GenerateContentResponse, error]
 
 const (
 	ProviderName = "gemini"
@@ -105,6 +109,10 @@ func createGeminiClient(ctx context.Context, config Config) (*genai.Client, erro
 		}
 	}
 
+	if config.BaseURL != "" {
+		clientConfig.HTTPOptions.BaseURL = config.BaseURL
+	}
+
 	client, err := genai.NewClient(ctx, clientConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gemini client: %w", err)
@@ -153,6 +161,81 @@ func (p *GeminiOracle) GenerateResponse(ctx context.Context, req *eywa.OracleReq
 	}
 
 	return p.generateSimple(ctx, req, config)
+}
+
+var _ eywa.StreamingOracle = (*GeminiOracle)(nil)
+
+// GenerateStream streams the assistant's text as it is generated, then a final Done event carrying
+// the tool calls, usage, and stop reason assembled from the accumulated chunks.
+func (p *GeminiOracle) GenerateStream(ctx context.Context, req *eywa.OracleRequest) (<-chan eywa.StreamEvent, error) {
+	config := p.buildGenerationConfig(req)
+
+	events := make(chan eywa.StreamEvent)
+	go func() {
+		defer close(events)
+
+		seq := p.streamSequence(ctx, req, config)
+
+		var parts []*genai.Part
+		var finishReason genai.FinishReason
+		var usage *genai.GenerateContentResponseUsageMetadata
+		received := false
+
+		for resp, err := range seq {
+			if err != nil {
+				events <- eywa.StreamEvent{Type: eywa.StreamEventError, Err: fmt.Errorf("gemini stream: %w", err)}
+				return
+			}
+			received = true
+			if text := resp.Text(); text != "" {
+				events <- eywa.StreamEvent{Type: eywa.StreamEventDelta, Delta: text}
+			}
+			if len(resp.Candidates) > 0 && resp.Candidates[0].Content != nil {
+				parts = append(parts, resp.Candidates[0].Content.Parts...)
+				if resp.Candidates[0].FinishReason != "" {
+					finishReason = resp.Candidates[0].FinishReason
+				}
+			}
+			if resp.UsageMetadata != nil {
+				usage = resp.UsageMetadata
+			}
+		}
+		if !received {
+			events <- eywa.StreamEvent{Type: eywa.StreamEventError, Err: fmt.Errorf("gemini stream produced no response")}
+			return
+		}
+
+		candidate := &genai.Candidate{Content: &genai.Content{Parts: parts}, FinishReason: finishReason}
+		_, toolCalls := p.extractContentAndToolCalls(candidate)
+		stopReason := p.normalizeStopReason(finishReason)
+		if len(toolCalls) > 0 {
+			stopReason = eywa.StopReasonToolCalls
+		}
+		events <- eywa.StreamEvent{
+			Type:       eywa.StreamEventDone,
+			ToolCalls:  toolCalls,
+			Usage:      p.extractTokenUsage(usage),
+			StopReason: stopReason,
+		}
+	}()
+
+	return events, nil
+}
+
+// streamSequence selects the chat or simple streaming iterator, mirroring GenerateResponse's routing.
+func (p *GeminiOracle) streamSequence(ctx context.Context, req *eywa.OracleRequest, config *genai.GenerateContentConfig) iterSeq {
+	if p.hasConversationHistory(req) {
+		history, sendParts := p.splitMessagesForChat(req.Messages, req.Attachments)
+		chat, err := p.client.Chats.Create(ctx, req.Model, config, history)
+		if err != nil {
+			return func(yield func(*genai.GenerateContentResponse, error) bool) {
+				yield(nil, fmt.Errorf("failed to create chat session: %w", err))
+			}
+		}
+		return chat.SendMessageStream(ctx, sendParts...)
+	}
+	content := p.buildSimpleContent(req)
+	return p.client.Models.GenerateContentStream(ctx, req.Model, []*genai.Content{content}, config)
 }
 
 func (p *GeminiOracle) buildGenerationConfig(req *eywa.OracleRequest) *genai.GenerateContentConfig {
