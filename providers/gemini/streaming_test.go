@@ -16,6 +16,10 @@ data: {"candidates":[{"content":{"parts":[{"text":"lo"}],"role":"model"},"finish
 
 `
 
+const toolCallStreamSSE = `data: {"candidates":[{"content":{"parts":[{"functionCall":{"name":"lookup","args":{"q":"hi"}}}],"role":"model"},"finishReason":"STOP"}],"usageMetadata":{"promptTokenCount":5,"candidatesTokenCount":3,"totalTokenCount":8}}
+
+`
+
 func sseServer(t *testing.T, body string, status int) *httptest.Server {
 	t.Helper()
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -97,6 +101,31 @@ func TestGenerateStream_SimplePath_NoHistory(t *testing.T) {
 	}
 	if done == nil {
 		t.Fatal("expected a Done event")
+	}
+}
+
+func TestGenerateStream_ToolCall_AssemblesOnDone(t *testing.T) {
+	server := sseServer(t, toolCallStreamSSE, http.StatusOK)
+	defer server.Close()
+
+	req := &eywa.OracleRequest{Model: "gemini", Messages: []eywa.OracleMessage{{Role: eywa.RoleUser, Content: "hi"}}}
+	ch, err := streamOracle(t, server.URL).GenerateStream(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	deltas, done, gotErr := collectStream(ch)
+	if gotErr != nil {
+		t.Fatalf("stream error: %v", gotErr)
+	}
+	if len(deltas) != 0 {
+		t.Errorf("tool-call stream produces no text deltas, got %v", deltas)
+	}
+	if done == nil || len(done.ToolCalls) != 1 || done.ToolCalls[0].Name != "lookup" {
+		t.Fatalf("expected one assembled tool call 'lookup' on Done, got %+v", done)
+	}
+	if done.StopReason != eywa.StopReasonToolCalls {
+		t.Errorf("expected stop reason %q, got %q", eywa.StopReasonToolCalls, done.StopReason)
 	}
 }
 
