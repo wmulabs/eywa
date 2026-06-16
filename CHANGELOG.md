@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0](https://github.com/wmulabs/eywa/compare/v1.8.0...v1.9.0) (2026-06-16)
+
+
+### Features
+
+* **orchestrator:** arg-aware action ban allows corrected-argument retries ([#84](https://github.com/wmulabs/eywa/issues/84)) ([85ff168](https://github.com/wmulabs/eywa/commit/85ff1685a056f308b82b996832e1fe06d2ef58ff))
+
 ## [1.8.0](https://github.com/wmulabs/eywa/compare/v1.7.0...v1.8.0) (2026-06-16)
 
 
