@@ -204,6 +204,49 @@ func (p *OpenAIOracle) GenerateResponse(ctx context.Context, req *eywa.OracleReq
 	return p.parseResponse(resp)
 }
 
+var _ eywa.StreamingOracle = (*OpenAIOracle)(nil)
+
+// GenerateStream streams the assistant's text as it is generated, then a final Done event with the
+// assembled tool calls, usage, and stop reason. Tool-call argument fragments are accumulated and
+// surfaced as complete tool calls on Done, matching GenerateResponse.
+func (p *OpenAIOracle) GenerateStream(ctx context.Context, req *eywa.OracleRequest) (<-chan eywa.StreamEvent, error) {
+	params := p.buildChatCompletionParams(req)
+	params.StreamOptions = openai.ChatCompletionStreamOptionsParam{IncludeUsage: openai.Bool(true)}
+	stream := p.client.Chat.Completions.NewStreaming(ctx, params)
+
+	events := make(chan eywa.StreamEvent)
+	go func() {
+		defer close(events)
+
+		acc := openai.ChatCompletionAccumulator{}
+		for stream.Next() {
+			chunk := stream.Current()
+			acc.AddChunk(chunk)
+			if len(chunk.Choices) > 0 && chunk.Choices[0].Delta.Content != "" {
+				events <- eywa.StreamEvent{Type: eywa.StreamEventDelta, Delta: chunk.Choices[0].Delta.Content}
+			}
+		}
+		if err := stream.Err(); err != nil {
+			events <- eywa.StreamEvent{Type: eywa.StreamEventError, Err: fmt.Errorf("openai stream: %w", err)}
+			return
+		}
+
+		resp, err := p.parseResponse(&acc.ChatCompletion)
+		if err != nil {
+			events <- eywa.StreamEvent{Type: eywa.StreamEventError, Err: err}
+			return
+		}
+		events <- eywa.StreamEvent{
+			Type:       eywa.StreamEventDone,
+			ToolCalls:  resp.ToolCalls,
+			Usage:      resp.TokensUsed,
+			StopReason: resp.StopReason,
+		}
+	}()
+
+	return events, nil
+}
+
 func (p *OpenAIOracle) buildChatCompletionParams(req *eywa.OracleRequest) openai.ChatCompletionNewParams {
 	params := openai.ChatCompletionNewParams{
 		Model:    req.Model,
