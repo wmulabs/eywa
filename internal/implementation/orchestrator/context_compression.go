@@ -5,17 +5,12 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/wmulabs/eywa/internal/domain/entities"
 	"github.com/wmulabs/eywa/internal/domain/ports"
 )
 
-// CompressionPolicy bounds the reasoning working-context size. When the context exceeds
-// MaxContextChars, the oldest completed iterations are summarized into a single "evidence ledger"
-// message while the most recent KeepRecent iterations are kept verbatim. Disabled by default.
-type CompressionPolicy struct {
-	Enabled         bool `json:"enabled"`
-	MaxContextChars int  `json:"max_context_chars"`
-	KeepRecent      int  `json:"keep_recent"`
-}
+// CompressionPolicy is defined in entities (so a Spirit can override it); aliased here.
+type CompressionPolicy = entities.CompressionPolicy
 
 const ledgerInstruction = "Compress the following agent tool interactions into a dense evidence " +
 	"ledger. Preserve every concrete fact, identifier, value, decision, and unresolved error. Drop " +
@@ -56,11 +51,12 @@ func (r *ReasoningService) maybeCompress(
 	boundaries []int,
 	result *ReasoningResult,
 ) ([]ports.OracleMessage, []int) {
-	if contextChars(workingContext) <= r.compressionPolicy.MaxContextChars {
+	policy := r.effectiveCompression(req)
+	if contextChars(workingContext) <= policy.MaxContextChars {
 		return workingContext, boundaries
 	}
 
-	keep := r.compressionPolicy.KeepRecent
+	keep := policy.KeepRecent
 	if keep < 1 {
 		keep = 1
 	}

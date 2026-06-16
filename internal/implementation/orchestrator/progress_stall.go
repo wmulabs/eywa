@@ -5,16 +5,13 @@ import (
 	"encoding/hex"
 	"encoding/json"
 
+	"github.com/wmulabs/eywa/internal/domain/entities"
 	"github.com/wmulabs/eywa/internal/domain/ports"
 )
 
-// ProgressPolicy configures stall detection for the reasoning loop.
-// When enabled, an iteration that introduces no new Action-call signature grows a no-progress
-// streak; once the streak reaches StallWindow the loop stops and produces a forced final synthesis.
-type ProgressPolicy struct {
-	Enabled     bool `json:"enabled"`
-	StallWindow int  `json:"stall_window"`
-}
+// ProgressPolicy configures stall detection for the reasoning loop. Defined in entities so a Spirit
+// can override it; aliased here for the orchestrator's use.
+type ProgressPolicy = entities.ProgressPolicy
 
 // stallSynthesisInstruction is appended ephemerally to the system prompt for the forced final
 // synthesis call — never stored in conversation history.

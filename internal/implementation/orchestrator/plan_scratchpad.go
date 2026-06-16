@@ -62,13 +62,8 @@ func planNudgeMessage(incomplete []string) ports.OracleMessage {
 	}
 }
 
-// PlanPolicy enables a turn-scoped plan/scratchpad the model maintains via the update_plan action.
-// The plan is injected into each iteration's context to keep multi-step tasks coherent. Disabled by default.
-type PlanPolicy struct {
-	Enabled  bool `json:"enabled"`
-	MaxItems int  `json:"max_items"`
-	Required bool `json:"required"`
-}
+// PlanPolicy is defined in entities (so a Spirit can override it); aliased here.
+type PlanPolicy = entities.PlanPolicy
 
 const defaultMaxPlanItems = 12
 

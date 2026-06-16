@@ -6,19 +6,12 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/wmulabs/eywa/internal/domain/entities"
 	"github.com/wmulabs/eywa/internal/domain/ports"
 )
 
-// ReflectionPolicy enables a self-critique pass before a draft answer is delivered. When enabled and
-// rounds remain, the model reviews its own draft; a "revise" verdict feeds the critique back for one
-// more reasoning iteration. Disabled by default. Reflection always fails open — a critique that
-// errors or cannot be parsed never blocks delivery.
-type ReflectionPolicy struct {
-	Enabled   bool     `json:"enabled"`
-	MaxRounds int      `json:"max_rounds"`
-	Model     string   `json:"model"`
-	Criteria  []string `json:"criteria"`
-}
+// ReflectionPolicy is defined in entities (so a Spirit can override it); aliased here.
+type ReflectionPolicy = entities.ReflectionPolicy
 
 const reflectionBaseInstruction = "You are reviewing a draft answer an agent is about to send to " +
 	"the user. Check that it directly answers the user's request, that every factual claim is " +
@@ -63,13 +56,14 @@ func (r *ReasoningService) reflect(
 	req *ReasoningRequest,
 	workingContext []ports.OracleMessage,
 ) (pass bool, issues []string, usage ports.OracleUsage) {
+	policy := r.effectiveReflection(req)
 	model := req.Spirit.ModelConfig.Model
-	if r.reflectionPolicy.Model != "" {
-		model = r.reflectionPolicy.Model
+	if policy.Model != "" {
+		model = policy.Model
 	}
 
 	systemPrompt := reflectionBaseInstruction
-	for _, c := range r.reflectionPolicy.Criteria {
+	for _, c := range policy.Criteria {
 		systemPrompt += "\n- " + c
 	}
 

@@ -8,27 +8,17 @@ import (
 	"github.com/wmulabs/eywa/internal/domain/ports"
 )
 
-// GroundingViolationAction selects what happens when a RAG answer fails to cite its sources.
-type GroundingViolationAction string
+// GroundingViolationAction and GroundingPolicy are defined in entities (so a Spirit can override
+// them); aliased here for the orchestrator's use.
+type GroundingViolationAction = entities.GroundingViolationAction
 
 const (
-	// GroundingReviseOnce injects a corrective instruction and gives the model one more iteration.
-	GroundingReviseOnce GroundingViolationAction = "revise_once"
-	// GroundingAnnotate delivers the answer as-is but flags the violation in the audit trail.
-	GroundingAnnotate GroundingViolationAction = "annotate"
-	// GroundingBlock replaces the answer with a safe fallback message.
-	GroundingBlock GroundingViolationAction = "block"
+	GroundingReviseOnce = entities.GroundingReviseOnce
+	GroundingAnnotate   = entities.GroundingAnnotate
+	GroundingBlock      = entities.GroundingBlock
 )
 
-// GroundingPolicy enforces source citation for Spirits that retrieve Lore (RAG). When Lore chunks
-// were injected for the turn, the final answer must cite at least MinCitations of them using the
-// [chunk:<id>] marker. Disabled by default.
-type GroundingPolicy struct {
-	Enabled        bool                     `json:"enabled"`
-	MinCitations   int                      `json:"min_citations"`
-	OnViolation    GroundingViolationAction `json:"on_violation"`
-	BlockedMessage string                   `json:"blocked_message"`
-}
+type GroundingPolicy = entities.GroundingPolicy
 
 const groundingAddendum = "\n\n--- SOURCE GROUNDING ---\n" +
 	"Base your answer only on the retrieved sources provided in the Knowledge section. Cite each " +
@@ -103,8 +93,9 @@ func (r *ReasoningService) enforceGrounding(req *ReasoningRequest, draft string,
 		return false, false
 	}
 
+	policy := r.effectiveGrounding(req)
 	cited := keepValidCitations(parseCitations(draft), validIDs)
-	min := r.groundingPolicy.MinCitations
+	min := policy.MinCitations
 	if min < 1 {
 		min = 1
 	}
@@ -113,9 +104,9 @@ func (r *ReasoningService) enforceGrounding(req *ReasoningRequest, draft string,
 		return false, false
 	}
 
-	switch r.groundingPolicy.OnViolation {
+	switch policy.OnViolation {
 	case GroundingBlock:
-		msg := r.groundingPolicy.BlockedMessage
+		msg := policy.BlockedMessage
 		if msg == "" {
 			msg = defaultBlockedMessage
 		}

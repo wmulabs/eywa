@@ -89,6 +89,10 @@ type (
 	// Confidence is a turn's coarse, rule-based confidence band.
 	Confidence = orchestrator.Confidence
 
+	// ReasoningOverrides lets a Spirit override any subset of the global reasoning policies.
+	// Set on Spirit.ReasoningOverrides; nil uses the WeaveConfig defaults.
+	ReasoningOverrides = entities.ReasoningOverrides
+
 	// AppInfo carries service identity metadata logged with every Chronicle entry.
 	AppInfo = orchestrator.AppInfo
 

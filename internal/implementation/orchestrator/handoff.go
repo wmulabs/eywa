@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/wmulabs/eywa/internal/domain/entities"
 	"github.com/wmulabs/eywa/internal/domain/ports"
 )
 
@@ -39,13 +40,14 @@ func (s *vigilHandoffSink) RaiseTakeover(ctx context.Context, memoryKey string) 
 	return nil
 }
 
-// Confidence is a coarse, rule-based assessment of how trustworthy a turn's answer is.
-type Confidence string
+// Confidence, HandoffMode and HandoffPolicy are defined in entities (so a Spirit can override the
+// policy); aliased here for the orchestrator's use.
+type Confidence = entities.Confidence
 
 const (
-	ConfidenceLow    Confidence = "low"
-	ConfidenceMedium Confidence = "medium"
-	ConfidenceHigh   Confidence = "high"
+	ConfidenceLow    = entities.ConfidenceLow
+	ConfidenceMedium = entities.ConfidenceMedium
+	ConfidenceHigh   = entities.ConfidenceHigh
 )
 
 func confidenceRank(c Confidence) int {
@@ -61,25 +63,14 @@ func confidenceRank(c Confidence) int {
 	}
 }
 
-// HandoffMode selects what happens when a turn's confidence falls below the threshold.
-type HandoffMode string
+type HandoffMode = entities.HandoffMode
 
 const (
-	// HandoffRaiseVigil acquires a human-takeover seat and replies with a holding message.
-	HandoffRaiseVigil HandoffMode = "raise_vigil"
-	// HandoffAnnotateOnly delivers the answer but records the low confidence in the result.
-	HandoffAnnotateOnly HandoffMode = "annotate"
+	HandoffRaiseVigil   = entities.HandoffRaiseVigil
+	HandoffAnnotateOnly = entities.HandoffAnnotateOnly
 )
 
-// HandoffPolicy escalates low-confidence turns to a human instead of shipping a weak answer.
-// Disabled by default. When the HandoffSink is unavailable it degrades to annotate-only.
-type HandoffPolicy struct {
-	Enabled            bool        `json:"enabled"`
-	MinConfidence      Confidence  `json:"min_confidence"`
-	Mode               HandoffMode `json:"mode"`
-	HoldingMessage     string      `json:"holding_message"`
-	UncertaintyMarkers []string    `json:"uncertainty_markers"`
-}
+type HandoffPolicy = entities.HandoffPolicy
 
 // HandoffSink raises a human-in-the-loop takeover for a session. Implemented by the engine over the
 // Vigil repository so the reasoning service stays infrastructure-agnostic.
@@ -138,16 +129,18 @@ func (r *ReasoningService) maybeHandoff(
 		return "", false
 	}
 
+	policy := r.effectiveHandoff(req)
+	reflection := r.effectiveReflection(req)
 	sig := confidenceSignals{
 		criticalErrors:   criticalErrors,
-		reflectionFailed: r.reflectionPolicy.Enabled && r.reflectionPolicy.MaxRounds > 0 && reflectionRounds >= r.reflectionPolicy.MaxRounds,
+		reflectionFailed: reflection.Enabled && reflection.MaxRounds > 0 && reflectionRounds >= reflection.MaxRounds,
 		grounded:         len(result.Citations) > 0,
-		uncertainContent: matchesUncertainty(content, r.handoffPolicy.UncertaintyMarkers),
+		uncertainContent: matchesUncertainty(content, policy.UncertaintyMarkers),
 	}
 	conf := scoreConfidence(sig)
 	result.Confidence = conf
 
-	minConf := r.handoffPolicy.MinConfidence
+	minConf := policy.MinConfidence
 	if minConf == "" {
 		minConf = ConfidenceMedium // deliver autonomously only at Medium+; hand off on Low
 	}
@@ -156,7 +149,7 @@ func (r *ReasoningService) maybeHandoff(
 	}
 
 	// AnnotateOnly: keep the answer, just flag low confidence (already recorded above).
-	if r.handoffPolicy.Mode == HandoffAnnotateOnly {
+	if policy.Mode == HandoffAnnotateOnly {
 		r.logger.Infow("low-confidence turn annotated", "confidence", conf, "memory_key", req.Event.MemoryKey)
 		return "", false
 	}
@@ -174,7 +167,7 @@ func (r *ReasoningService) maybeHandoff(
 	}
 
 	result.HandoffRaised = true
-	msg := r.handoffPolicy.HoldingMessage
+	msg := policy.HoldingMessage
 	if msg == "" {
 		msg = defaultHoldingMessage
 	}

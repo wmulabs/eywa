@@ -70,6 +70,10 @@ type Spirit struct {
 	NotifierConfig       NotifierConfig       `bson:"notifier_config,omitempty" json:"notifier_config,omitempty"`
 	OrchestratorConfig   OrchestratorConfig   `bson:"orchestrator_config,omitempty" json:"orchestrator_config,omitempty"`
 
+	// ReasoningOverrides optionally overrides global reasoning policies for this Spirit.
+	// nil = use the WeaveConfig defaults for every policy.
+	ReasoningOverrides *ReasoningOverrides `bson:"reasoning_overrides,omitempty" json:"reasoning_overrides,omitempty"`
+
 	CreatedAt     time.Time  `bson:"created_at" json:"created_at"`
 	CreatedBy     string     `bson:"created_by,omitempty" json:"created_by,omitempty"`
 	UpdatedAt     time.Time  `bson:"updated_at,omitempty" json:"updated_at,omitempty"`
