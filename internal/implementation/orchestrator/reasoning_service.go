@@ -194,6 +194,50 @@ func (r *ReasoningService) SetHandoffSink(sink HandoffSink) {
 	r.handoffSink = sink
 }
 
+// Effective policy resolvers: a per-Spirit override when present, otherwise the global default.
+
+func (r *ReasoningService) effectiveProgress(req *ReasoningRequest) ProgressPolicy {
+	if o := req.Spirit.ReasoningOverrides; o != nil && o.Progress != nil {
+		return *o.Progress
+	}
+	return r.progressPolicy
+}
+
+func (r *ReasoningService) effectiveCompression(req *ReasoningRequest) CompressionPolicy {
+	if o := req.Spirit.ReasoningOverrides; o != nil && o.Compression != nil {
+		return *o.Compression
+	}
+	return r.compressionPolicy
+}
+
+func (r *ReasoningService) effectiveReflection(req *ReasoningRequest) ReflectionPolicy {
+	if o := req.Spirit.ReasoningOverrides; o != nil && o.Reflection != nil {
+		return *o.Reflection
+	}
+	return r.reflectionPolicy
+}
+
+func (r *ReasoningService) effectiveGrounding(req *ReasoningRequest) GroundingPolicy {
+	if o := req.Spirit.ReasoningOverrides; o != nil && o.Grounding != nil {
+		return *o.Grounding
+	}
+	return r.groundingPolicy
+}
+
+func (r *ReasoningService) effectivePlan(req *ReasoningRequest) PlanPolicy {
+	if o := req.Spirit.ReasoningOverrides; o != nil && o.Plan != nil {
+		return *o.Plan
+	}
+	return r.planPolicy
+}
+
+func (r *ReasoningService) effectiveHandoff(req *ReasoningRequest) HandoffPolicy {
+	if o := req.Spirit.ReasoningOverrides; o != nil && o.Handoff != nil {
+		return *o.Handoff
+	}
+	return r.handoffPolicy
+}
+
 // synthesizeFinal makes one tools-stripped LLM call to produce a closing answer when the loop
 // stalls or hits the iteration cap. Tokens are accounted into result; on error it falls back to
 // the configured max-iterations message.
@@ -268,24 +312,32 @@ func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (
 	planNudged := false
 	criticalErrorCount := 0
 
+	// Resolve effective policies once per turn: a per-Spirit override or the global default.
+	progressPolicy := r.effectiveProgress(req)
+	reflectionPolicy := r.effectiveReflection(req)
+	groundingPolicy := r.effectiveGrounding(req)
+	planPolicy := r.effectivePlan(req)
+	handoffPolicy := r.effectiveHandoff(req)
+	compressionEnabled := r.effectiveCompression(req).Enabled
+
 	// When grounding is enabled and Lore was retrieved, instruct the model to cite sources.
 	// Ephemeral for the turn — req is turn-scoped.
-	if r.groundingPolicy.Enabled && retrievedLoreContext(req) != "" {
+	if groundingPolicy.Enabled && retrievedLoreContext(req) != "" {
 		req.SystemPrompt += groundingAddendum
 	}
 
 	// plan is nil unless the plan policy is enabled; the model maintains it via update_plan.
 	var plan *planState
-	if r.planPolicy.Enabled {
-		plan = newPlanState(r.planPolicy.MaxItems)
-		if r.planPolicy.Required {
+	if planPolicy.Enabled {
+		plan = newPlanState(planPolicy.MaxItems)
+		if planPolicy.Required {
 			req.SystemPrompt += planRequiredInstruction
 		}
 	}
 
 	stallWindow := 0
-	if r.progressPolicy.Enabled {
-		stallWindow = r.progressPolicy.StallWindow
+	if progressPolicy.Enabled {
+		stallWindow = progressPolicy.StallWindow
 	}
 	stall := newStallTracker(stallWindow)
 
@@ -380,7 +432,7 @@ func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (
 						continue
 					}
 				}
-				if r.reflectionPolicy.Enabled && reflectionRounds < r.reflectionPolicy.MaxRounds && !result.ResponseDelivered {
+				if reflectionPolicy.Enabled && reflectionRounds < reflectionPolicy.MaxRounds && !result.ResponseDelivered {
 					pass, issues, usage := r.reflect(ctx, provider, req, workingContext)
 					result.accumulateTokens(usage)
 					if !pass {
@@ -396,7 +448,7 @@ func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (
 						continue
 					}
 				}
-				if r.groundingPolicy.Enabled && !result.ResponseDelivered {
+				if groundingPolicy.Enabled && !result.ResponseDelivered {
 					revise, blocked := r.enforceGrounding(req, llmResp.Content, result)
 					if revise && !groundingRevised {
 						groundingRevised = true
@@ -412,7 +464,7 @@ func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (
 					}
 				}
 
-				if r.handoffPolicy.Enabled && !result.ResponseDelivered {
+				if handoffPolicy.Enabled && !result.ResponseDelivered {
 					if holding, raised := r.maybeHandoff(ctx, req, result, llmResp.Content, criticalErrorCount, reflectionRounds); raised {
 						result.FinalResponse = holding
 						result.FinalSession = req.Session
@@ -497,7 +549,7 @@ func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (
 			return result, nil
 		}
 
-		if r.compressionPolicy.Enabled && !topicSwitchedThisTurn {
+		if compressionEnabled && !topicSwitchedThisTurn {
 			iterBoundaries = append(iterBoundaries, len(workingContext))
 			workingContext, iterBoundaries = r.maybeCompress(ctx, provider, req, workingContext, conversationOffset, iterBoundaries, result)
 			result.WorkingContext = workingContext
@@ -514,7 +566,7 @@ func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (
 
 	// With stall detection enabled, exhausting the cap yields a forced synthesis instead of a
 	// canned message, so the user still gets a real answer built from the gathered context.
-	if r.progressPolicy.Enabled {
+	if progressPolicy.Enabled {
 		result.FinalResponse = r.synthesizeFinal(ctx, provider, req, workingContext, result)
 		result.FinalError = fmt.Sprintf("max iterations (%d) reached; forced final synthesis", r.maxIterations)
 		return result, nil
@@ -889,7 +941,7 @@ func (r *ReasoningService) availableActions(req *ReasoningRequest) []ports.Oracl
 		actions = append(actions, summonSpiritTool(req.Spirit.OrchestratorConfig.SubSpirits))
 	}
 
-	if r.planPolicy.Enabled {
+	if r.effectivePlan(req).Enabled {
 		actions = append(actions, updatePlanTool())
 	}
 

@@ -837,6 +837,11 @@ type Pulse = entities.Pulse
 type PulseBuilder = entities.PulseBuilder
     PulseBuilder constructs a Pulse with a fluent API. Obtain one via NewPulse.
 
+type ReasoningOverrides = entities.ReasoningOverrides
+    ReasoningOverrides lets a Spirit override any subset of the global reasoning
+    policies. Set on Spirit.ReasoningOverrides; nil uses the WeaveConfig
+    defaults.
+
 type Receptor = ports.Receptor
     Receptor converts a raw inbound payload (webhook body, queue message) into a
     Pulse. Register via Weave.RegisterReceptor.
