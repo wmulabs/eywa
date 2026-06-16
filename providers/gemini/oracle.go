@@ -2,6 +2,7 @@ package gemini
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"iter"
 
@@ -156,12 +157,30 @@ func (p *GeminiOracle) GetAvailableModels() []string {
 func (p *GeminiOracle) GenerateResponse(ctx context.Context, req *eywa.OracleRequest) (*eywa.OracleResponse, error) {
 	config := p.buildGenerationConfig(req)
 
+	var (
+		resp *eywa.OracleResponse
+		err  error
+	)
 	if p.hasConversationHistory(req) {
-		return p.generateWithChat(ctx, req, config)
+		resp, err = p.generateWithChat(ctx, req, config)
+	} else {
+		resp, err = p.generateSimple(ctx, req, config)
+	}
+	if err != nil {
+		return nil, err
 	}
 
-	return p.generateSimple(ctx, req, config)
+	if req.ResponseFormat != nil {
+		resp.Structured = json.RawMessage(resp.Content)
+	}
+	return resp, nil
 }
+
+var _ eywa.StructuredOracle = (*GeminiOracle)(nil)
+
+// SupportsStructuredOutput reports native JSON-schema support. Gemini 1.5+ models honor
+// responseSchema / responseMimeType=application/json.
+func (p *GeminiOracle) SupportsStructuredOutput(_ string) bool { return true }
 
 var _ eywa.StreamingOracle = (*GeminiOracle)(nil)
 
@@ -244,8 +263,17 @@ func (p *GeminiOracle) buildGenerationConfig(req *eywa.OracleRequest) *genai.Gen
 	p.addSamplingParameters(config, req)
 	p.addSystemInstruction(config, req.SystemPrompt)
 	p.addTools(config, req)
+	p.addResponseFormat(config, req)
 
 	return config
+}
+
+func (p *GeminiOracle) addResponseFormat(config *genai.GenerateContentConfig, req *eywa.OracleRequest) {
+	if req.ResponseFormat == nil {
+		return
+	}
+	config.ResponseMIMEType = "application/json"
+	config.ResponseJsonSchema = req.ResponseFormat.Schema
 }
 
 func (p *GeminiOracle) addSamplingParameters(config *genai.GenerateContentConfig, req *eywa.OracleRequest) {
