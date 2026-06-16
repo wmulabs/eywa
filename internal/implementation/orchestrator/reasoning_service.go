@@ -238,8 +238,8 @@ func (r *ReasoningService) effectiveHandoff(req *ReasoningRequest) HandoffPolicy
 // synthesizeFinal makes one tools-stripped call on the primary model to produce a closing answer
 // when the loop stalls or hits the iteration cap. The primary is always the strong tier, so no
 // escalation flag is needed. On error it falls back to the configured max-iterations message.
-func (r *ReasoningService) synthesizeFinal(ctx context.Context, provider ports.Oracle, req *ReasoningRequest, workingContext []ports.OracleMessage, result *ReasoningResult) string {
-	resp, err := r.callLLM(ctx, provider, req, workingContext, nil, stallSynthesisInstruction, "")
+func (r *ReasoningService) synthesizeFinal(ctx context.Context, provider ports.Oracle, req *ReasoningRequest, workingContext []ports.OracleMessage, result *ReasoningResult, emit reasoningEmitter) string {
+	resp, err := r.callLLM(ctx, provider, req, workingContext, nil, stallSynthesisInstruction, "", emit)
 	if err != nil {
 		r.logger.Warnw("forced synthesis call failed, using fallback message", "error", err)
 		return r.maxIterationsMessage
@@ -271,7 +271,15 @@ func (r *ReasoningService) limitsFor(actionName string) ports.ToolResultLimits {
 	return r.toolResultLimits
 }
 
+// Execute runs a reasoning turn to completion and returns the assembled result (buffered, no streaming).
 func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (*ReasoningResult, error) {
+	return r.run(ctx, req, nil)
+}
+
+// run drives the reasoning loop. emit is nil for the buffered path (Execute); ExecuteStream passes an
+// emitter that receives text deltas and tool-status events as the turn progresses. Loop logic is
+// identical either way — only the LLM calls stream and a few status events are emitted when emit is set.
+func (r *ReasoningService) run(ctx context.Context, req *ReasoningRequest, emit reasoningEmitter) (*ReasoningResult, error) {
 	ctx, span := r.tracer.Start(ctx, "ReasoningService/Execute")
 	defer span.End()
 
@@ -381,7 +389,7 @@ func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (
 			// The current plan is injected ephemerally each iteration — always up to date, never persisted.
 			closingHint = plan.render() + closingHint
 		}
-		llmResp, err := r.callLLM(ctx, provider, req, workingContext, activeActions, closingHint, draftModel)
+		llmResp, err := r.callLLM(ctx, provider, req, workingContext, activeActions, closingHint, draftModel, emit)
 		if err != nil {
 			iterLog.Errors = append(iterLog.Errors, fmt.Sprintf("LLM call failed: %v", err))
 			appendIter(&iterLog, iterStart)
@@ -409,7 +417,7 @@ func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (
 				// (strong) model — tools stripped — so the quality gates below evaluate what is
 				// actually delivered. An empty model targets the primary.
 				if r.tieringActive(req) && !result.ResponseDelivered {
-					if strongResp, serr := r.callLLM(ctx, provider, req, workingContext, nil, "", ""); serr == nil {
+					if strongResp, serr := r.callLLM(ctx, provider, req, workingContext, nil, "", "", emit); serr == nil {
 						r.accrueTokens(req, result, "", strongResp.TokensUsed)
 						llmResp.Content = strongResp.Content
 						workingContext[len(workingContext)-1].Content = strongResp.Content
@@ -493,6 +501,12 @@ func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (
 			"iteration", result.IterationsUsed,
 		)
 
+		if emit != nil {
+			for _, tc := range llmResp.ToolCalls {
+				emit(ReasoningEvent{Type: ReasoningEventToolStatus, ToolName: tc.Name})
+			}
+		}
+
 		totalActionCalls += len(llmResp.ToolCalls)
 		if r.maxActionsPerCycle > 0 && totalActionCalls > r.maxActionsPerCycle {
 			appendIter(&iterLog, iterStart)
@@ -534,7 +548,7 @@ func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (
 				"memory_key", req.Event.MemoryKey,
 				"iteration", result.IterationsUsed,
 			)
-			result.FinalResponse = r.synthesizeFinal(ctx, provider, req, workingContext, result)
+			result.FinalResponse = r.synthesizeFinal(ctx, provider, req, workingContext, result, emit)
 			result.FinalError = fmt.Sprintf("reasoning stalled at iteration %d; forced final synthesis", result.IterationsUsed)
 			result.FinalSession = req.Session
 			appendIter(&iterLog, iterStart)
@@ -559,7 +573,7 @@ func (r *ReasoningService) Execute(ctx context.Context, req *ReasoningRequest) (
 	// With stall detection enabled, exhausting the cap yields a forced synthesis instead of a
 	// canned message, so the user still gets a real answer built from the gathered context.
 	if progressPolicy.Enabled {
-		result.FinalResponse = r.synthesizeFinal(ctx, provider, req, workingContext, result)
+		result.FinalResponse = r.synthesizeFinal(ctx, provider, req, workingContext, result, emit)
 		result.FinalError = fmt.Sprintf("max iterations (%d) reached; forced final synthesis", r.maxIterations)
 		return result, nil
 	}
@@ -667,6 +681,7 @@ func (r *ReasoningService) callLLM(
 	actions []ports.OracleTool,
 	closingHint string,
 	model string,
+	emit reasoningEmitter,
 ) (*ports.OracleResponse, error) {
 	if model == "" {
 		model = req.Spirit.ModelConfig.Model
@@ -682,7 +697,7 @@ func (r *ReasoningService) callLLM(
 	if closingHint != "" {
 		systemPrompt += closingHint
 	}
-	resp, err := useProvider.GenerateResponse(ctx, &ports.OracleRequest{
+	oracleReq := &ports.OracleRequest{
 		Model:        model,
 		SystemPrompt: systemPrompt,
 		Messages:     messages,
@@ -691,7 +706,24 @@ func (r *ReasoningService) callLLM(
 		MaxTokens:    req.Spirit.ModelConfig.MaxTokens,
 		UseTools:     len(actions) > 0,
 		Attachments:  media.ConvertToLLMAttachments(req.Event.Attachments, useProvider, model),
-	})
+	}
+
+	// Stream when the caller wants events and the provider supports it; otherwise buffer.
+	if emit != nil {
+		if so, ok := useProvider.(ports.StreamingOracle); ok {
+			ch, err := so.GenerateStream(ctx, oracleReq)
+			if err != nil {
+				return nil, fmt.Errorf("oracle generate stream: %w", err)
+			}
+			resp, err := assembleStream(ch, emit)
+			if err != nil {
+				return nil, fmt.Errorf("oracle stream: %w", err)
+			}
+			return resp, nil
+		}
+	}
+
+	resp, err := useProvider.GenerateResponse(ctx, oracleReq)
 	if err != nil {
 		return nil, fmt.Errorf("oracle generate response: %w", err)
 	}

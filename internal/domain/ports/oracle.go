@@ -139,3 +139,32 @@ type OracleFactory interface {
 	ListAvailableProviders() []string
 	GetProviderForModel(model string) (Oracle, error)
 }
+
+// StreamEventType classifies an incremental event from a streaming Oracle generation.
+type StreamEventType string
+
+const (
+	// StreamEventDelta carries a chunk of generated text.
+	StreamEventDelta StreamEventType = "delta"
+	// StreamEventDone is the final event; it carries usage and the stop reason.
+	StreamEventDone StreamEventType = "done"
+	// StreamEventError reports a mid-stream failure.
+	StreamEventError StreamEventType = "error"
+)
+
+// StreamEvent is one incremental event from GenerateStream. Tool calls and the final content are
+// assembled by the consumer from the Delta sequence plus the Done event.
+type StreamEvent struct {
+	Type       StreamEventType
+	Delta      string
+	ToolCalls  []OracleToolCall
+	Usage      OracleUsage
+	StopReason string
+	Err        error
+}
+
+// StreamingOracle is the optional streaming capability of an Oracle. Providers implement it where the
+// SDK supports it; the reasoning loop falls back to GenerateResponse for providers that do not.
+type StreamingOracle interface {
+	GenerateStream(ctx context.Context, req *OracleRequest) (<-chan StreamEvent, error)
+}
