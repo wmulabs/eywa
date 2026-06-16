@@ -4,7 +4,7 @@ go 1.26.4
 
 require (
 	github.com/jackc/pgx/v5 v5.10.0
-	github.com/wmulabs/eywa v1.12.0
+	github.com/wmulabs/eywa v1.13.0
 )
 
 require (
