@@ -390,6 +390,62 @@ func (e *Weave) ProcessEventByKey(ctx context.Context, eventKey string, event *e
 	return e.processEventWithConfig(ctx, event, eventKey, eventConfig)
 }
 
+const streamFrameBuffer = 32
+
+// ProcessEventByKeyStream processes a single Pulse with the answer streamed as it is generated. Token
+// deltas arrive as AgentStreamDelta, tool executions as AgentStreamToolStatus, and the turn ends with
+// one AgentStreamDone (carrying the assembled answer) or AgentStreamError. The full pipeline still runs
+// — persistence, audit, ledger included — on the assembled result; only live channel delivery is skipped.
+func (e *Weave) ProcessEventByKeyStream(ctx context.Context, eventKey string, event *entities.Pulse) (<-chan ports.AgentStreamEvent, error) {
+	eventConfig, exists := e.configCache.GetLink(eventKey)
+	if !exists {
+		return nil, fmt.Errorf("event configuration not found for key: %s", eventKey)
+	}
+
+	out := make(chan ports.AgentStreamEvent, streamFrameBuffer)
+	go func() {
+		defer close(out)
+
+		emit := func(frame ports.AgentStreamEvent) {
+			select {
+			case out <- frame:
+			case <-ctx.Done():
+			}
+		}
+
+		state := &ProcessingState{
+			Event:       event,
+			EventKey:    eventKey,
+			EventConfig: eventConfig,
+			Streaming:   true,
+		}
+		state.streamSink = func(ev ReasoningEvent) {
+			switch ev.Type {
+			case ReasoningEventDelta:
+				emit(ports.AgentStreamEvent{Type: ports.AgentStreamDelta, Delta: ev.Delta})
+			case ReasoningEventToolStatus:
+				emit(ports.AgentStreamEvent{Type: ports.AgentStreamToolStatus, ToolName: ev.ToolName})
+			case ReasoningEventDone, ReasoningEventError:
+				// Terminal events are surfaced after the pipeline assembles the final Response.
+			}
+		}
+
+		resp, err := e.runProcessingPipeline(ctx, state)
+		if err != nil {
+			emit(ports.AgentStreamEvent{Type: ports.AgentStreamError, Err: err})
+			return
+		}
+
+		final := ""
+		if resp != nil {
+			final = resp.FinalResponse
+		}
+		emit(ports.AgentStreamEvent{Type: ports.AgentStreamDone, Response: final})
+	}()
+
+	return out, nil
+}
+
 // ProcessMultipleEventsByKey processes each Pulse independently in its own goroutine.
 // Results are returned in the same order as the input slice.
 func (e *Weave) ProcessMultipleEventsByKey(ctx context.Context, eventKey string, events []*entities.Pulse) ([]*entities.Response, error) {
@@ -458,18 +514,28 @@ func (e *Weave) processEventWithConfig(ctx context.Context, event *entities.Puls
 	ctx, span := e.tracer.Start(ctx, "Weave/processEventWithConfig")
 	defer span.End()
 
+	state := &ProcessingState{
+		Event:       event,
+		EventKey:    eventKey,
+		EventConfig: eventConfig,
+	}
+
+	return e.runProcessingPipeline(ctx, state)
+}
+
+// runProcessingPipeline executes the full pipeline for a prebuilt state and assembles the Response.
+// Both the buffered (processEventWithConfig) and streaming (ProcessEventByKeyStream) drivers share it
+// so lock release, idempotency handling, audit logging, and result assembly never drift.
+func (e *Weave) runProcessingPipeline(ctx context.Context, state *ProcessingState) (*entities.Response, error) {
+	event := state.Event
+	eventKey := state.EventKey
+
 	log := e.logger
 	log.Infow("processing event with config",
 		"event_id", event.ID,
 		"event_key", eventKey,
 		"memory_key", event.MemoryKey,
 	)
-
-	state := &ProcessingState{
-		Event:       event,
-		EventKey:    eventKey,
-		EventConfig: eventConfig,
-	}
 
 	pipelineErr := e.pipeline.Execute(ctx, state)
 

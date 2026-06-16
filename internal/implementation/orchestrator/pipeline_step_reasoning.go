@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/wmulabs/eywa/internal/domain/ports"
@@ -56,7 +57,16 @@ func (s *ReasoningStep) Execute(ctx context.Context, state *ProcessingState) err
 	}
 
 	reasoningReq := s.buildReasoningRequest(state)
-	result, err := s.reasoningService.Execute(ctx, reasoningReq)
+
+	var (
+		result *ReasoningResult
+		err    error
+	)
+	if state.streamSink != nil {
+		result, err = s.executeStreaming(ctx, reasoningReq, state.streamSink)
+	} else {
+		result, err = s.reasoningService.Execute(ctx, reasoningReq)
+	}
 
 	s.populateStateFromResult(state, result)
 
@@ -65,6 +75,28 @@ func (s *ReasoningStep) Execute(ctx context.Context, state *ProcessingState) err
 	}
 
 	return nil
+}
+
+// executeStreaming drives the streaming reasoning loop, forwarding answer tokens and tool-execution
+// status to sink, and returns the same assembled ReasoningResult the buffered path produces.
+func (s *ReasoningStep) executeStreaming(ctx context.Context, req *ReasoningRequest, sink reasoningEmitter) (*ReasoningResult, error) {
+	events, err := s.reasoningService.ExecuteStream(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("opening reasoning stream: %w", err)
+	}
+
+	var result *ReasoningResult
+	for ev := range events {
+		switch ev.Type {
+		case ReasoningEventDelta, ReasoningEventToolStatus:
+			sink(ev)
+		case ReasoningEventDone:
+			result = ev.Result
+		case ReasoningEventError:
+			return ev.Result, ev.Err
+		}
+	}
+	return result, nil
 }
 
 func (s *ReasoningStep) heartbeat(done <-chan struct{}, lockKey string) {

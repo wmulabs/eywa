@@ -64,6 +64,24 @@ func deliveryState(voiceName, response string, delivered bool) *ProcessingState 
 
 // --- ResponseDeliveryStep ---
 
+func TestResponseDeliveryStep_Streaming_SkipsAndMarksDelivered(t *testing.T) {
+	voice := &stubVoice{name: "whatsapp", autoRespond: true}
+	registry := &stubVoiceRegistry{voice: voice}
+	step := NewResponseDeliveryStep(registry, time.Second, testLogger(t))
+	state := deliveryState("whatsapp", "hello", false)
+	state.Streaming = true
+
+	if err := step.Execute(context.Background(), state); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if voice.sendCalled {
+		t.Error("expected no buffered send when streaming — tokens already delivered")
+	}
+	if !state.ResponseDelivered {
+		t.Error("expected ResponseDelivered=true after a streamed turn")
+	}
+}
+
 func TestResponseDeliveryStep_AlreadyDelivered_NoOp(t *testing.T) {
 	voice := &stubVoice{name: "whatsapp", autoRespond: true}
 	registry := &stubVoiceRegistry{voice: voice}

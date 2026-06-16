@@ -31,6 +31,13 @@ type (
 	// StreamEventType classifies a StreamEvent.
 	StreamEventType = ports.StreamEventType
 
+	// AgentStreamEvent is one incremental event from a streaming agent turn (delta, tool status,
+	// done, or error), surfaced by Weave.ProcessEventByKeyStream.
+	AgentStreamEvent = ports.AgentStreamEvent
+
+	// AgentStreamEventType classifies an AgentStreamEvent.
+	AgentStreamEventType = ports.AgentStreamEventType
+
 	// OracleMessage is a single message in the conversation thread sent to an Oracle.
 	OracleMessage = ports.OracleMessage
 
@@ -315,6 +322,14 @@ const (
 	StreamEventDelta = ports.StreamEventDelta
 	StreamEventDone  = ports.StreamEventDone
 	StreamEventError = ports.StreamEventError
+)
+
+// Agent stream event type constants for AgentStreamEvent.Type.
+const (
+	AgentStreamDelta      = ports.AgentStreamDelta
+	AgentStreamToolStatus = ports.AgentStreamToolStatus
+	AgentStreamDone       = ports.AgentStreamDone
+	AgentStreamError      = ports.AgentStreamError
 )
 
 // Operator role constants for AuthClaims.Role.

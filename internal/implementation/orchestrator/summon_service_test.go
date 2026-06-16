@@ -21,6 +21,19 @@ func (s *stubReasoningExec) Execute(_ context.Context, _ *ReasoningRequest) (*Re
 	return s.result, s.err
 }
 
+func (s *stubReasoningExec) ExecuteStream(_ context.Context, _ *ReasoningRequest) (<-chan ReasoningEvent, error) {
+	ch := make(chan ReasoningEvent, 2)
+	go func() {
+		defer close(ch)
+		if s.err != nil {
+			ch <- ReasoningEvent{Type: ReasoningEventError, Err: s.err, Result: s.result}
+			return
+		}
+		ch <- ReasoningEvent{Type: ReasoningEventDone, Result: s.result}
+	}()
+	return ch, nil
+}
+
 func parentSpirit(subSpirits ...string) *entities.Spirit {
 	return &entities.Spirit{
 		Name: "orchestrator",

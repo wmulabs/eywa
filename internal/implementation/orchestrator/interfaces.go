@@ -22,6 +22,7 @@ type InteractionLogger interface {
 // ReasoningService implements this interface.
 type ReasoningExecutor interface {
 	Execute(ctx context.Context, req *ReasoningRequest) (*ReasoningResult, error)
+	ExecuteStream(ctx context.Context, req *ReasoningRequest) (<-chan ReasoningEvent, error)
 }
 
 // EventValidatorIface validates an incoming Pulse before pipeline execution.
