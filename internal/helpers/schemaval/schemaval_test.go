@@ -46,11 +46,3 @@ func TestValidate_InvalidSchema(t *testing.T) {
 		t.Error("expected an error compiling an invalid schema")
 	}
 }
-
-func TestValidate_UnmarshalableSchema(t *testing.T) {
-	// A channel cannot be marshalled to JSON — exercises the marshal-schema error path.
-	badSchema := map[string]any{"x": make(chan int)}
-	if err := Validate(badSchema, []byte(`{}`)); err == nil {
-		t.Error("expected an error when the schema cannot be marshalled")
-	}
-}

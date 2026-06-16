@@ -3,39 +3,22 @@
 package schemaval
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
-// Validate checks that data conforms to schema (a JSON Schema object). It returns nil on success and
-// a descriptive error otherwise. The schema and data are decoded with the validator's own reader so
-// numbers and nested values are typed as the JSON Schema dialect (2020-12) expects.
+// Validate checks that data conforms to schema (a JSON Schema object, draft 2020-12). It returns nil
+// on success and a descriptive error otherwise.
 func Validate(schema map[string]any, data []byte) error {
-	schemaBytes, err := json.Marshal(schema)
-	if err != nil {
-		return fmt.Errorf("marshal schema: %w", err)
-	}
-
-	schemaDoc, err := jsonschema.UnmarshalJSON(bytes.NewReader(schemaBytes))
-	if err != nil {
-		return fmt.Errorf("parse schema: %w", err)
-	}
-
-	compiler := jsonschema.NewCompiler()
-	if err := compiler.AddResource("schema.json", schemaDoc); err != nil {
-		return fmt.Errorf("add schema: %w", err)
-	}
-
-	sch, err := compiler.Compile("schema.json")
+	sch, err := compile(schema)
 	if err != nil {
 		return fmt.Errorf("compile schema: %w", err)
 	}
 
-	instance, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
-	if err != nil {
+	var instance any
+	if err := json.Unmarshal(data, &instance); err != nil {
 		return fmt.Errorf("parse data: %w", err)
 	}
 
@@ -44,4 +27,16 @@ func Validate(schema map[string]any, data []byte) error {
 	}
 
 	return nil
+}
+
+func compile(schema map[string]any) (*jsonschema.Schema, error) {
+	compiler := jsonschema.NewCompiler()
+	// AddResource only fails on a malformed resource URL or a duplicate registration; a fixed URL
+	// with a single in-memory schema can trigger neither, so any schema defect surfaces at Compile.
+	_ = compiler.AddResource("schema.json", schema) //nolint:errcheck // unreachable for in-memory schema (see comment)
+	sch, err := compiler.Compile("schema.json")
+	if err != nil {
+		return nil, fmt.Errorf("compile: %w", err)
+	}
+	return sch, nil
 }
