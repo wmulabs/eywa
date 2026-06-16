@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.16.0](https://github.com/wmulabs/eywa/compare/v1.15.0...v1.16.0) (2026-06-16)
+
+
+### Features
+
+* **openai:** native structured output (response_format json_schema) ([#98](https://github.com/wmulabs/eywa/issues/98)) ([a167429](https://github.com/wmulabs/eywa/commit/a1674294cd1ad70f507331d8725d4774bc5d1a43))
+
 ## [1.15.0](https://github.com/wmulabs/eywa/compare/v1.14.0...v1.15.0) (2026-06-16)
 
 
