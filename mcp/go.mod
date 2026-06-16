@@ -2,7 +2,7 @@ module github.com/wmulabs/eywa/mcp
 
 go 1.26.4
 
-require github.com/wmulabs/eywa v1.8.0
+require github.com/wmulabs/eywa v1.9.0
 
 require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
