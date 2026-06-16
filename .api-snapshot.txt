@@ -89,6 +89,19 @@ const (
     Plan item status constants for PlanItem.Status.
 
 const (
+	HandoffRaiseVigil   = orchestrator.HandoffRaiseVigil
+	HandoffAnnotateOnly = orchestrator.HandoffAnnotateOnly
+)
+    Handoff mode constants for HandoffPolicy.Mode.
+
+const (
+	ConfidenceLow    = orchestrator.ConfidenceLow
+	ConfidenceMedium = orchestrator.ConfidenceMedium
+	ConfidenceHigh   = orchestrator.ConfidenceHigh
+)
+    Confidence band constants for HandoffPolicy.MinConfidence.
+
+const (
 	RoleUser      = ports.RoleUser
 	RoleAssistant = ports.RoleAssistant
 	RoleSystem    = ports.RoleSystem
@@ -527,6 +540,9 @@ type Conduit = ports.Conduit
 type ConduitRegistry = ports.ConduitRegistry
     ConduitRegistry manages the set of active Conduits in the Weave engine.
 
+type Confidence = orchestrator.Confidence
+    Confidence is a turn's coarse, rule-based confidence band.
+
 type ConfigCache = orchestrator.ConfigCache
     ConfigCache holds the in-memory event-configuration cache. Changes pushed
     through the management API take effect immediately via the cache without a
@@ -596,6 +612,13 @@ type HTTPToolRepository = ports.HTTPToolRepository
 
 type HTTPToolTestResult = orchestrator.HTTPToolTestResult
     HTTPToolTestResult holds the outcome of a single HTTPTool test execution.
+
+type HandoffMode = orchestrator.HandoffMode
+    HandoffMode selects the action taken on a low-confidence turn.
+
+type HandoffPolicy = orchestrator.HandoffPolicy
+    HandoffPolicy configures confidence-gated human takeover. Set on
+    WeaveBuilder.WithHandoffPolicy.
 
 type IdempotencyStore = ports.IdempotencyStore
     IdempotencyStore is the duplicate-suppression port. It records processed

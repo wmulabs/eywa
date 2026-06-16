@@ -78,6 +78,9 @@ type WeaveConfig struct {
 	// PlanPolicy enables the turn-scoped plan/scratchpad maintained via the update_plan action. Disabled by default.
 	PlanPolicy PlanPolicy `json:"plan_policy"`
 
+	// HandoffPolicy escalates low-confidence turns to a human (Vigil) instead of delivering. Disabled by default.
+	HandoffPolicy HandoffPolicy `json:"handoff_policy"`
+
 	// InboxMinWindow is the minimum time elapsed from pipeline start before draining.
 	// Pipeline steps count toward the window; actual added wait = max(0, InboxMinWindow - elapsed).
 	// 0 disables the wait (coalescing still occurs for messages already in the inbox).

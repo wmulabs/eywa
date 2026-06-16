@@ -219,6 +219,14 @@ func (b *WeaveBuilder) WithPlanPolicy(policy PlanPolicy) *WeaveBuilder {
 	return b
 }
 
+// WithHandoffPolicy escalates low-confidence turns to a human: instead of shipping a weak answer,
+// the loop raises a Vigil takeover (RaiseVigil, needs a VigilRepository) or flags the turn
+// (AnnotateOnly). Disabled by default.
+func (b *WeaveBuilder) WithHandoffPolicy(policy HandoffPolicy) *WeaveBuilder {
+	b.config.HandoffPolicy = policy
+	return b
+}
+
 // WithMessageInbox enables message coalescing by providing a MessageInbox implementation.
 // When configured, messages arriving while a session is locked are buffered in the inbox
 // and merged into a single user turn at the start of the next processing cycle.
@@ -727,6 +735,10 @@ func (b *WeaveBuilder) Build() (*Weave, error) {
 	}
 	if b.vigilRepo != nil {
 		engine.vigilRepo = b.vigilRepo
+		// Wire the handoff sink so a low-confidence turn can auto-raise a Vigil takeover.
+		if rs, ok := engine.reasoningService.(*ReasoningService); ok {
+			rs.SetHandoffSink(newVigilHandoffSink(b.vigilRepo, b.vigilConfig.InactivityTimeout))
+		}
 	}
 	if b.idempotencyStore != nil {
 		engine.idempotencyStore = b.idempotencyStore
