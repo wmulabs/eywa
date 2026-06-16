@@ -21,6 +21,16 @@ type (
 	// OracleResponse is the output returned by an Oracle after one generation step.
 	OracleResponse = ports.OracleResponse
 
+	// StreamingOracle is the optional streaming capability of an Oracle. Implement GenerateStream
+	// alongside Oracle to enable token streaming; the loop falls back to GenerateResponse otherwise.
+	StreamingOracle = ports.StreamingOracle
+
+	// StreamEvent is one incremental event from GenerateStream (delta, done, or error).
+	StreamEvent = ports.StreamEvent
+
+	// StreamEventType classifies a StreamEvent.
+	StreamEventType = ports.StreamEventType
+
 	// OracleMessage is a single message in the conversation thread sent to an Oracle.
 	OracleMessage = ports.OracleMessage
 
@@ -298,6 +308,13 @@ const (
 const (
 	ToolShapeTruncate  = ports.ToolShapeTruncate
 	ToolShapeSummarize = ports.ToolShapeSummarize
+)
+
+// Stream event type constants for StreamEvent.Type.
+const (
+	StreamEventDelta = ports.StreamEventDelta
+	StreamEventDone  = ports.StreamEventDone
+	StreamEventError = ports.StreamEventError
 )
 
 // Operator role constants for AuthClaims.Role.
