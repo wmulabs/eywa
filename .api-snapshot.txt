@@ -141,6 +141,14 @@ const (
     Stream event type constants for StreamEvent.Type.
 
 const (
+	AgentStreamDelta      = ports.AgentStreamDelta
+	AgentStreamToolStatus = ports.AgentStreamToolStatus
+	AgentStreamDone       = ports.AgentStreamDone
+	AgentStreamError      = ports.AgentStreamError
+)
+    Agent stream event type constants for AgentStreamEvent.Type.
+
+const (
 	RoleAdmin    = ports.RoleAdmin
 	RoleOperator = ports.RoleOperator
 )
@@ -480,6 +488,14 @@ type ActionResult = entities.ActionResult
 
 type ActionStats = ports.ActionStats
     ActionStats aggregates Action invocation counts and latency.
+
+type AgentStreamEvent = ports.AgentStreamEvent
+    AgentStreamEvent is one incremental event from a streaming
+    agent turn (delta, tool status, done, or error), surfaced by
+    Weave.ProcessEventByKeyStream.
+
+type AgentStreamEventType = ports.AgentStreamEventType
+    AgentStreamEventType classifies an AgentStreamEvent.
 
 type AllowedAction = entities.AllowedAction
     AllowedAction names a single Action (or MCP tool) a Spirit is permitted to

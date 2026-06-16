@@ -11,9 +11,10 @@ import (
 )
 
 type stubReasoningExecutor struct {
-	result *ReasoningResult
-	err    error
-	delay  time.Duration
+	result     *ReasoningResult
+	err        error
+	streamInit error // synchronous error returned by ExecuteStream
+	delay      time.Duration
 }
 
 var _ ReasoningExecutor = (*stubReasoningExecutor)(nil)
@@ -23,6 +24,28 @@ func (s *stubReasoningExecutor) Execute(_ context.Context, _ *ReasoningRequest) 
 		time.Sleep(s.delay)
 	}
 	return s.result, s.err
+}
+
+func (s *stubReasoningExecutor) ExecuteStream(_ context.Context, _ *ReasoningRequest) (<-chan ReasoningEvent, error) {
+	if s.streamInit != nil {
+		return nil, s.streamInit
+	}
+	ch := make(chan ReasoningEvent, 4)
+	go func() {
+		defer close(ch)
+		if s.delay > 0 {
+			time.Sleep(s.delay)
+		}
+		if s.err != nil {
+			ch <- ReasoningEvent{Type: ReasoningEventError, Err: s.err, Result: s.result}
+			return
+		}
+		if s.result != nil && s.result.FinalResponse != "" {
+			ch <- ReasoningEvent{Type: ReasoningEventDelta, Delta: s.result.FinalResponse}
+		}
+		ch <- ReasoningEvent{Type: ReasoningEventDone, Result: s.result}
+	}()
+	return ch, nil
 }
 
 func reasoningState(spirit *entities.Spirit) *ProcessingState {
@@ -155,6 +178,59 @@ var _ ReasoningExecutor = (*stubReasoningExecutorSpy)(nil)
 func (s *stubReasoningExecutorSpy) Execute(ctx context.Context, req *ReasoningRequest) (*ReasoningResult, error) {
 	*s.called = true
 	return s.inner.Execute(ctx, req)
+}
+
+func (s *stubReasoningExecutorSpy) ExecuteStream(ctx context.Context, req *ReasoningRequest) (<-chan ReasoningEvent, error) {
+	*s.called = true
+	return s.inner.ExecuteStream(ctx, req)
+}
+
+func TestReasoningStep_Streaming_ForwardsDeltasAndAssembles(t *testing.T) {
+	exec := &stubReasoningExecutor{result: &ReasoningResult{FinalResponse: "hello world"}}
+	step := NewReasoningStep(exec, time.Second, nil, 0, testLogger(t))
+	state := reasoningState(&entities.Spirit{Type: entities.SpiritTypeConversational})
+
+	var got []string
+	state.streamSink = func(ev ReasoningEvent) {
+		if ev.Type == ReasoningEventDelta {
+			got = append(got, ev.Delta)
+		}
+	}
+
+	if err := step.Execute(context.Background(), state); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(got) == 0 || got[0] != "hello world" {
+		t.Errorf("expected forwarded delta 'hello world', got %v", got)
+	}
+	if state.Response != "hello world" {
+		t.Errorf("expected assembled Response 'hello world', got %q", state.Response)
+	}
+	if state.ReasoningResult == nil {
+		t.Error("expected ReasoningResult assembled from the stream")
+	}
+}
+
+func TestReasoningStep_Streaming_Error_ReturnsReasoningFailed(t *testing.T) {
+	exec := &stubReasoningExecutor{result: &ReasoningResult{}, err: errors.New("boom")}
+	step := NewReasoningStep(exec, time.Second, nil, 0, testLogger(t))
+	state := reasoningState(&entities.Spirit{Type: entities.SpiritTypeConversational})
+	state.streamSink = func(ReasoningEvent) {}
+
+	if err := step.Execute(context.Background(), state); err == nil {
+		t.Fatal("expected an error when the stream reports a terminal failure")
+	}
+}
+
+func TestReasoningStep_Streaming_InitError_ReturnsReasoningFailed(t *testing.T) {
+	exec := &stubReasoningExecutor{streamInit: errors.New("cannot open stream")}
+	step := NewReasoningStep(exec, time.Second, nil, 0, testLogger(t))
+	state := reasoningState(&entities.Spirit{Type: entities.SpiritTypeConversational})
+	state.streamSink = func(ReasoningEvent) {}
+
+	if err := step.Execute(context.Background(), state); err == nil {
+		t.Fatal("expected an error when the stream cannot be opened")
+	}
 }
 
 func TestReasoningStep_HeartbeatCallsExtendLock(t *testing.T) {

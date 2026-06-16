@@ -24,6 +24,8 @@ func RegisterRoutes(
     Routes:
       - GET /health, GET /ready
       - POST /api/v1/events/:event_key
+      - POST /api/v1/events/:event_key/stream (Server-Sent Events: streamed
+        agent turn)
       - POST /api/v1/events/:event_key/async (requires async dispatcher on
         weave)
       - POST /api/v1/events/:event_key/schedule, GET/DELETE /api/v1/schedule
@@ -226,4 +228,18 @@ func (h *SpiritManagementHandler) GetSpiritVersions(c *fiber.Ctx) error
 func (h *SpiritManagementHandler) ListSpirits(c *fiber.Ctx) error
 
 func (h *SpiritManagementHandler) UpdateSpirit(c *fiber.Ctx) error
+
+type StreamEventHandler struct {
+	// Has unexported fields.
+}
+    StreamEventHandler streams an agent turn over Server-Sent Events.
+
+func NewStreamEventHandler(weave *eywa.Weave) *StreamEventHandler
+
+func (h *StreamEventHandler) StreamEvent(c *fiber.Ctx) error
+    StreamEvent handles POST /api/v1/events/:event_key/stream. It converts
+    the payload to Pulses and streams each turn's events as SSE frames:
+    token deltas, tool-execution status, and a terminal done (with the assembled
+    answer) or error. Payload/conversion failures are returned as JSON before
+    the stream starts; failures mid-stream surface as an error frame.
 

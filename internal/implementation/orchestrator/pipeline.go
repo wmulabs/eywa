@@ -40,6 +40,11 @@ type ProcessingState struct {
 	ResponseDelivered bool // true once the end-user received a response this cycle
 	Skipped           bool // true when a ConditionEvaluationStep vetoes notifier delivery
 
+	// Streaming is true when the turn is driven by ProcessEventByKeyStream: the Reasoning step streams
+	// answer tokens to streamSink and ResponseDelivery is skipped (the client already received them).
+	Streaming  bool
+	streamSink reasoningEmitter
+
 	// Token usage from media processing fallbacks (audio transcription, image analysis, document extraction)
 	MediaTokensUsed ports.OracleUsage
 

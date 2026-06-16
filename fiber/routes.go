@@ -27,6 +27,7 @@ func WithInternalMiddleware(handlers ...fiber.Handler) RouteOption {
 // Routes:
 //   - GET  /health, GET /ready
 //   - POST /api/v1/events/:event_key
+//   - POST /api/v1/events/:event_key/stream  (Server-Sent Events: streamed agent turn)
 //   - POST /api/v1/events/:event_key/async  (requires async dispatcher on weave)
 //   - POST /api/v1/events/:event_key/schedule, GET/DELETE /api/v1/schedule
 //   - CRUD /api/v1/spirits
@@ -66,6 +67,7 @@ func RegisterRoutes(
 
 	api := app.Group("/api/v1")
 	api.Post("/events/:event_key", eventHandler.ProcessEvent)
+	api.Post("/events/:event_key/stream", NewStreamEventHandler(weave).StreamEvent)
 
 	if weave.GetAsyncDispatcher() != nil {
 		asyncHandler := NewAsyncEventHandler(weave)

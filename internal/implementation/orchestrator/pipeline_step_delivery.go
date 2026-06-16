@@ -34,6 +34,13 @@ func (s *ResponseDeliveryStep) Name() string           { return "ResponseDeliver
 func (s *ResponseDeliveryStep) Timeout() time.Duration { return s.timeout }
 
 func (s *ResponseDeliveryStep) Execute(ctx context.Context, state *ProcessingState) error {
+	if state.Streaming {
+		// Tokens were streamed to the client live; the assembled answer is still persisted and
+		// audited by later steps. Mark delivered so no buffered duplicate is sent.
+		state.ResponseDelivered = true
+		return nil
+	}
+
 	if state.ResponseDelivered {
 		s.logger.Infow("response already delivered during reasoning, skipping auto-response",
 			"memory_key", state.Event.MemoryKey)
