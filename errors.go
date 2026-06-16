@@ -60,6 +60,10 @@ var (
 	// already reached a terminal state (executed, cancelled, or failed).
 	ErrRitualTerminal = errors.ErrRitualTerminal
 
+	// ErrStructuredOutput is returned when a model response cannot be coerced into the requested
+	// schema after the bounded repair attempt. Matchable with errors.Is.
+	ErrStructuredOutput = errors.ErrStructuredOutput
+
 	// ErrSessionHeld is returned by Weave.ProcessEventByKey when an active Vigil seat
 	// is held for the MemoryKey. The operator is handling the conversation directly.
 	ErrSessionHeld = orchestrator.ErrSessionHeld

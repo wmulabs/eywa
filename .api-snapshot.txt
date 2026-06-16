@@ -204,6 +204,10 @@ var (
 	// already reached a terminal state (executed, cancelled, or failed).
 	ErrRitualTerminal = errors.ErrRitualTerminal
 
+	// ErrStructuredOutput is returned when a model response cannot be coerced into the requested
+	// schema after the bounded repair attempt. Matchable with errors.Is.
+	ErrStructuredOutput = errors.ErrStructuredOutput
+
 	// ErrSessionHeld is returned by Weave.ProcessEventByKey when an active Vigil seat
 	// is held for the MemoryKey. The operator is handling the conversation directly.
 	ErrSessionHeld = orchestrator.ErrSessionHeld
@@ -881,6 +885,11 @@ type Response = entities.Response
     Response is the result returned by Weave.ProcessEventByKey. It contains the
     assistant message, which Spirit was used, Actions executed, and token usage.
 
+type ResponseFormat = ports.ResponseFormat
+    ResponseFormat requests a response conforming to a JSON Schema. Set it
+    on OracleRequest to get validated structured output; nil = free-form
+    generation.
+
 type ResponseStatus = entities.ResponseStatus
     ResponseStatus classifies the outcome of a Weave processing call.
 
@@ -968,6 +977,10 @@ type StreamingOracle = ports.StreamingOracle
     StreamingOracle is the optional streaming capability of an Oracle. Implement
     GenerateStream alongside Oracle to enable token streaming; the loop falls
     back to GenerateResponse otherwise.
+
+type StructuredOracle = ports.StructuredOracle
+    StructuredOracle is the optional native structured-output capability of an
+    Oracle.
 
 type SubjectKey = entities.SubjectKey
     SubjectKey identifies the business entity being discussed in a conversation

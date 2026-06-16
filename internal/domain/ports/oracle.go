@@ -2,6 +2,7 @@ package ports
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/wmulabs/eywa/internal/domain/entities"
 )
@@ -40,6 +41,18 @@ type OracleRequest struct {
 	UseTools      bool
 	Metadata      map[string]any
 	Attachments   []LLMAttachment
+
+	// ResponseFormat, when set, requests a response conforming to a JSON Schema. Providers use their
+	// native structured-output mode where available; otherwise the caller falls back to instruct +
+	// validate. nil = free-form generation (default).
+	ResponseFormat *ResponseFormat
+}
+
+// ResponseFormat describes a JSON Schema the model's response must conform to.
+type ResponseFormat struct {
+	Name   string         // schema name (provider-facing label)
+	Schema map[string]any // JSON Schema (object)
+	Strict bool           // reject responses with fields not in the schema
 }
 
 type OracleMessage struct {
@@ -96,6 +109,9 @@ type OracleResponse struct {
 	StopReason string
 	TokensUsed OracleUsage
 	Metadata   map[string]any
+
+	// Structured holds the validated JSON object when the request set ResponseFormat. Empty otherwise.
+	Structured json.RawMessage
 }
 
 type OracleUsage struct {
@@ -167,4 +183,11 @@ type StreamEvent struct {
 // SDK supports it; the reasoning loop falls back to GenerateResponse for providers that do not.
 type StreamingOracle interface {
 	GenerateStream(ctx context.Context, req *OracleRequest) (<-chan StreamEvent, error)
+}
+
+// StructuredOracle is the optional native structured-output capability of an Oracle. Providers
+// implement it where the SDK supports schema-constrained generation; callers fall back to instruct +
+// validate for providers (or models) that report no native support.
+type StructuredOracle interface {
+	SupportsStructuredOutput(model string) bool
 }

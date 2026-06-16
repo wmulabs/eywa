@@ -38,6 +38,13 @@ type (
 	// AgentStreamEventType classifies an AgentStreamEvent.
 	AgentStreamEventType = ports.AgentStreamEventType
 
+	// ResponseFormat requests a response conforming to a JSON Schema. Set it on OracleRequest to get
+	// validated structured output; nil = free-form generation.
+	ResponseFormat = ports.ResponseFormat
+
+	// StructuredOracle is the optional native structured-output capability of an Oracle.
+	StructuredOracle = ports.StructuredOracle
+
 	// OracleMessage is a single message in the conversation thread sent to an Oracle.
 	OracleMessage = ports.OracleMessage
 
