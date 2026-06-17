@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.23.0](https://github.com/wmulabs/eywa/compare/v1.22.0...v1.23.0) (2026-06-17)
+
+
+### Features
+
+* **ollama:** native structured output (format schema) ([#112](https://github.com/wmulabs/eywa/issues/112)) ([e66b246](https://github.com/wmulabs/eywa/commit/e66b246785c487e592e70bf099877d0e2f391147))
+
 ## [1.22.0](https://github.com/wmulabs/eywa/compare/v1.21.0...v1.22.0) (2026-06-17)
 
 
