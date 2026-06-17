@@ -102,7 +102,37 @@ func (p *AnthropicOracle) GenerateResponse(ctx context.Context, req *eywa.Oracle
 		return nil, fmt.Errorf("anthropic api error: %w", err)
 	}
 
-	return p.parseResponse(resp)
+	parsed, err := p.parseResponse(resp)
+	if err != nil {
+		return nil, err
+	}
+	if req.ResponseFormat != nil {
+		parsed.Structured = p.extractStructured(parsed.ToolCalls)
+	}
+	return parsed, nil
+}
+
+var _ eywa.StructuredOracle = (*AnthropicOracle)(nil)
+
+// SupportsStructuredOutput reports native structured-output support. Anthropic has no response_format
+// mode, but forcing a single schema-shaped tool yields the same guarantee on every Claude model.
+func (p *AnthropicOracle) SupportsStructuredOutput(_ string) bool { return true }
+
+// structuredToolName is the internal tool the model is forced to call when a ResponseFormat is set;
+// its input is the structured result.
+const structuredToolName = "structured_output"
+
+// extractStructured returns the forced tool's input as the structured JSON result.
+func (p *AnthropicOracle) extractStructured(toolCalls []eywa.OracleToolCall) json.RawMessage {
+	for _, tc := range toolCalls {
+		if tc.Name != structuredToolName {
+			continue
+		}
+		if raw, err := json.Marshal(tc.Arguments); err == nil {
+			return raw
+		}
+	}
+	return nil
 }
 
 var _ eywa.StreamingOracle = (*AnthropicOracle)(nil)
@@ -163,8 +193,25 @@ func (p *AnthropicOracle) buildRequestParams(req *eywa.OracleRequest) anthropic.
 	p.addSystemPrompt(&params, req.SystemPrompt)
 	p.addSamplingParameters(&params, req)
 	p.addTools(&params, req)
+	p.addResponseFormat(&params, req)
 
 	return params
+}
+
+// addResponseFormat forces structured output by exposing a single schema-shaped tool and requiring
+// the model to call it. This overrides any other tools for the call.
+func (p *AnthropicOracle) addResponseFormat(params *anthropic.MessageNewParams, req *eywa.OracleRequest) {
+	if req.ResponseFormat == nil {
+		return
+	}
+
+	tool := anthropic.ToolParam{
+		Name:        structuredToolName,
+		Description: anthropic.String("Return the result strictly conforming to the required schema."),
+		InputSchema: p.buildInputSchema(req.ResponseFormat.Schema),
+	}
+	params.Tools = []anthropic.ToolUnionParam{{OfTool: &tool}}
+	params.ToolChoice = anthropic.ToolChoiceParamOfTool(structuredToolName)
 }
 
 func (p *AnthropicOracle) addSystemPrompt(params *anthropic.MessageNewParams, systemPrompt string) {
