@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.18.0](https://github.com/wmulabs/eywa/compare/v1.17.0...v1.18.0) (2026-06-17)
+
+
+### Features
+
+* **anthropic:** native structured output (tool-forcing) ([#102](https://github.com/wmulabs/eywa/issues/102)) ([512738d](https://github.com/wmulabs/eywa/commit/512738d3dac42471fbdb7ba8ca7a86a8bf9d2b9f))
+
 ## [1.17.0](https://github.com/wmulabs/eywa/compare/v1.16.0...v1.17.0) (2026-06-17)
 
 
