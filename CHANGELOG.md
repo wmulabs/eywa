@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.19.0](https://github.com/wmulabs/eywa/compare/v1.18.0...v1.19.0) (2026-06-17)
+
+
+### Features
+
+* **orchestrator:** structured output in the reasoning loop ([#104](https://github.com/wmulabs/eywa/issues/104)) ([97fc28a](https://github.com/wmulabs/eywa/commit/97fc28a6cf8e0f140ef0d2eb0c0220fdd5793c09))
+
 ## [1.18.0](https://github.com/wmulabs/eywa/compare/v1.17.0...v1.18.0) (2026-06-17)
 
 
