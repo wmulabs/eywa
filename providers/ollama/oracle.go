@@ -105,8 +105,18 @@ func (p *OllamaOracle) GenerateResponse(ctx context.Context, req *eywa.OracleReq
 		return nil, fmt.Errorf("ollama: decode response: %w", err)
 	}
 
-	return p.parseResponse(&cr), nil
+	parsed := p.parseResponse(&cr)
+	if req.ResponseFormat != nil {
+		parsed.Structured = json.RawMessage(parsed.Content)
+	}
+	return parsed, nil
 }
+
+var _ eywa.StructuredOracle = (*OllamaOracle)(nil)
+
+// SupportsStructuredOutput reports native schema support: Ollama constrains output to a JSON Schema
+// passed in the request's "format" field.
+func (p *OllamaOracle) SupportsStructuredOutput(_ string) bool { return true }
 
 var _ eywa.StreamingOracle = (*OllamaOracle)(nil)
 
@@ -197,6 +207,9 @@ func (p *OllamaOracle) buildChatRequest(req *eywa.OracleRequest) chatRequest {
 	}
 	if req.UseTools && len(req.Tools) > 0 {
 		cr.Tools = convertTools(req.Tools)
+	}
+	if req.ResponseFormat != nil {
+		cr.Format = req.ResponseFormat.Schema
 	}
 	return cr
 }
@@ -297,6 +310,7 @@ type chatRequest struct {
 	Messages  []chatMessage  `json:"messages"`
 	Stream    bool           `json:"stream"`
 	Tools     []chatTool     `json:"tools,omitempty"`
+	Format    any            `json:"format,omitempty"`
 	Options   map[string]any `json:"options,omitempty"`
 	KeepAlive string         `json:"keep_alive,omitempty"`
 }
