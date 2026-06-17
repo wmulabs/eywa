@@ -185,6 +185,17 @@ func (s *stubReasoningExecutorSpy) ExecuteStream(ctx context.Context, req *Reaso
 	return s.inner.ExecuteStream(ctx, req)
 }
 
+func TestBuildReasoningRequest_CopiesSpiritResponseFormat(t *testing.T) {
+	rf := &entities.ResponseFormat{Name: "person", Schema: map[string]any{"type": "object"}, Strict: true}
+	spirit := &entities.Spirit{Type: entities.SpiritTypeConversational, ResponseFormat: rf}
+	step := NewReasoningStep(&stubReasoningExecutor{}, time.Second, nil, 0, testLogger(t))
+
+	req := step.buildReasoningRequest(reasoningState(spirit))
+	if req.ResponseFormat != rf {
+		t.Errorf("expected ResponseFormat propagated from Spirit, got %+v", req.ResponseFormat)
+	}
+}
+
 func TestReasoningStep_Streaming_ForwardsDeltasAndAssembles(t *testing.T) {
 	exec := &stubReasoningExecutor{result: &ReasoningResult{FinalResponse: "hello world"}}
 	step := NewReasoningStep(exec, time.Second, nil, 0, testLogger(t))

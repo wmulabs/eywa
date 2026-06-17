@@ -127,6 +127,7 @@ func (s *ReasoningStep) buildReasoningRequest(state *ProcessingState) *Reasoning
 		Session:             state.Session,
 		SystemPrompt:        buildSystemPrompt(state.Spirit, state.Event),
 		ConversationContext: buildMessageHistory(state.Session),
+		ResponseFormat:      state.Spirit.ResponseFormat,
 	}
 }
 

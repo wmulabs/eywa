@@ -48,12 +48,9 @@ type OracleRequest struct {
 	ResponseFormat *ResponseFormat
 }
 
-// ResponseFormat describes a JSON Schema the model's response must conform to.
-type ResponseFormat struct {
-	Name   string         // schema name (provider-facing label)
-	Schema map[string]any // JSON Schema (object)
-	Strict bool           // reject responses with fields not in the schema
-}
+// ResponseFormat describes a JSON Schema the model's response must conform to. It is defined in
+// entities so a Spirit can declare it in config; this alias keeps the Oracle-port API stable.
+type ResponseFormat = entities.ResponseFormat
 
 type OracleMessage struct {
 	Role      string
