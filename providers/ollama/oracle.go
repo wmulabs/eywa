@@ -4,6 +4,7 @@
 package ollama
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -104,6 +105,85 @@ func (p *OllamaOracle) GenerateResponse(ctx context.Context, req *eywa.OracleReq
 	}
 
 	return p.parseResponse(&cr), nil
+}
+
+var _ eywa.StreamingOracle = (*OllamaOracle)(nil)
+
+// GenerateStream streams the assistant's text as Ollama produces it (NDJSON chunks over /api/chat),
+// then a final Done event with the assembled tool calls, usage, and stop reason.
+func (p *OllamaOracle) GenerateStream(ctx context.Context, req *eywa.OracleRequest) (<-chan eywa.StreamEvent, error) {
+	chatReq := p.buildChatRequest(req)
+	chatReq.Stream = true
+
+	payload, err := json.Marshal(chatReq)
+	if err != nil {
+		return nil, fmt.Errorf("ollama: marshal request: %w", err)
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, p.config.Host+"/api/chat", bytes.NewReader(payload))
+	if err != nil {
+		return nil, fmt.Errorf("ollama: build request: %w", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := p.client.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("ollama: request failed: %w", err)
+	}
+
+	events := make(chan eywa.StreamEvent)
+	go func() {
+		defer close(events)
+		defer func() { _ = resp.Body.Close() }()
+
+		if resp.StatusCode != http.StatusOK {
+			data, _ := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes))
+			events <- eywa.StreamEvent{Type: eywa.StreamEventError, Err: fmt.Errorf("ollama: api error: status %d: %s", resp.StatusCode, string(data))}
+			return
+		}
+
+		scanner := bufio.NewScanner(resp.Body)
+		scanner.Buffer(make([]byte, 0, 64*1024), maxResponseBytes)
+
+		var toolCalls []eywa.OracleToolCall
+		for scanner.Scan() {
+			line := bytes.TrimSpace(scanner.Bytes())
+			if len(line) == 0 {
+				continue
+			}
+			var chunk chatResponse
+			if err := json.Unmarshal(line, &chunk); err != nil {
+				events <- eywa.StreamEvent{Type: eywa.StreamEventError, Err: fmt.Errorf("ollama: decode chunk: %w", err)}
+				return
+			}
+			if chunk.Message.Content != "" {
+				events <- eywa.StreamEvent{Type: eywa.StreamEventDelta, Delta: chunk.Message.Content}
+			}
+			for _, tc := range chunk.Message.ToolCalls {
+				toolCalls = append(toolCalls, eywa.OracleToolCall{ID: tc.Function.Name, Name: tc.Function.Name, Arguments: tc.Function.Arguments})
+			}
+			if chunk.Done {
+				stopReason := normalizeStopReason(chunk.DoneReason)
+				if len(toolCalls) > 0 {
+					stopReason = eywa.StopReasonToolCalls
+				}
+				events <- eywa.StreamEvent{
+					Type:       eywa.StreamEventDone,
+					ToolCalls:  toolCalls,
+					Usage:      eywa.OracleUsage{PromptTokens: chunk.PromptEvalCount, CompletionTokens: chunk.EvalCount, TotalTokens: chunk.PromptEvalCount + chunk.EvalCount},
+					StopReason: stopReason,
+				}
+				return
+			}
+		}
+		if err := scanner.Err(); err != nil {
+			events <- eywa.StreamEvent{Type: eywa.StreamEventError, Err: fmt.Errorf("ollama: stream read: %w", err)}
+			return
+		}
+		events <- eywa.StreamEvent{Type: eywa.StreamEventError, Err: fmt.Errorf("ollama: stream ended without completion")}
+	}()
+
+	return events, nil
 }
 
 func (p *OllamaOracle) buildChatRequest(req *eywa.OracleRequest) chatRequest {
@@ -249,6 +329,7 @@ type chatToolFunc struct {
 type chatResponse struct {
 	Model           string              `json:"model"`
 	Message         chatResponseMessage `json:"message"`
+	Done            bool                `json:"done"`
 	DoneReason      string              `json:"done_reason"`
 	PromptEvalCount int                 `json:"prompt_eval_count"`
 	EvalCount       int                 `json:"eval_count"`
