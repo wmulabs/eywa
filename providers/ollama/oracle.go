@@ -21,6 +21,7 @@ const (
 	defaultHost      = "http://localhost:11434"
 	defaultTimeout   = 120 * time.Second
 	maxResponseBytes = 10 << 20 // 10 MiB cap on a single response body
+	maxStreamLineCap = 1 << 20  // 1 MiB cap on a single NDJSON stream line
 )
 
 // Config configures the Ollama Oracle. Host is operator-provided (not user input); only http/https
@@ -143,7 +144,7 @@ func (p *OllamaOracle) GenerateStream(ctx context.Context, req *eywa.OracleReque
 		}
 
 		scanner := bufio.NewScanner(resp.Body)
-		scanner.Buffer(make([]byte, 0, 64*1024), maxResponseBytes)
+		scanner.Buffer(make([]byte, 0, 64*1024), maxStreamLineCap)
 
 		var toolCalls []eywa.OracleToolCall
 		for scanner.Scan() {

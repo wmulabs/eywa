@@ -136,6 +136,17 @@ func TestGenerateStream_NoCompletion(t *testing.T) {
 	}
 }
 
+func TestGenerateStream_LineTooLong(t *testing.T) {
+	// A single line larger than the scanner cap makes scanner.Err() return bufio.ErrTooLong.
+	server := ndjsonServer(t, strings.Repeat("x", maxStreamLineCap+10), http.StatusOK)
+	defer server.Close()
+
+	ch, _ := NewOracle(Config{Host: server.URL}).GenerateStream(context.Background(), streamReq())
+	if _, _, gotErr := collectStream(ch); gotErr == nil {
+		t.Error("expected an error when a stream line exceeds the cap")
+	}
+}
+
 func TestGenerateStream_RequestError(t *testing.T) {
 	ch, err := NewOracle(Config{Host: "http://127.0.0.1:0"}).GenerateStream(context.Background(), streamReq())
 	if err == nil {
