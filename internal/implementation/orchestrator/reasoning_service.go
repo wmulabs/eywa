@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/wmulabs/eywa/internal/domain/entities"
 	"github.com/wmulabs/eywa/internal/domain/errors"
 	"github.com/wmulabs/eywa/internal/domain/ports"
+	"github.com/wmulabs/eywa/internal/helpers/schemaval"
 	"github.com/wmulabs/eywa/internal/implementation/media"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
@@ -23,6 +25,10 @@ type ReasoningRequest struct {
 	// ConversationContext is the clean conversation history (User + Assistant final messages).
 	// Persisted in Threads and excludes Action calls/results.
 	ConversationContext []ports.OracleMessage
+
+	// ResponseFormat, when set, requires the final answer to be a JSON object validated against the
+	// schema. It is applied only to the terminal synthesis — tool-selection iterations are unaffected.
+	ResponseFormat *ports.ResponseFormat
 }
 
 type ReasoningResult struct {
@@ -62,6 +68,11 @@ type ReasoningResult struct {
 
 	// HandoffRaised is true when a low-confidence turn raised a human takeover instead of delivering.
 	HandoffRaised bool
+
+	// Structured holds the validated JSON answer when the request set ResponseFormat and validation
+	// succeeded. Empty when no format was requested or validation failed (FinalResponse still carries
+	// the raw text).
+	Structured json.RawMessage
 }
 
 func (r *ReasoningResult) accumulateTokens(usage ports.OracleUsage) {
@@ -239,13 +250,74 @@ func (r *ReasoningService) effectiveHandoff(req *ReasoningRequest) HandoffPolicy
 // when the loop stalls or hits the iteration cap. The primary is always the strong tier, so no
 // escalation flag is needed. On error it falls back to the configured max-iterations message.
 func (r *ReasoningService) synthesizeFinal(ctx context.Context, provider ports.Oracle, req *ReasoningRequest, workingContext []ports.OracleMessage, result *ReasoningResult, emit reasoningEmitter) string {
-	resp, err := r.callLLM(ctx, provider, req, workingContext, nil, stallSynthesisInstruction, "", emit)
+	resp, err := r.callLLM(ctx, provider, req, workingContext, nil, stallSynthesisInstruction, "", emit, nil)
 	if err != nil {
 		r.logger.Warnw("forced synthesis call failed, using fallback message", "error", err)
 		return r.maxIterationsMessage
 	}
 	r.accrueTokens(req, result, "", resp.TokensUsed)
 	return resp.Content
+}
+
+const structuredMaxAttempts = 2 // one generation + one repair
+
+// finalizeStructured produces the final answer as a schema-validated JSON object. It uses the
+// provider's native structured mode when available, otherwise instructs the model to emit JSON; then
+// validates and makes one bounded repair attempt. On unrecoverable failure it returns the raw output
+// and leaves result.Structured empty so callers can detect the miss.
+func (r *ReasoningService) finalizeStructured(ctx context.Context, provider ports.Oracle, req *ReasoningRequest, workingContext []ports.OracleMessage, result *ReasoningResult) string {
+	rf := req.ResponseFormat
+	native := providerSupportsStructured(provider, req.Spirit.ModelConfig.Model)
+
+	baseHint := ""
+	var rfArg *ports.ResponseFormat
+	if native {
+		rfArg = rf
+	} else {
+		baseHint = structuredInstruction(rf)
+	}
+
+	hint := baseHint
+	lastPayload := ""
+	for attempt := 0; attempt < structuredMaxAttempts; attempt++ {
+		resp, err := r.callLLM(ctx, provider, req, workingContext, nil, hint, "", nil, rfArg)
+		if err != nil {
+			r.logger.Warnw("structured synthesis call failed, returning best-effort answer", "error", err)
+			return lastPayload
+		}
+		r.accrueTokens(req, result, "", resp.TokensUsed)
+
+		payload := resp.Content
+		if len(resp.Structured) > 0 {
+			payload = string(resp.Structured)
+		}
+		lastPayload = payload
+
+		if verr := schemaval.Validate(rf.Schema, []byte(payload)); verr == nil {
+			result.Structured = json.RawMessage(payload)
+			return payload
+		} else {
+			hint = baseHint + repairInstruction(verr)
+			r.logger.Infow("structured output failed validation, attempting repair", "attempt", attempt+1, "error", verr)
+		}
+	}
+
+	r.logger.Warnw("structured output did not validate after repair; returning raw answer")
+	return lastPayload
+}
+
+func providerSupportsStructured(provider ports.Oracle, model string) bool {
+	so, ok := provider.(ports.StructuredOracle)
+	return ok && so.SupportsStructuredOutput(model)
+}
+
+func structuredInstruction(rf *ports.ResponseFormat) string {
+	schema, _ := json.Marshal(rf.Schema)
+	return "\n\nReturn ONLY a JSON object conforming to this JSON Schema, with no prose or code fences:\n" + string(schema)
+}
+
+func repairInstruction(verr error) string {
+	return "\n\nYour previous answer did not match the required schema: " + verr.Error() + "\nReturn ONLY corrected JSON."
 }
 
 // accrueTokens records usage on the aggregate, plus a per-model bucket when tiering is active.
@@ -389,7 +461,7 @@ func (r *ReasoningService) run(ctx context.Context, req *ReasoningRequest, emit 
 			// The current plan is injected ephemerally each iteration — always up to date, never persisted.
 			closingHint = plan.render() + closingHint
 		}
-		llmResp, err := r.callLLM(ctx, provider, req, workingContext, activeActions, closingHint, draftModel, emit)
+		llmResp, err := r.callLLM(ctx, provider, req, workingContext, activeActions, closingHint, draftModel, emit, nil)
 		if err != nil {
 			iterLog.Errors = append(iterLog.Errors, fmt.Sprintf("LLM call failed: %v", err))
 			appendIter(&iterLog, iterStart)
@@ -417,7 +489,7 @@ func (r *ReasoningService) run(ctx context.Context, req *ReasoningRequest, emit 
 				// (strong) model — tools stripped — so the quality gates below evaluate what is
 				// actually delivered. An empty model targets the primary.
 				if r.tieringActive(req) && !result.ResponseDelivered {
-					if strongResp, serr := r.callLLM(ctx, provider, req, workingContext, nil, "", "", emit); serr == nil {
+					if strongResp, serr := r.callLLM(ctx, provider, req, workingContext, nil, "", "", emit, nil); serr == nil {
 						r.accrueTokens(req, result, "", strongResp.TokensUsed)
 						llmResp.Content = strongResp.Content
 						workingContext[len(workingContext)-1].Content = strongResp.Content
@@ -480,7 +552,11 @@ func (r *ReasoningService) run(ctx context.Context, req *ReasoningRequest, emit 
 					}
 				}
 
-				result.FinalResponse = llmResp.Content
+				if req.ResponseFormat != nil && !result.ResponseDelivered {
+					result.FinalResponse = r.finalizeStructured(ctx, provider, req, workingContext, result)
+				} else {
+					result.FinalResponse = llmResp.Content
+				}
 				result.FinalSession = req.Session
 				if plan != nil {
 					result.Plan = plan.items
@@ -682,6 +758,7 @@ func (r *ReasoningService) callLLM(
 	closingHint string,
 	model string,
 	emit reasoningEmitter,
+	responseFormat *ports.ResponseFormat,
 ) (*ports.OracleResponse, error) {
 	if model == "" {
 		model = req.Spirit.ModelConfig.Model
@@ -698,14 +775,15 @@ func (r *ReasoningService) callLLM(
 		systemPrompt += closingHint
 	}
 	oracleReq := &ports.OracleRequest{
-		Model:        model,
-		SystemPrompt: systemPrompt,
-		Messages:     messages,
-		Tools:        actions,
-		Temperature:  req.Spirit.ModelConfig.Temperature,
-		MaxTokens:    req.Spirit.ModelConfig.MaxTokens,
-		UseTools:     len(actions) > 0,
-		Attachments:  media.ConvertToLLMAttachments(req.Event.Attachments, useProvider, model),
+		Model:          model,
+		SystemPrompt:   systemPrompt,
+		ResponseFormat: responseFormat,
+		Messages:       messages,
+		Tools:          actions,
+		Temperature:    req.Spirit.ModelConfig.Temperature,
+		MaxTokens:      req.Spirit.ModelConfig.MaxTokens,
+		UseTools:       len(actions) > 0,
+		Attachments:    media.ConvertToLLMAttachments(req.Event.Attachments, useProvider, model),
 	}
 
 	// Stream when the caller wants events and the provider supports it; otherwise buffer.

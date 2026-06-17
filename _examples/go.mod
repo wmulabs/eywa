@@ -37,6 +37,7 @@ require (
 	github.com/redis/go-redis/extra/redisotel/v9 v9.20.1 // indirect
 	github.com/redis/go-redis/v9 v9.20.1 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
+	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 // indirect
 	github.com/tidwall/gjson v1.19.0 // indirect
 	github.com/tidwall/match v1.2.0 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
