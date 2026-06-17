@@ -74,6 +74,10 @@ type Spirit struct {
 	// nil = use the WeaveConfig defaults for every policy.
 	ReasoningOverrides *ReasoningOverrides `bson:"reasoning_overrides,omitempty" json:"reasoning_overrides,omitempty"`
 
+	// ResponseFormat, when set, makes the Spirit's final answer a JSON object validated against the
+	// schema (native provider mode when available, instruct + validate otherwise). nil = free-form.
+	ResponseFormat *ResponseFormat `bson:"response_format,omitempty" json:"response_format,omitempty"`
+
 	CreatedAt     time.Time  `bson:"created_at" json:"created_at"`
 	CreatedBy     string     `bson:"created_by,omitempty" json:"created_by,omitempty"`
 	UpdatedAt     time.Time  `bson:"updated_at,omitempty" json:"updated_at,omitempty"`
