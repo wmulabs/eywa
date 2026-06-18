@@ -5,7 +5,7 @@ go 1.26.4
 require (
 	github.com/weaviate/weaviate v1.38.0
 	github.com/weaviate/weaviate-go-client/v5 v5.7.3
-	github.com/wmulabs/eywa v1.28.0
+	github.com/wmulabs/eywa v1.29.0
 )
 
 require (
