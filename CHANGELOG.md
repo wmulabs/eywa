@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.29.0](https://github.com/wmulabs/eywa/compare/v1.28.0...v1.29.0) (2026-06-18)
+
+
+### Features
+
+* **rag:** recursive, rune-safe text chunker ([#125](https://github.com/wmulabs/eywa/issues/125)) ([9dfa151](https://github.com/wmulabs/eywa/commit/9dfa1510ad306b7b0f3a3068f6e221886eea2102))
+
 ## [1.28.0](https://github.com/wmulabs/eywa/compare/v1.27.0...v1.28.0) (2026-06-18)
 
 
