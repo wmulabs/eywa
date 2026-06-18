@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -28,8 +29,11 @@ import (
 	eywa "github.com/wmulabs/eywa"
 )
 
-// compile-time interface check
-var _ eywa.LoreStore = (*LoreStore)(nil)
+// compile-time interface checks
+var (
+	_ eywa.LoreStore           = (*LoreStore)(nil)
+	_ eywa.FilterableLoreStore = (*LoreStore)(nil)
+)
 
 // LoreStore implements eywa.LoreStore using PostgreSQL with the pgvector extension.
 // Vectors are stored as the pgvector `vector` type; similarity search uses cosine distance.
@@ -114,6 +118,13 @@ func (s *LoreStore) Upsert(ctx context.Context, chunks []eywa.LoreChunk) error {
 // Search returns at most topK chunks from loreID whose cosine similarity to query is
 // >= minScore (0–1). Results are ordered by descending similarity.
 func (s *LoreStore) Search(ctx context.Context, loreID string, query []float32, topK int, minScore float64) ([]eywa.LoreChunk, error) {
+	return s.SearchFiltered(ctx, loreID, query, eywa.LoreSearchOptions{TopK: topK, MinScore: minScore})
+}
+
+// SearchFiltered runs a vector search constrained by chunk metadata: Equals via jsonb containment,
+// numeric Ranges via casts. Filter field names are bound as parameters, never interpolated.
+func (s *LoreStore) SearchFiltered(ctx context.Context, loreID string, query []float32, opts eywa.LoreSearchOptions) ([]eywa.LoreChunk, error) {
+	topK := opts.TopK
 	if topK <= 0 {
 		topK = 5
 	}
@@ -123,18 +134,26 @@ func (s *LoreStore) Search(ctx context.Context, loreID string, query []float32, 
 
 	// pgvector cosine distance: 0 = identical, 2 = opposite
 	// similarity = 1 − distance  →  distance threshold = 1 − minScore
-	distThreshold := 1.0 - minScore
+	distThreshold := 1.0 - opts.MinScore
 
-	rows, err := s.pool.Query(ctx, `
+	where := "lore_id = $2 AND embedding <=> $1::vector <= $3"
+	args := []any{formatVector(query), loreID, distThreshold}
+
+	where, args, err := appendLoreFilter(where, args, opts.Filter)
+	if err != nil {
+		return nil, err
+	}
+
+	args = append(args, topK)
+	sql := fmt.Sprintf(`
 		SELECT id, lore_id, content, metadata, created_at,
 		       1 - (embedding <=> $1::vector) AS score
 		FROM eywa_lore_chunks
-		WHERE lore_id = $2
-		  AND embedding <=> $1::vector <= $3
+		WHERE %s
 		ORDER BY embedding <=> $1::vector
-		LIMIT $4`,
-		formatVector(query), loreID, distThreshold, topK,
-	)
+		LIMIT $%d`, where, len(args))
+
+	rows, err := s.pool.Query(ctx, sql, args...)
 	if err != nil {
 		return nil, fmt.Errorf("pgvector: search: %w", err)
 	}
@@ -151,12 +170,58 @@ func (s *LoreStore) Search(ctx context.Context, loreID string, query []float32, 
 		if len(metaRaw) > 0 {
 			_ = json.Unmarshal(metaRaw, &c.Metadata)
 		}
+		c.Score = score
 		result = append(result, c)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("scan lore search results: %w", err)
 	}
 	return result, nil
+}
+
+// appendLoreFilter extends the WHERE clause and args with metadata constraints. Equals becomes a
+// single jsonb containment check; each numeric Range bound becomes a cast comparison. Field names are
+// passed as parameters (metadata ->> $n) so they are never interpolated into SQL.
+func appendLoreFilter(where string, args []any, filter *eywa.LoreFilter) (string, []any, error) {
+	if filter == nil {
+		return where, args, nil
+	}
+
+	if len(filter.Equals) > 0 {
+		raw, err := json.Marshal(filter.Equals)
+		if err != nil {
+			return where, args, fmt.Errorf("pgvector: marshal filter equals: %w", err)
+		}
+		args = append(args, string(raw))
+		where += fmt.Sprintf(" AND metadata @> $%d::jsonb", len(args))
+	}
+
+	for _, field := range sortedRangeFields(filter.Ranges) {
+		r := filter.Ranges[field]
+		if r.Min != nil {
+			args = append(args, field)
+			fieldIdx := len(args)
+			args = append(args, *r.Min)
+			where += fmt.Sprintf(" AND (metadata ->> $%d)::numeric >= $%d", fieldIdx, len(args))
+		}
+		if r.Max != nil {
+			args = append(args, field)
+			fieldIdx := len(args)
+			args = append(args, *r.Max)
+			where += fmt.Sprintf(" AND (metadata ->> $%d)::numeric <= $%d", fieldIdx, len(args))
+		}
+	}
+
+	return where, args, nil
+}
+
+func sortedRangeFields(ranges map[string]eywa.LoreRange) []string {
+	fields := make([]string, 0, len(ranges))
+	for f := range ranges {
+		fields = append(fields, f)
+	}
+	sort.Strings(fields)
+	return fields
 }
 
 // Delete removes all chunks belonging to loreID.
