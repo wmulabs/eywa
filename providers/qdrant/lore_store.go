@@ -27,14 +27,28 @@ import (
 	"encoding/json"
 	"fmt"
 	"hash/fnv"
+	"sort"
 	"time"
 
 	qclient "github.com/qdrant/go-client/qdrant"
 	eywa "github.com/wmulabs/eywa"
 )
 
-// compile-time interface check
-var _ eywa.LoreStore = (*LoreStore)(nil)
+// compile-time interface checks
+var (
+	_ eywa.LoreStore           = (*LoreStore)(nil)
+	_ eywa.FilterableLoreStore = (*LoreStore)(nil)
+)
+
+// qdrantClient is the subset of *qclient.Client the store uses, so the query path can be unit-tested
+// against a mock.
+type qdrantClient interface {
+	Query(ctx context.Context, request *qclient.QueryPoints) ([]*qclient.ScoredPoint, error)
+	Upsert(ctx context.Context, request *qclient.UpsertPoints) (*qclient.UpdateResult, error)
+	Delete(ctx context.Context, request *qclient.DeletePoints) (*qclient.UpdateResult, error)
+	CollectionExists(ctx context.Context, collectionName string) (bool, error)
+	CreateCollection(ctx context.Context, request *qclient.CreateCollection) error
+}
 
 // Config holds Qdrant connection configuration.
 type Config struct {
@@ -56,7 +70,7 @@ type Config struct {
 // Similarity search uses cosine distance; lore_id is stored as a payload field
 // so multiple Lore knowledge bases can share a single collection.
 type LoreStore struct {
-	client     *qclient.Client
+	client     qdrantClient
 	collection string
 	dim        uint64
 }
@@ -160,21 +174,23 @@ func (s *LoreStore) Upsert(ctx context.Context, chunks []eywa.LoreChunk) error {
 
 // Search returns at most topK chunks from loreID with cosine similarity >= minScore.
 func (s *LoreStore) Search(ctx context.Context, loreID string, query []float32, topK int, minScore float64) ([]eywa.LoreChunk, error) {
+	return s.SearchFiltered(ctx, loreID, query, eywa.LoreSearchOptions{TopK: topK, MinScore: minScore})
+}
+
+// SearchFiltered runs a vector search constrained by chunk metadata via Qdrant payload conditions.
+func (s *LoreStore) SearchFiltered(ctx context.Context, loreID string, query []float32, opts eywa.LoreSearchOptions) ([]eywa.LoreChunk, error) {
+	topK := opts.TopK
 	if topK <= 0 {
 		topK = 5
 	}
 
 	limit := uint64(topK)
-	scoreThreshold := float32(minScore)
+	scoreThreshold := float32(opts.MinScore)
 
 	results, err := s.client.Query(ctx, &qclient.QueryPoints{
 		CollectionName: s.collection,
 		Query:          qclient.NewQuery(query...),
-		Filter: &qclient.Filter{
-			Must: []*qclient.Condition{
-				qclient.NewMatchKeyword("lore_id", loreID),
-			},
-		},
+		Filter:         &qclient.Filter{Must: qdrantConditions(loreID, opts.Filter)},
 		Limit:          &limit,
 		ScoreThreshold: &scoreThreshold,
 		WithPayload:    qclient.NewWithPayload(true),
@@ -189,9 +205,59 @@ func (s *LoreStore) Search(ctx context.Context, loreID string, query []float32, 
 		if err != nil {
 			continue
 		}
+		c.Score = float64(r.GetScore())
 		chunks = append(chunks, c)
 	}
 	return chunks, nil
+}
+
+// qdrantConditions builds the payload Must-conditions: always the lore_id match, plus metadata
+// equality (typed) and numeric ranges from the filter.
+func qdrantConditions(loreID string, filter *eywa.LoreFilter) []*qclient.Condition {
+	conditions := []*qclient.Condition{qclient.NewMatchKeyword("lore_id", loreID)}
+	if filter == nil {
+		return conditions
+	}
+
+	for _, field := range sortedKeys(filter.Equals) {
+		switch v := filter.Equals[field].(type) {
+		case string:
+			conditions = append(conditions, qclient.NewMatchKeyword(field, v))
+		case bool:
+			conditions = append(conditions, qclient.NewMatchBool(field, v))
+		case int:
+			conditions = append(conditions, qclient.NewMatchInt(field, int64(v)))
+		case int64:
+			conditions = append(conditions, qclient.NewMatchInt(field, v))
+		case float64:
+			conditions = append(conditions, qclient.NewMatchInt(field, int64(v)))
+		}
+	}
+
+	for _, field := range sortedRangeKeys(filter.Ranges) {
+		r := filter.Ranges[field]
+		conditions = append(conditions, qclient.NewRange(field, &qclient.Range{Gte: r.Min, Lte: r.Max}))
+	}
+
+	return conditions
+}
+
+func sortedKeys(m map[string]any) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+func sortedRangeKeys(m map[string]eywa.LoreRange) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 // Delete removes all chunks belonging to loreID from the collection.
