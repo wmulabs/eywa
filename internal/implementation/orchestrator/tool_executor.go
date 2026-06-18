@@ -8,6 +8,7 @@ import (
 
 	"github.com/wmulabs/eywa/internal/domain/errors"
 	"github.com/wmulabs/eywa/internal/domain/ports"
+	"github.com/wmulabs/eywa/internal/helpers/otelgenai"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 )
@@ -115,6 +116,7 @@ func (t *DefaultActionExecutor) ExecuteAll(ctx context.Context, actionCalls []po
 func (t *DefaultActionExecutor) executeOne(ctx context.Context, call ports.OracleToolCall) ActionResult {
 	ctx, span := t.tracer.Start(ctx, "ActionExecutor/ExecuteOne")
 	defer span.End()
+	otelgenai.SetToolName(span, call.Name)
 
 	start := time.Now()
 	result := ActionResult{
