@@ -144,6 +144,10 @@ type (
 	// deterministic and LLM-as-judge Scorers.
 	TrialRunner = trial.TrialRunner
 
+	// ReplayOptions selects which recorded interactions to replay from the Chronicle.
+	// Pass to LoadReplayCases.
+	ReplayOptions = trial.ReplayOptions
+
 	// GroundingViolationAction selects what GroundingPolicy does when a RAG answer fails to cite sources.
 	GroundingViolationAction = orchestrator.GroundingViolationAction
 )
@@ -214,6 +218,14 @@ var (
 
 	// LoadTrialSuite loads a TrialSuite from a YAML or JSON file at path.
 	LoadTrialSuite = trial.LoadTrialSuite
+
+	// LoadReplayCases reads recorded interactions from the Chronicle (by memory key or time range) and
+	// converts them into TrialCases for regression replay against the current Weave. Run them with a
+	// TrialRunner; each case carries the recorded answer as its Baseline.
+	LoadReplayCases = trial.LoadReplayCases
+
+	// CasesFromChronicles converts already-loaded Chronicle entries into replayable TrialCases.
+	CasesFromChronicles = trial.CasesFromChronicles
 
 	// NewAPIKeyValidator returns a TokenValidator that accepts static API keys.
 	// keys maps raw key strings to role names (e.g. "admin", "operator").
