@@ -148,6 +148,10 @@ type (
 	// Pass to LoadReplayCases.
 	ReplayOptions = trial.ReplayOptions
 
+	// IngestObjectOptions configures Weave.IngestObject (verbalize a structured record via an Oracle,
+	// then index it as one vector with its fields as metadata).
+	IngestObjectOptions = orchestrator.IngestObjectOptions
+
 	// GroundingViolationAction selects what GroundingPolicy does when a RAG answer fails to cite sources.
 	GroundingViolationAction = orchestrator.GroundingViolationAction
 )

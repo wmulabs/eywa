@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -324,6 +325,78 @@ func chunkMetadata(ingestion entities.LoreIngestion) map[string]any {
 	}
 	merged[entities.LoreDocumentIDKey] = ingestion.DocumentID
 	return merged
+}
+
+const defaultVerbalizePrompt = "Convert the following structured record into a concise, factual, " +
+	"natural-language description suitable for semantic search. State each meaningful field in plain " +
+	"prose. Output only the description — no preamble, no markdown, no code fences."
+
+// IngestObjectOptions configures how a structured record is verbalized and indexed.
+type IngestObjectOptions struct {
+	DocumentID string // stable record ID — re-ingesting the same one upserts in place (recommended)
+	Provider   string // Oracle provider used to verbalize the object
+	Model      string // model used to verbalize the object
+	Prompt     string // optional custom verbalization instruction; the default is used when empty
+}
+
+// IngestObject indexes a structured record by first verbalizing it into a canonical natural-language
+// description via an Oracle (better for embeddings than raw JSON), then storing that text as a single
+// vector with the object's fields as metadata. The object is indexed as one record (no chunking) so
+// retrieval returns distinct objects. The same record can be filtered (LoreFilter) on its fields.
+func (e *Weave) IngestObject(ctx context.Context, loreID string, obj map[string]any, opts IngestObjectOptions) error {
+	if e.oracleFactory == nil || e.loreStore == nil || e.loreEmbedder == nil || e.loreRepository == nil {
+		return fmt.Errorf("object ingestion not configured: needs an Oracle, lore repository, store, and embedder")
+	}
+	if len(obj) == 0 {
+		return fmt.Errorf("ingest object: empty object")
+	}
+
+	text, err := e.verbalizeObject(ctx, obj, opts)
+	if err != nil {
+		return err
+	}
+
+	return e.IngestLore(ctx, entities.LoreIngestion{
+		LoreID:     loreID,
+		Text:       text,
+		Metadata:   obj,
+		DocumentID: opts.DocumentID,
+		NoChunk:    true,
+	})
+}
+
+// verbalizeObject asks the Oracle to turn the object into a description for embedding.
+func (e *Weave) verbalizeObject(ctx context.Context, obj map[string]any, opts IngestObjectOptions) (string, error) {
+	raw, err := json.Marshal(obj)
+	if err != nil {
+		return "", fmt.Errorf("ingest object: marshal record: %w", err)
+	}
+
+	instruction := opts.Prompt
+	if instruction == "" {
+		instruction = defaultVerbalizePrompt
+	}
+
+	oracle, err := e.oracleFactory.GetProvider(opts.Provider)
+	if err != nil {
+		return "", fmt.Errorf("ingest object: oracle: %w", err)
+	}
+
+	resp, err := oracle.GenerateResponse(ctx, &ports.OracleRequest{
+		Model:       opts.Model,
+		Messages:    []ports.OracleMessage{{Role: ports.RoleUser, Content: instruction + "\n\nRecord:\n" + string(raw)}},
+		Temperature: 0,
+		MaxTokens:   512,
+	})
+	if err != nil {
+		return "", fmt.Errorf("ingest object: verbalize: %w", err)
+	}
+
+	text := strings.TrimSpace(resp.Content)
+	if text == "" {
+		return "", fmt.Errorf("ingest object: verbalization produced empty text")
+	}
+	return text, nil
 }
 
 func (e *Weave) DeleteLore(ctx context.Context, loreID string) error {
