@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.32.0](https://github.com/wmulabs/eywa/compare/v1.31.0...v1.32.0) (2026-06-18)
+
+
+### Features
+
+* **lore:** distinct-object search (GroupByDocument) ([#142](https://github.com/wmulabs/eywa/issues/142)) ([8844537](https://github.com/wmulabs/eywa/commit/884453706b943446163273653b5b88cd66679c2e))
+
 ## [1.31.0](https://github.com/wmulabs/eywa/compare/v1.30.0...v1.31.0) (2026-06-18)
 
 
