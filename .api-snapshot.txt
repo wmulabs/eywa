@@ -254,6 +254,14 @@ var (
 	// LoadTrialSuite loads a TrialSuite from a YAML or JSON file at path.
 	LoadTrialSuite = trial.LoadTrialSuite
 
+	// LoadReplayCases reads recorded interactions from the Chronicle (by memory key or time range) and
+	// converts them into TrialCases for regression replay against the current Weave. Run them with a
+	// TrialRunner; each case carries the recorded answer as its Baseline.
+	LoadReplayCases = trial.LoadReplayCases
+
+	// CasesFromChronicles converts already-loaded Chronicle entries into replayable TrialCases.
+	CasesFromChronicles = trial.CasesFromChronicles
+
 	// NewAPIKeyValidator returns a TokenValidator that accepts static API keys.
 	// keys maps raw key strings to role names (e.g. "admin", "operator").
 	NewAPIKeyValidator = auth.NewAPIKeyValidator
@@ -890,6 +898,10 @@ type RecurrenceConfig = entities.RecurrenceConfig
 type ReflectionPolicy = orchestrator.ReflectionPolicy
     ReflectionPolicy configures the pre-delivery self-critique pass. Set on
     WeaveBuilder.WithReflectionPolicy.
+
+type ReplayOptions = trial.ReplayOptions
+    ReplayOptions selects which recorded interactions to replay from the
+    Chronicle. Pass to LoadReplayCases.
 
 type Response = entities.Response
     Response is the result returned by Weave.ProcessEventByKey. It contains the

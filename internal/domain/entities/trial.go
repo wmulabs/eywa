@@ -10,6 +10,10 @@ type TrialCase struct {
 	UserMessage string            `json:"user_message" yaml:"user_message"`
 	Knowledge   map[string]any    `json:"knowledge,omitempty" yaml:"knowledge,omitempty"`
 	Expect      TrialExpectations `json:"expect" yaml:"expect"`
+
+	// Baseline is the previously recorded answer for this case, set when the case is replayed from the
+	// Chronicle. Regression scorers compare the fresh response against it; empty for authored cases.
+	Baseline string `json:"baseline,omitempty" yaml:"baseline,omitempty"`
 }
 
 type TrialExpectations struct {
