@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.31.0](https://github.com/wmulabs/eywa/compare/v1.30.0...v1.31.0) (2026-06-18)
+
+
+### Features
+
+* **pgvector:** metadata-filtered search (FilterableLoreStore) ([#139](https://github.com/wmulabs/eywa/issues/139)) ([21f2149](https://github.com/wmulabs/eywa/commit/21f21494ff866babe38602d45d78ea7c24ede1e7))
+
 ## [1.30.0](https://github.com/wmulabs/eywa/compare/v1.29.0...v1.30.0) (2026-06-18)
 
 
