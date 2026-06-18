@@ -637,6 +637,11 @@ type ExecutorConfig = entities.ExecutorConfig
 type Eye = ports.Eye
     Eye is the image analysis port used by a Lens implementation.
 
+type FilterableLoreStore = ports.FilterableLoreStore
+    FilterableLoreStore is the optional metadata-filtering capability of a
+    LoreStore, used by Weave.SearchLore. Stores whose backend supports payload
+    filters implement it.
+
 type GroundingPolicy = orchestrator.GroundingPolicy
     GroundingPolicy configures source-citation enforcement for RAG answers.
     Set on WeaveBuilder.WithGroundingPolicy.
@@ -767,15 +772,27 @@ type LoreEmbedder = ports.LoreEmbedder
     LoreEmbedder converts text into a vector embedding for Lore indexing and
     search. Implement using your preferred embedding model API.
 
+type LoreFilter = ports.LoreFilter
+    LoreFilter constrains a Lore search by chunk Metadata (equality + numeric
+    ranges).
+
 type LoreHarvester = ports.LoreHarvester
     LoreHarvester pre-processes raw documents into LoreChunks before ingestion.
 
 type LoreIngestion = entities.LoreIngestion
     LoreIngestion tracks the status of an async Lore ingestion job.
 
+type LoreRange = ports.LoreRange
+    LoreRange constrains a numeric metadata field to [Min, Max]; a nil bound is
+    open on that side.
+
 type LoreRepository = ports.LoreRepository
     LoreRepository persists Lore documents and chunks for RAG retrieval.
     The MongoDB adapter supports full-text search out of the box.
+
+type LoreSearchOptions = ports.LoreSearchOptions
+    LoreSearchOptions carries the parameters of Weave.SearchLore (TopK,
+    MinScore, Filter).
 
 type LoreStore = ports.LoreStore
     LoreStore is the vector search backend port for semantic Lore retrieval.

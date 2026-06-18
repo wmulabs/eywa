@@ -22,6 +22,33 @@ type LoreStore interface {
 	Delete(ctx context.Context, loreID string) error
 }
 
+// LoreRange constrains a numeric metadata field to [Min, Max]. A nil bound is open on that side.
+type LoreRange struct {
+	Min *float64
+	Max *float64
+}
+
+// LoreFilter constrains a vector search by structured chunk Metadata: Equals matches a field exactly,
+// Ranges constrains numeric fields. Combined with similarity it makes the store a queryable database —
+// retrieve by semantic relevance AND structured constraints (status, tenant, price, date, …).
+type LoreFilter struct {
+	Equals map[string]any
+	Ranges map[string]LoreRange
+}
+
+// LoreSearchOptions carries the parameters of a filtered vector search.
+type LoreSearchOptions struct {
+	TopK     int
+	MinScore float64
+	Filter   *LoreFilter // nil = no metadata filter
+}
+
+// FilterableLoreStore is the optional metadata-filtering capability of a LoreStore. Adapters whose
+// backend supports payload/metadata filters implement it; callers fall back to plain Search otherwise.
+type FilterableLoreStore interface {
+	SearchFiltered(ctx context.Context, loreID string, query []float32, opts LoreSearchOptions) ([]entities.LoreChunk, error)
+}
+
 type LoreEmbedder interface {
 	Embed(ctx context.Context, texts []string) ([][]float32, error)
 	Dimensions() int
