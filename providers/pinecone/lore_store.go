@@ -23,8 +23,17 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-// compile-time interface check
-var _ eywa.LoreStore = (*LoreStore)(nil)
+// compile-time interface checks
+var (
+	_ eywa.LoreStore           = (*LoreStore)(nil)
+	_ eywa.FilterableLoreStore = (*LoreStore)(nil)
+)
+
+// vectorQuerier is the subset of *pc.IndexConnection the search path uses, so it can be unit-tested
+// with a mock instead of a live Pinecone index.
+type vectorQuerier interface {
+	QueryByVectorValues(ctx context.Context, in *pc.QueryByVectorValuesRequest) (*pc.QueryVectorsResponse, error)
+}
 
 // Config holds Pinecone connection configuration.
 type Config struct {
@@ -116,20 +125,36 @@ func (s *LoreStore) Upsert(ctx context.Context, chunks []eywa.LoreChunk) error {
 // Search returns at most topK chunks from loreID with score >= minScore.
 // The Pinecone namespace for the query is set to loreID.
 func (s *LoreStore) Search(ctx context.Context, loreID string, query []float32, topK int, minScore float64) ([]eywa.LoreChunk, error) {
-	if topK <= 0 {
-		topK = 5
-	}
+	return s.SearchFiltered(ctx, loreID, query, eywa.LoreSearchOptions{TopK: topK, MinScore: minScore})
+}
 
+// SearchFiltered runs a vector search constrained by chunk metadata via Pinecone's native metadata
+// filter (the Lore is the Pinecone namespace; equality and numeric ranges map to $eq/$gte/$lte).
+func (s *LoreStore) SearchFiltered(ctx context.Context, loreID string, query []float32, opts eywa.LoreSearchOptions) ([]eywa.LoreChunk, error) {
 	conn, err := s.indexConn(loreID)
 	if err != nil {
 		return nil, err
 	}
+	return s.queryVectors(ctx, conn, loreID, query, opts)
+}
 
-	res, err := conn.QueryByVectorValues(ctx, &pc.QueryByVectorValuesRequest{
+func (s *LoreStore) queryVectors(ctx context.Context, q vectorQuerier, loreID string, query []float32, opts eywa.LoreSearchOptions) ([]eywa.LoreChunk, error) {
+	topK := opts.TopK
+	if topK <= 0 {
+		topK = 5
+	}
+
+	filter, err := pineconeFilter(opts.Filter)
+	if err != nil {
+		return nil, fmt.Errorf("pinecone: build filter: %w", err)
+	}
+
+	res, err := q.QueryByVectorValues(ctx, &pc.QueryByVectorValuesRequest{
 		Vector:          query,
 		TopK:            uint32(topK),
 		IncludeValues:   false,
 		IncludeMetadata: true,
+		MetadataFilter:  filter,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("pinecone: search: %w", err)
@@ -137,12 +162,13 @@ func (s *LoreStore) Search(ctx context.Context, loreID string, query []float32, 
 
 	chunks := make([]eywa.LoreChunk, 0, len(res.Matches))
 	for _, m := range res.Matches {
-		if m.Vector == nil || float64(m.Score) < minScore {
+		if m.Vector == nil || float64(m.Score) < opts.MinScore {
 			continue
 		}
 		c := eywa.LoreChunk{
 			ID:     m.Vector.Id,
 			LoreID: loreID,
+			Score:  float64(m.Score),
 		}
 		if m.Vector.Metadata != nil {
 			if v, ok := m.Vector.Metadata.Fields["content"]; ok {
@@ -158,6 +184,35 @@ func (s *LoreStore) Search(ctx context.Context, loreID string, query []float32, 
 		chunks = append(chunks, c)
 	}
 	return chunks, nil
+}
+
+// pineconeFilter translates a LoreFilter into Pinecone's metadata filter ($eq for equality, $gte/$lte
+// for ranges). Returns nil when there is nothing to filter.
+func pineconeFilter(filter *eywa.LoreFilter) (*structpb.Struct, error) {
+	if filter == nil || (len(filter.Equals) == 0 && len(filter.Ranges) == 0) {
+		return nil, nil
+	}
+
+	m := make(map[string]any, len(filter.Equals)+len(filter.Ranges))
+	for field, value := range filter.Equals {
+		m[field] = map[string]any{"$eq": value}
+	}
+	for field, r := range filter.Ranges {
+		cond := map[string]any{}
+		if r.Min != nil {
+			cond["$gte"] = *r.Min
+		}
+		if r.Max != nil {
+			cond["$lte"] = *r.Max
+		}
+		m[field] = cond
+	}
+
+	s, err := structpb.NewStruct(m)
+	if err != nil {
+		return nil, fmt.Errorf("encode metadata filter: %w", err)
+	}
+	return s, nil
 }
 
 // Delete removes all vectors in the Pinecone namespace equal to loreID,
