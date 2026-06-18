@@ -65,6 +65,14 @@ func TestPineconeFilter_EncodeError(t *testing.T) {
 	}
 }
 
+func TestSearchFiltered_IndexConnError(t *testing.T) {
+	// No index host configured → indexConn fails before any network call.
+	store := &LoreStore{}
+	if _, err := store.SearchFiltered(context.Background(), "lore", []float32{0.1, 0.2}, eywa.LoreSearchOptions{}); err == nil {
+		t.Error("expected an error when the index connection cannot be created")
+	}
+}
+
 func TestQueryVectors_ReturnsScoredChunks(t *testing.T) {
 	fake := &fakeQuerier{resp: &pc.QueryVectorsResponse{Matches: []*pc.ScoredVector{scoredVector(t, "c1", 0.9)}}}
 	store := &LoreStore{}
