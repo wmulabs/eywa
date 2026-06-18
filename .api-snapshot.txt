@@ -713,6 +713,11 @@ type Inbox = ports.Inbox
     succession for the same user, the Inbox accumulates them into a single
     Pulse.
 
+type IngestObjectOptions = orchestrator.IngestObjectOptions
+    IngestObjectOptions configures Weave.IngestObject (verbalize a structured
+    record via an Oracle, then index it as one vector with its fields as
+    metadata).
+
 type IngestionResult = ingestion.IngestionResult
     IngestionResult carries the outcome of a single async Lore ingestion job.
 
