@@ -3,13 +3,88 @@ package pgvector
 import (
 	"context"
 	"math"
+	"strings"
 	"testing"
 
 	eywa "github.com/wmulabs/eywa"
 )
 
 // Interface compliance — fails at compile time if LoreStore diverges from the port.
-var _ eywa.LoreStore = (*LoreStore)(nil)
+var (
+	_ eywa.LoreStore           = (*LoreStore)(nil)
+	_ eywa.FilterableLoreStore = (*LoreStore)(nil)
+)
+
+func ptrFloat(f float64) *float64 { return &f }
+
+func TestAppendLoreFilter_Nil(t *testing.T) {
+	where, args, err := appendLoreFilter("base", []any{"a", "b", "c"}, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if where != "base" || len(args) != 3 {
+		t.Errorf("nil filter must not change where/args, got %q / %v", where, args)
+	}
+}
+
+func TestAppendLoreFilter_Equals(t *testing.T) {
+	f := &eywa.LoreFilter{Equals: map[string]any{"status": "published"}}
+	where, args, err := appendLoreFilter("W", []any{"a", "b", "c"}, f)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(where, "metadata @> $4::jsonb") {
+		t.Errorf("expected jsonb containment at $4, got %q", where)
+	}
+	if len(args) != 4 || !strings.Contains(args[3].(string), "published") {
+		t.Errorf("expected marshaled equals as arg 4, got %v", args)
+	}
+}
+
+func TestAppendLoreFilter_Ranges(t *testing.T) {
+	f := &eywa.LoreFilter{Ranges: map[string]eywa.LoreRange{"price": {Max: ptrFloat(100)}}}
+	where, args, err := appendLoreFilter("W", []any{"a", "b", "c"}, f)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// field name is a parameter ($4), bound value at $5 — never interpolated
+	if !strings.Contains(where, "(metadata ->> $4)::numeric <= $5") {
+		t.Errorf("expected parameterized range clause, got %q", where)
+	}
+	if len(args) != 5 || args[3] != "price" || args[4] != 100.0 {
+		t.Errorf("expected field+bound as args, got %v", args)
+	}
+	if strings.Contains(where, "price") {
+		t.Errorf("field name must not be interpolated into SQL: %q", where)
+	}
+}
+
+func TestAppendLoreFilter_UnmarshalableEquals(t *testing.T) {
+	// A channel can't be marshalled to JSON — exercises the equals-marshal error path.
+	f := &eywa.LoreFilter{Equals: map[string]any{"bad": make(chan int)}}
+	if _, _, err := appendLoreFilter("W", []any{"a", "b", "c"}, f); err == nil {
+		t.Error("expected an error when the equals filter cannot be marshalled")
+	}
+}
+
+func TestAppendLoreFilter_Combined(t *testing.T) {
+	f := &eywa.LoreFilter{
+		Equals: map[string]any{"tenant": "acme"},
+		Ranges: map[string]eywa.LoreRange{"price": {Min: ptrFloat(10), Max: ptrFloat(100)}},
+	}
+	where, args, err := appendLoreFilter("W", []any{"a", "b", "c"}, f)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	for _, want := range []string{"metadata @> $4::jsonb", "(metadata ->> $5)::numeric >= $6", "(metadata ->> $7)::numeric <= $8"} {
+		if !strings.Contains(where, want) {
+			t.Errorf("expected %q in %q", want, where)
+		}
+	}
+	if len(args) != 8 {
+		t.Errorf("expected 8 args, got %d: %v", len(args), args)
+	}
+}
 
 func TestFormatVector(t *testing.T) {
 	cases := []struct {
