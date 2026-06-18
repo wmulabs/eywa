@@ -59,6 +59,7 @@ jobs:
             providers/anthropic providers/openai providers/gemini providers/ollama \
             providers/bedrock providers/vertexai providers/weaviate \
             providers/qdrant providers/pgvector providers/pinecone \
+            observability/langfuse \
             gcp/cloudtasks gcp/gcs gcp/gemini; do
             sed -i "s|github\.com/wmulabs/eywa v[0-9]*\.[0-9]*\.[0-9]*|github.com/wmulabs/eywa v${VERSION}|g" "$mod/go.mod"
             echo "  updated $mod/go.mod"
@@ -75,6 +76,7 @@ jobs:
             providers/anthropic providers/openai providers/gemini providers/ollama \
             providers/bedrock providers/vertexai providers/weaviate \
             providers/qdrant providers/pgvector providers/pinecone \
+            observability/langfuse \
             gcp/cloudtasks gcp/gcs gcp/gemini; do
             echo "==> go mod tidy: $mod"
             (cd "$mod" && go mod tidy)
@@ -96,6 +98,7 @@ jobs:
             providers/anthropic providers/openai providers/gemini providers/ollama \
             providers/bedrock providers/vertexai providers/weaviate \
             providers/qdrant providers/pgvector providers/pinecone \
+            observability/langfuse \
             gcp/cloudtasks gcp/gcs gcp/gemini; do
             git tag "${mod}/v${VERSION}"
             echo "  tagged ${mod}/v${VERSION}"
