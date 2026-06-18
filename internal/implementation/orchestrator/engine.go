@@ -305,9 +305,9 @@ func (e *Weave) DeleteLore(ctx context.Context, loreID string) error {
 }
 
 // SearchLore embeds queryText and returns the best-matching chunks of loreID — a direct, out-of-turn
-// semantic query (e.g. given a job description, return the top candidate profiles). When the store
-// supports metadata filtering (FilterableLoreStore) the opts.Filter is applied; otherwise it is
-// ignored and a plain vector search runs. Results carry their similarity Score.
+// semantic query over indexed content, usable for retrieval, deduplication, recommendation, matching,
+// or any similarity lookup. When the store supports metadata filtering (FilterableLoreStore) the
+// opts.Filter is applied; otherwise it is ignored and a plain vector search runs. Results carry Score.
 func (e *Weave) SearchLore(ctx context.Context, loreID, queryText string, opts ports.LoreSearchOptions) ([]entities.LoreChunk, error) {
 	if e.loreStore == nil || e.loreEmbedder == nil {
 		return nil, fmt.Errorf("lore search not configured: call WithLoreStore and WithLoreEmbedder")

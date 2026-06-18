@@ -29,8 +29,8 @@ type LoreRange struct {
 }
 
 // LoreFilter constrains a vector search by structured chunk Metadata: Equals matches a field exactly,
-// Ranges constrains numeric fields. Enables using the store as a queryable database (e.g. candidate
-// matching: similarity to a job description AND location == "SP" AND salary <= 12000).
+// Ranges constrains numeric fields. Combined with similarity it makes the store a queryable database —
+// retrieve by semantic relevance AND structured constraints (status, tenant, price, date, …).
 type LoreFilter struct {
 	Equals map[string]any
 	Ranges map[string]LoreRange
