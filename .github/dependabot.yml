@@ -1,124 +1,55 @@
 version: 2
+
 updates:
-  # GitHub Actions
+  # GitHub Actions workflows
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    open-pull-requests-limit: 3
+    rebase-strategy: auto
     labels: [dependencies]
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      github-actions:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
 
-  # Root module
+  # All Go modules (root + sub-modules) in one config via directories.
+  # Minor/patch updates are grouped into a single PR per directory; majors get
+  # their own PRs for individual review. chore(deps) keeps bumps non-releasing.
   - package-ecosystem: gomod
-    directory: /
+    directories:
+      - /
+      - /_examples
+      - /fiber
+      - /mongo
+      - /redis
+      - /mcp
+      - /channels/whatsapp
+      - /providers/anthropic
+      - /providers/openai
+      - /providers/gemini
+      - /providers/ollama
+      - /providers/bedrock
+      - /providers/weaviate
+      - /providers/qdrant
+      - /providers/pgvector
+      - /providers/pinecone
+      - /providers/vertexai
+      - /observability/langfuse
+      - /gcp/cloudtasks
+      - /gcp/gcs
+      - /gcp/gemini
     schedule:
       interval: weekly
+    open-pull-requests-limit: 3
+    rebase-strategy: auto
     labels: [dependencies, go]
-
-  # Sub-modules
-  - package-ecosystem: gomod
-    directory: /_examples
-    schedule:
-      interval: weekly
-    labels: [dependencies, go]
-
-  - package-ecosystem: gomod
-    directory: /fiber
-    schedule:
-      interval: weekly
-    labels: [dependencies, go]
-
-  - package-ecosystem: gomod
-    directory: /mongo
-    schedule:
-      interval: weekly
-    labels: [dependencies, go]
-
-  - package-ecosystem: gomod
-    directory: /redis
-    schedule:
-      interval: weekly
-    labels: [dependencies, go]
-
-  - package-ecosystem: gomod
-    directory: /mcp
-    schedule:
-      interval: weekly
-    labels: [dependencies, go]
-
-  - package-ecosystem: gomod
-    directory: /channels/whatsapp
-    schedule:
-      interval: weekly
-    labels: [dependencies, go]
-
-  - package-ecosystem: gomod
-    directory: /providers/anthropic
-    schedule:
-      interval: weekly
-    labels: [dependencies, go]
-
-  - package-ecosystem: gomod
-    directory: /providers/openai
-    schedule:
-      interval: weekly
-    labels: [dependencies, go]
-
-  - package-ecosystem: gomod
-    directory: /providers/gemini
-    schedule:
-      interval: weekly
-    labels: [dependencies, go]
-
-  - package-ecosystem: gomod
-    directory: /providers/bedrock
-    schedule:
-      interval: weekly
-    labels: [dependencies, go]
-
-  - package-ecosystem: gomod
-    directory: /providers/weaviate
-    schedule:
-      interval: weekly
-    labels: [dependencies, go]
-
-  - package-ecosystem: gomod
-    directory: /providers/qdrant
-    schedule:
-      interval: weekly
-    labels: [dependencies, go]
-
-  - package-ecosystem: gomod
-    directory: /providers/pgvector
-    schedule:
-      interval: weekly
-    labels: [dependencies, go]
-
-  - package-ecosystem: gomod
-    directory: /providers/pinecone
-    schedule:
-      interval: weekly
-    labels: [dependencies, go]
-
-  - package-ecosystem: gomod
-    directory: /providers/vertexai
-    schedule:
-      interval: weekly
-    labels: [dependencies, go]
-
-  - package-ecosystem: gomod
-    directory: /gcp/cloudtasks
-    schedule:
-      interval: weekly
-    labels: [dependencies, go]
-
-  - package-ecosystem: gomod
-    directory: /gcp/gcs
-    schedule:
-      interval: weekly
-    labels: [dependencies, go]
-
-  - package-ecosystem: gomod
-    directory: /gcp/gemini
-    schedule:
-      interval: weekly
-    labels: [dependencies, go]
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      go-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
