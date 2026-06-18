@@ -116,3 +116,78 @@ func TestSearchLore_FilterableStore_Error(t *testing.T) {
 }
 
 func ptrFloat(f float64) *float64 { return &f }
+
+func docChunk(id, docID string, score float64) entities.LoreChunk {
+	c := entities.LoreChunk{ID: id, Score: score}
+	if docID != "" {
+		c.Metadata = map[string]any{entities.LoreDocumentIDKey: docID}
+	}
+	return c
+}
+
+func TestGroupByDocument(t *testing.T) {
+	chunks := []entities.LoreChunk{
+		docChunk("a1", "A", 0.9),
+		docChunk("a2", "A", 0.7), // same doc, lower score → dropped
+		docChunk("b1", "B", 0.8),
+		docChunk("c1", "", 0.6), // no doc id → its own object (keyed by chunk ID)
+	}
+
+	got := groupByDocument(chunks, 2)
+	if len(got) != 2 {
+		t.Fatalf("expected top-2 distinct documents, got %d: %+v", len(got), got)
+	}
+	if got[0].ID != "a1" || got[1].ID != "b1" {
+		t.Errorf("expected A(0.9) then B(0.8), got %+v", got)
+	}
+}
+
+func TestGroupByDocument_KeepsHigherScoreRegardlessOfOrder(t *testing.T) {
+	// A later chunk of the same document with a higher score must replace the earlier one.
+	chunks := []entities.LoreChunk{docChunk("low", "A", 0.4), docChunk("high", "A", 0.95)}
+	got := groupByDocument(chunks, 5)
+	if len(got) != 1 || got[0].ID != "high" {
+		t.Errorf("expected the higher-scoring chunk to represent the document, got %+v", got)
+	}
+}
+
+func TestGroupByDocument_NoLimit(t *testing.T) {
+	chunks := []entities.LoreChunk{docChunk("a1", "A", 0.9), docChunk("b1", "B", 0.8), docChunk("c1", "", 0.6)}
+	if got := groupByDocument(chunks, 0); len(got) != 3 {
+		t.Errorf("topK 0 must not limit, got %d", len(got))
+	}
+}
+
+func TestSearchLore_GroupByDocument_OverfetchesAndCollapses(t *testing.T) {
+	store := &stubFilterableLoreStore{filtered: []entities.LoreChunk{
+		docChunk("a1", "A", 0.9),
+		docChunk("a2", "A", 0.7),
+		docChunk("b1", "B", 0.8),
+	}}
+	w := &Weave{loreStore: store, loreEmbedder: &stubSuccessLoreEmbedder{}}
+
+	got, err := w.SearchLore(context.Background(), "lore", "q", ports.LoreSearchOptions{
+		TopK: 2, GroupByDocument: true, Overfetch: 3,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if store.gotOpts.TopK != 6 {
+		t.Errorf("expected over-fetch TopK 2*3=6, got %d", store.gotOpts.TopK)
+	}
+	if len(got) != 2 || got[0].ID != "a1" || got[1].ID != "b1" {
+		t.Errorf("expected 2 distinct documents A,B, got %+v", got)
+	}
+}
+
+func TestSearchLore_GroupByDocument_DefaultOverfetch(t *testing.T) {
+	store := &stubFilterableLoreStore{filtered: []entities.LoreChunk{docChunk("a1", "A", 0.9)}}
+	w := &Weave{loreStore: store, loreEmbedder: &stubSuccessLoreEmbedder{}}
+
+	if _, err := w.SearchLore(context.Background(), "lore", "q", ports.LoreSearchOptions{TopK: 4, GroupByDocument: true}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if store.gotOpts.TopK != 20 { // 4 * defaultOverfetch(5)
+		t.Errorf("expected default over-fetch 4*5=20, got %d", store.gotOpts.TopK)
+	}
+}

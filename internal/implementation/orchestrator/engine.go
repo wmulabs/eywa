@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sort"
 	"sync"
 	"time"
 
@@ -357,6 +358,29 @@ func (e *Weave) SearchLore(ctx context.Context, loreID, queryText string, opts p
 		opts.TopK = 5
 	}
 
+	searchOpts := opts
+	if opts.GroupByDocument {
+		overfetch := opts.Overfetch
+		if overfetch <= 0 {
+			overfetch = defaultOverfetch
+		}
+		searchOpts.TopK = opts.TopK * overfetch
+	}
+
+	chunks, err := e.runLoreSearch(ctx, loreID, queryVec, searchOpts)
+	if err != nil {
+		return nil, err
+	}
+
+	if opts.GroupByDocument {
+		chunks = groupByDocument(chunks, opts.TopK)
+	}
+	return chunks, nil
+}
+
+const defaultOverfetch = 5
+
+func (e *Weave) runLoreSearch(ctx context.Context, loreID string, queryVec []float32, opts ports.LoreSearchOptions) ([]entities.LoreChunk, error) {
 	if filterable, ok := e.loreStore.(ports.FilterableLoreStore); ok {
 		chunks, err := filterable.SearchFiltered(ctx, loreID, queryVec, opts)
 		if err != nil {
@@ -370,6 +394,42 @@ func (e *Weave) SearchLore(ctx context.Context, loreID, queryText string, opts p
 		return nil, fmt.Errorf("lore search: %w", err)
 	}
 	return chunks, nil
+}
+
+// groupByDocument collapses chunks sharing a document ID into one result per record — the
+// highest-scoring chunk represents the document — then returns the top-K documents by score.
+func groupByDocument(chunks []entities.LoreChunk, topK int) []entities.LoreChunk {
+	best := make(map[string]entities.LoreChunk, len(chunks))
+	order := make([]string, 0, len(chunks))
+	for _, c := range chunks {
+		key := documentKey(c)
+		if cur, ok := best[key]; !ok {
+			best[key] = c
+			order = append(order, key)
+		} else if c.Score > cur.Score {
+			best[key] = c
+		}
+	}
+
+	result := make([]entities.LoreChunk, 0, len(order))
+	for _, key := range order {
+		result = append(result, best[key])
+	}
+	sort.SliceStable(result, func(i, j int) bool { return result[i].Score > result[j].Score })
+
+	if topK > 0 && len(result) > topK {
+		result = result[:topK]
+	}
+	return result
+}
+
+// documentKey is a chunk's record identity for grouping: its document ID when present, else its own
+// ID (so an un-grouped chunk is its own object).
+func documentKey(c entities.LoreChunk) string {
+	if id, ok := c.Metadata[entities.LoreDocumentIDKey].(string); ok && id != "" {
+		return id
+	}
+	return c.ID
 }
 
 func (e *Weave) RegisterAction(action ports.Action) error {
