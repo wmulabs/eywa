@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	eywa "github.com/wmulabs/eywa"
@@ -35,10 +36,18 @@ var (
 	_ eywa.FilterableLoreStore = (*LoreStore)(nil)
 )
 
+// pgxPool is the subset of *pgxpool.Pool the store uses. Narrowing it to an interface lets the query
+// paths be unit-tested with a mock pool (both *pgxpool.Pool and pgxmock satisfy it).
+type pgxPool interface {
+	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+	SendBatch(ctx context.Context, b *pgx.Batch) pgx.BatchResults
+}
+
 // LoreStore implements eywa.LoreStore using PostgreSQL with the pgvector extension.
 // Vectors are stored as the pgvector `vector` type; similarity search uses cosine distance.
 type LoreStore struct {
-	pool *pgxpool.Pool
+	pool pgxPool
 	dim  int
 }
 
