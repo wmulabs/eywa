@@ -460,6 +460,16 @@ var NewUpdateSubjectAction = actions.NewUpdateSubjectAction
     conversationally.
 
 
+FUNCTIONS
+
+func SetTraceContentCapture(enabled bool)
+    SetTraceContentCapture toggles recording prompt and completion text
+    as events on GenAI spans. Off by default — span content is sensitive
+    (may contain PII). Enable it (before processing) to get full traces in
+    Langfuse/Phoenix/Jaeger; only metadata and token counts are recorded
+    otherwise.
+
+
 TYPES
 
 type Action = ports.Action

@@ -10,6 +10,7 @@ import (
 	"github.com/wmulabs/eywa/internal/domain/entities"
 	"github.com/wmulabs/eywa/internal/domain/errors"
 	"github.com/wmulabs/eywa/internal/domain/ports"
+	"github.com/wmulabs/eywa/internal/helpers/otelgenai"
 	"github.com/wmulabs/eywa/internal/helpers/schemaval"
 	"github.com/wmulabs/eywa/internal/implementation/media"
 	"go.opentelemetry.io/otel/trace"
@@ -431,6 +432,22 @@ func (r *ReasoningService) run(ctx context.Context, req *ReasoningRequest, emit 
 		FinalSession:    req.Session,
 	}
 
+	// Runs before span.End (LIFO) so the turn span carries final usage/status regardless of exit path.
+	defer func() {
+		status := "success"
+		if result.FinalError != "" {
+			status = "error"
+		}
+		otelgenai.SetTurnAttributes(span, otelgenai.Turn{
+			MemoryKey:    req.Event.MemoryKey,
+			Spirit:       req.Spirit.Name,
+			Iterations:   result.IterationsUsed,
+			InputTokens:  result.TokensUsed.PromptTokens,
+			OutputTokens: result.TokensUsed.CompletionTokens,
+			Status:       status,
+		})
+	}()
+
 	appendIter := func(log *entities.IterationLog, start time.Time) {
 		log.DurationMs = time.Since(start).Milliseconds()
 		result.Iterations = append(result.Iterations, *log)
@@ -786,9 +803,33 @@ func (r *ReasoningService) callLLM(
 		Attachments:    media.ConvertToLLMAttachments(req.Event.Attachments, useProvider, model),
 	}
 
-	// Stream when the caller wants events and the provider supports it; otherwise buffer.
+	ctx, span := r.tracer.Start(ctx, "gen_ai.chat")
+	defer span.End()
+	otelgenai.AddPromptEvent(span, systemPrompt)
+
+	resp, err := r.invokeProvider(ctx, useProvider, oracleReq, emit)
+	if err != nil {
+		span.RecordError(err)
+		return nil, err
+	}
+
+	otelgenai.SetLLMCallAttributes(span, otelgenai.LLMCall{
+		System:       useProvider.GetName(),
+		Model:        model,
+		Temperature:  req.Spirit.ModelConfig.Temperature,
+		MaxTokens:    req.Spirit.ModelConfig.MaxTokens,
+		InputTokens:  resp.TokensUsed.PromptTokens,
+		OutputTokens: resp.TokensUsed.CompletionTokens,
+		FinishReason: resp.StopReason,
+	})
+	otelgenai.AddCompletionEvent(span, resp.Content)
+	return resp, nil
+}
+
+// invokeProvider streams when the caller wants events and the provider supports it; otherwise buffers.
+func (r *ReasoningService) invokeProvider(ctx context.Context, provider ports.Oracle, oracleReq *ports.OracleRequest, emit reasoningEmitter) (*ports.OracleResponse, error) {
 	if emit != nil {
-		if so, ok := useProvider.(ports.StreamingOracle); ok {
+		if so, ok := provider.(ports.StreamingOracle); ok {
 			ch, err := so.GenerateStream(ctx, oracleReq)
 			if err != nil {
 				return nil, fmt.Errorf("oracle generate stream: %w", err)
@@ -801,7 +842,7 @@ func (r *ReasoningService) callLLM(
 		}
 	}
 
-	resp, err := useProvider.GenerateResponse(ctx, oracleReq)
+	resp, err := provider.GenerateResponse(ctx, oracleReq)
 	if err != nil {
 		return nil, fmt.Errorf("oracle generate response: %w", err)
 	}

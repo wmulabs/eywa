@@ -27,6 +27,7 @@ package eywa
 
 import (
 	"github.com/wmulabs/eywa/internal/domain/entities"
+	"github.com/wmulabs/eywa/internal/helpers/otelgenai"
 	"github.com/wmulabs/eywa/internal/implementation/archivists"
 	"github.com/wmulabs/eywa/internal/implementation/orchestrator"
 	"github.com/wmulabs/eywa/internal/implementation/registries"
@@ -35,6 +36,11 @@ import (
 	"github.com/wmulabs/eywa/internal/implementation/voices"
 	"github.com/wmulabs/eywa/internal/infrastructure/driven/auth"
 )
+
+// SetTraceContentCapture toggles recording prompt and completion text as events on GenAI spans.
+// Off by default — span content is sensitive (may contain PII). Enable it (before processing) to get
+// full traces in Langfuse/Phoenix/Jaeger; only metadata and token counts are recorded otherwise.
+func SetTraceContentCapture(enabled bool) { otelgenai.SetCaptureContent(enabled) }
 
 type (
 	// Weave is the central runtime engine. Assemble it via NewWeaveBuilder, then call
