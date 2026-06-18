@@ -48,28 +48,3 @@ func randomString(n int) string {
 	}
 	return string(b)
 }
-
-// SplitTextIntoChunks splits text into overlapping chunks for vector ingestion.
-// chunkSize is the max rune count per chunk; overlap is the number of runes shared between adjacent chunks.
-// When overlap >= chunkSize it is clamped to zero.
-func SplitTextIntoChunks(text string, chunkSize, overlap int) []string {
-	if len(text) <= chunkSize {
-		return []string{text}
-	}
-	step := chunkSize - overlap
-	if step <= 0 {
-		step = chunkSize
-	}
-	var chunks []string
-	for i := 0; i < len(text); i += step {
-		end := i + chunkSize
-		if end > len(text) {
-			end = len(text)
-		}
-		chunks = append(chunks, text[i:end])
-		if end == len(text) {
-			break
-		}
-	}
-	return chunks
-}

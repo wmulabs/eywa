@@ -3,10 +3,16 @@ package eywa
 // Built-in converters, actions, and scorers — no external infrastructure required.
 
 import (
+	"github.com/wmulabs/eywa/internal/helpers/chunking"
 	"github.com/wmulabs/eywa/internal/implementation/actions"
 	"github.com/wmulabs/eywa/internal/implementation/receptors"
 	"github.com/wmulabs/eywa/internal/implementation/trial"
 )
+
+// ChunkText splits text into overlapping chunks (at most size runes each, sharing overlap runes),
+// preferring natural boundaries (paragraphs, lines, sentences, words) and never cutting a multi-byte
+// character. The same splitter IngestLore uses; exposed for custom ingestion pipelines.
+var ChunkText = chunking.Recursive
 
 // NewAPIDefaultReceptor creates a Receptor that parses JSON API payloads into Pulses.
 // Suitable for direct HTTP integrations where the caller sends eywa's native format.

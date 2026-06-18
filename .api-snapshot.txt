@@ -387,6 +387,12 @@ var (
 	// Required to enable scheduled event execution via the Oracle's built-in Ritual Actions.
 	NewRitualService = services.NewRitualService
 )
+var ChunkText = chunking.Recursive
+    ChunkText splits text into overlapping chunks (at most size runes each,
+    sharing overlap runes), preferring natural boundaries (paragraphs, lines,
+    sentences, words) and never cutting a multi-byte character. The same
+    splitter IngestLore uses; exposed for custom ingestion pipelines.
+
 var ConvertToLLMAttachments = media.ConvertToLLMAttachments
     ConvertToLLMAttachments filters and maps Artifacts to LLMAttachment for
     Oracle calls.

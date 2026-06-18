@@ -12,6 +12,7 @@ import (
 	"github.com/wmulabs/eywa/internal/domain/entities"
 	"github.com/wmulabs/eywa/internal/domain/ports"
 	"github.com/wmulabs/eywa/internal/helpers"
+	"github.com/wmulabs/eywa/internal/helpers/chunking"
 	"github.com/wmulabs/eywa/internal/implementation/pathfinders"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
@@ -266,7 +267,7 @@ func (e *Weave) IngestLore(ctx context.Context, ingestion entities.LoreIngestion
 		overlap = 0
 	}
 
-	rawChunks := helpers.SplitTextIntoChunks(text, chunkSize, overlap)
+	rawChunks := chunking.Recursive(text, chunkSize, overlap)
 	texts := make([]string, len(rawChunks))
 	copy(texts, rawChunks)
 
