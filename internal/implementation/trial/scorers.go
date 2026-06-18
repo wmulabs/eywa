@@ -152,3 +152,58 @@ Respond with only a number between 0.0 and 1.0.`, judge.Criteria, tc.UserMessage
 
 	return score, nil
 }
+
+// RegressionScorer judges whether a replayed response is at least as good as the recorded Baseline
+// for the same input. It returns 1.0 (no regression) or 0.0 (regression), so the default pass
+// threshold flags any answer the judge rates worse than what production previously delivered.
+type RegressionScorer struct {
+	factory  ports.OracleFactory
+	provider string
+	model    string
+}
+
+func NewRegressionScorer(factory ports.OracleFactory, provider, model string) ports.Scorer {
+	return &RegressionScorer{factory: factory, provider: provider, model: model}
+}
+
+func (s *RegressionScorer) GetName() string { return "regression" }
+
+func (s *RegressionScorer) Score(ctx context.Context, tc entities.TrialCase, result entities.Response) (float64, error) {
+	if tc.Baseline == "" {
+		return 1.0, nil
+	}
+
+	prompt := fmt.Sprintf(`You compare two assistant answers to the same user message and decide whether the NEW answer is a regression.
+
+User message: %s
+
+BASELINE answer (previously delivered): %s
+
+NEW answer: %s
+
+Respond with only 1 if the NEW answer is at least as good as the BASELINE, or 0 if the NEW answer is worse (a regression).`, tc.UserMessage, tc.Baseline, result.FinalResponse)
+
+	oracle, err := s.factory.GetProvider(s.provider)
+	if err != nil {
+		return 0.0, fmt.Errorf("regression oracle: %w", err)
+	}
+
+	resp, err := oracle.GenerateResponse(ctx, &ports.OracleRequest{
+		Model:       s.model,
+		Messages:    []ports.OracleMessage{{Role: ports.RoleUser, Content: prompt}},
+		MaxTokens:   8,
+		Temperature: 0.0,
+	})
+	if err != nil {
+		return 0.0, fmt.Errorf("regression call: %w", err)
+	}
+
+	score, err := strconv.ParseFloat(strings.TrimSpace(resp.Content), 64)
+	if err != nil {
+		return 0.0, fmt.Errorf("regression parse verdict %q: %w", resp.Content, err)
+	}
+	if score >= 0.5 {
+		return 1.0, nil
+	}
+	return 0.0, nil
+}

@@ -71,3 +71,8 @@ var NewLatencyScorer = trial.NewLatencyScorer
 // NewLLMJudgeScorer returns an LLM-as-judge Scorer. It uses an Oracle to evaluate
 // whether the response meets the expectations defined in LLMJudgeExpect.
 var NewLLMJudgeScorer = trial.NewLLMJudgeScorer
+
+// NewRegressionScorer returns a Scorer that judges whether a replayed response is at least as good
+// as the recorded Baseline (set by LoadReplayCases). Pairs with the Chronicle replay corpus to catch
+// regressions on real production traffic. provider/model select the judge Oracle.
+var NewRegressionScorer = trial.NewRegressionScorer
