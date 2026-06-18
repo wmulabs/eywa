@@ -267,24 +267,29 @@ func (e *Weave) IngestLore(ctx context.Context, ingestion entities.LoreIngestion
 		overlap = 0
 	}
 
-	rawChunks := chunking.Recursive(text, chunkSize, overlap)
-	texts := make([]string, len(rawChunks))
-	copy(texts, rawChunks)
+	var rawChunks []string
+	if ingestion.NoChunk {
+		rawChunks = []string{text} // record mode: one vector for the whole document
+	} else {
+		rawChunks = chunking.Recursive(text, chunkSize, overlap)
+	}
 
-	embeddings, err := e.loreEmbedder.Embed(ctx, texts)
+	embeddings, err := e.loreEmbedder.Embed(ctx, rawChunks)
 	if err != nil {
 		return fmt.Errorf("embed lore chunks: %w", err)
 	}
 
+	metadata := chunkMetadata(ingestion)
+	now := time.Now()
 	chunks := make([]entities.LoreChunk, len(rawChunks))
 	for i, content := range rawChunks {
 		chunks[i] = entities.LoreChunk{
-			ID:        fmt.Sprintf("%s_%d", ingestion.LoreID, i),
+			ID:        chunkID(ingestion, i, len(rawChunks)),
 			LoreID:    ingestion.LoreID,
 			Content:   content,
 			Embedding: embeddings[i],
-			Metadata:  ingestion.Metadata,
-			CreatedAt: time.Now(),
+			Metadata:  metadata,
+			CreatedAt: now,
 		}
 	}
 
@@ -292,6 +297,32 @@ func (e *Weave) IngestLore(ctx context.Context, ingestion entities.LoreIngestion
 		return fmt.Errorf("upsert lore chunks: %w", err)
 	}
 	return nil
+}
+
+// chunkID is the stable ID for chunk i. With a DocumentID, a single-chunk record uses it directly and
+// multi-chunk records are suffixed; without one, IDs are positional within the Lore (legacy).
+func chunkID(ingestion entities.LoreIngestion, i, total int) string {
+	if ingestion.DocumentID != "" {
+		if total == 1 {
+			return ingestion.DocumentID
+		}
+		return fmt.Sprintf("%s_%d", ingestion.DocumentID, i)
+	}
+	return fmt.Sprintf("%s_%d", ingestion.LoreID, i)
+}
+
+// chunkMetadata returns the metadata stored on every chunk, adding the DocumentID under
+// LoreDocumentIDKey (without mutating the caller's map) so a record's chunks stay grouped.
+func chunkMetadata(ingestion entities.LoreIngestion) map[string]any {
+	if ingestion.DocumentID == "" {
+		return ingestion.Metadata
+	}
+	merged := make(map[string]any, len(ingestion.Metadata)+1)
+	for k, v := range ingestion.Metadata {
+		merged[k] = v
+	}
+	merged[entities.LoreDocumentIDKey] = ingestion.DocumentID
+	return merged
 }
 
 func (e *Weave) DeleteLore(ctx context.Context, loreID string) error {

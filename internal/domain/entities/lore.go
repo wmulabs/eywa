@@ -6,6 +6,10 @@ import "time"
 // retrieved chunks. Shared so the reasoning loop can read it for citation grounding.
 const LoreContextKnowledgeKey = "_lore_context"
 
+// LoreDocumentIDKey is the chunk Metadata key holding the source record's stable ID when a document
+// is ingested with a DocumentID. It groups a record's chunks and enables distinct-object retrieval.
+const LoreDocumentIDKey = "_document_id"
+
 type Lore struct {
 	ID          string    `bson:"_id" json:"id"`
 	Name        string    `bson:"name" json:"name"`
@@ -35,4 +39,14 @@ type LoreIngestion struct {
 	Text     string
 	FilePath string
 	Metadata map[string]any
+
+	// DocumentID is a stable, caller-supplied ID for the source record. When set, re-ingesting the
+	// same DocumentID upserts in place (no duplicates), the ID is stored in chunk metadata under
+	// LoreDocumentIDKey, and a single-chunk ingest uses DocumentID as the chunk ID. Empty = legacy
+	// positional IDs (loreID_i).
+	DocumentID string
+
+	// NoChunk indexes the whole Text as one vector (record mode) instead of splitting it — use it when
+	// one object should be one searchable record (then top-K results are distinct objects).
+	NoChunk bool
 }
