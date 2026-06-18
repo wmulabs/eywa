@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.28.0](https://github.com/wmulabs/eywa/compare/v1.27.0...v1.28.0) (2026-06-18)
+
+
+### Features
+
+* **openai:** native LoreEmbedder (embeddings API) ([#123](https://github.com/wmulabs/eywa/issues/123)) ([f50fad9](https://github.com/wmulabs/eywa/commit/f50fad91910dc2a232e3b6044615ca306e36a09b))
+
 ## [1.27.0](https://github.com/wmulabs/eywa/compare/v1.26.0...v1.27.0) (2026-06-18)
 
 
