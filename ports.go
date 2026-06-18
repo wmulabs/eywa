@@ -152,6 +152,19 @@ type (
 	// Implement for pgvector, Qdrant, Pinecone, or Weaviate.
 	LoreStore = ports.LoreStore
 
+	// FilterableLoreStore is the optional metadata-filtering capability of a LoreStore, used by
+	// Weave.SearchLore. Stores whose backend supports payload filters implement it.
+	FilterableLoreStore = ports.FilterableLoreStore
+
+	// LoreFilter constrains a Lore search by chunk Metadata (equality + numeric ranges).
+	LoreFilter = ports.LoreFilter
+
+	// LoreRange constrains a numeric metadata field to [Min, Max]; a nil bound is open on that side.
+	LoreRange = ports.LoreRange
+
+	// LoreSearchOptions carries the parameters of Weave.SearchLore (TopK, MinScore, Filter).
+	LoreSearchOptions = ports.LoreSearchOptions
+
 	// LoreEmbedder converts text into a vector embedding for Lore indexing and search.
 	// Implement using your preferred embedding model API.
 	LoreEmbedder = ports.LoreEmbedder

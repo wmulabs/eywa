@@ -24,6 +24,10 @@ type LoreChunk struct {
 	Embedding []float32      `bson:"embedding,omitempty" json:"embedding,omitempty"`
 	Metadata  map[string]any `bson:"metadata,omitempty" json:"metadata,omitempty"`
 	CreatedAt time.Time      `bson:"created_at" json:"created_at"`
+
+	// Score is the similarity of this chunk to the search query (1 = identical), set on search results.
+	// Zero on stored/ingested chunks.
+	Score float64 `bson:"-" json:"score,omitempty"`
 }
 
 type LoreIngestion struct {
