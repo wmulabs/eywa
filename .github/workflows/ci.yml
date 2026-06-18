@@ -99,6 +99,7 @@ jobs:
           - providers/qdrant
           - providers/pgvector
           - providers/pinecone
+          - observability/langfuse
           - gcp/cloudtasks
           - gcp/gcs
           - gcp/gemini
@@ -178,6 +179,7 @@ jobs:
             providers/anthropic providers/openai providers/gemini providers/ollama \
             providers/bedrock providers/vertexai providers/weaviate \
             providers/pgvector providers/pinecone providers/qdrant \
+            observability/langfuse \
             gcp/cloudtasks gcp/gcs gcp/gemini; do
             echo "==> govulncheck $mod"
             (cd "$mod" && govulncheck ./...)
@@ -247,7 +249,7 @@ jobs:
 
       - name: Lint sub-modules
         run: |
-          SUBMODULES="channels/whatsapp fiber gcp/cloudtasks gcp/gcs gcp/gemini mcp mongo providers/anthropic providers/bedrock providers/gemini providers/ollama providers/openai providers/pgvector providers/pinecone providers/qdrant providers/vertexai providers/weaviate redis"
+          SUBMODULES="channels/whatsapp fiber gcp/cloudtasks gcp/gcs gcp/gemini mcp mongo observability/langfuse providers/anthropic providers/bedrock providers/gemini providers/ollama providers/openai providers/pgvector providers/pinecone providers/qdrant providers/vertexai providers/weaviate redis"
           for mod in $SUBMODULES; do
             echo "=== Linting $mod ==="
             (cd "$mod" && golangci-lint run ./... --timeout 5m) || exit 1
