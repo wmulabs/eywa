@@ -41,6 +41,15 @@ type LoreSearchOptions struct {
 	TopK     int
 	MinScore float64
 	Filter   *LoreFilter // nil = no metadata filter
+
+	// GroupByDocument collapses chunks that share a document ID into one result per record (the
+	// highest-scoring chunk represents it), so TopK returns distinct objects, not fragments of the
+	// same one. Useful for matching/recommendation over chunked documents.
+	GroupByDocument bool
+
+	// Overfetch multiplies how many chunks are fetched before grouping (default 5). Only used with
+	// GroupByDocument — a larger value finds more distinct documents at the cost of a bigger query.
+	Overfetch int
 }
 
 // FilterableLoreStore is the optional metadata-filtering capability of a LoreStore. Adapters whose
