@@ -4,7 +4,7 @@ go 1.26.4
 
 require (
 	github.com/wmulabs/eywa v1.30.0
-	google.golang.org/genai v1.60.0
+	google.golang.org/genai v1.61.0
 )
 
 require (
