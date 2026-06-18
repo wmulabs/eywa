@@ -304,6 +304,43 @@ func (e *Weave) DeleteLore(ctx context.Context, loreID string) error {
 	return nil
 }
 
+// SearchLore embeds queryText and returns the best-matching chunks of loreID — a direct, out-of-turn
+// semantic query (e.g. given a job description, return the top candidate profiles). When the store
+// supports metadata filtering (FilterableLoreStore) the opts.Filter is applied; otherwise it is
+// ignored and a plain vector search runs. Results carry their similarity Score.
+func (e *Weave) SearchLore(ctx context.Context, loreID, queryText string, opts ports.LoreSearchOptions) ([]entities.LoreChunk, error) {
+	if e.loreStore == nil || e.loreEmbedder == nil {
+		return nil, fmt.Errorf("lore search not configured: call WithLoreStore and WithLoreEmbedder")
+	}
+
+	embeddings, err := e.loreEmbedder.Embed(ctx, []string{queryText})
+	if err != nil {
+		return nil, fmt.Errorf("embed query: %w", err)
+	}
+	if len(embeddings) == 0 {
+		return nil, fmt.Errorf("embedder returned no vector for query")
+	}
+	queryVec := embeddings[0]
+
+	if opts.TopK <= 0 {
+		opts.TopK = 5
+	}
+
+	if filterable, ok := e.loreStore.(ports.FilterableLoreStore); ok {
+		chunks, err := filterable.SearchFiltered(ctx, loreID, queryVec, opts)
+		if err != nil {
+			return nil, fmt.Errorf("filtered lore search: %w", err)
+		}
+		return chunks, nil
+	}
+
+	chunks, err := e.loreStore.Search(ctx, loreID, queryVec, opts.TopK, opts.MinScore)
+	if err != nil {
+		return nil, fmt.Errorf("lore search: %w", err)
+	}
+	return chunks, nil
+}
+
 func (e *Weave) RegisterAction(action ports.Action) error {
 	if accessor, ok := e.actionExecutor.(registryAccessor); ok {
 		registry := accessor.GetRegistry()
