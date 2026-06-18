@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.24.0](https://github.com/wmulabs/eywa/compare/v1.23.0...v1.24.0) (2026-06-18)
+
+
+### Features
+
+* GenAI semantic-convention spans (observability) ([#114](https://github.com/wmulabs/eywa/issues/114)) ([12a519e](https://github.com/wmulabs/eywa/commit/12a519e3957f8314208698aece53bfeec56a2780))
+
 ## [1.23.0](https://github.com/wmulabs/eywa/compare/v1.22.0...v1.23.0) (2026-06-17)
 
 
