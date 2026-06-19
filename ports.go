@@ -130,6 +130,11 @@ type (
 	// async dispatch. Use the Cloud Tasks adapter for GCP workloads.
 	Keeper = ports.Keeper
 
+	// CheckpointStore persists in-progress reasoning-turn state for durable execution: an
+	// interrupted turn (deploy, crash, request timeout) resumes from its last completed iteration
+	// instead of restarting. Wire via WeaveBuilder.WithCheckpointStore; nil = durability off (default).
+	CheckpointStore = ports.CheckpointStore
+
 	// RitualManager coordinates Ritual lifecycle: create, list, cancel, and fire scheduled
 	// events. Create with NewRitualService.
 	RitualManager = ports.RitualManager

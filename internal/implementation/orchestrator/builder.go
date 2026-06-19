@@ -90,6 +90,7 @@ type WeaveBuilder struct {
 	vigilRepo       ports.VigilRepository
 	vigilConfig     VigilConfig
 	riteRepo        ports.RiteRepository
+	checkpointStore ports.CheckpointStore
 	appInfo         AppInfo
 
 	ctx context.Context
@@ -420,6 +421,14 @@ func (b *WeaveBuilder) WithVigilConfig(cfg VigilConfig) *WeaveBuilder {
 	return b
 }
 
+// WithCheckpointStore enables durable execution: reasoning-turn state is checkpointed after each
+// iteration so a turn interrupted mid-flight (deploy, crash, request timeout) resumes from where it
+// stopped instead of restarting. Off by default; without it the synchronous path is unchanged.
+func (b *WeaveBuilder) WithCheckpointStore(store ports.CheckpointStore) *WeaveBuilder {
+	b.checkpointStore = store
+	return b
+}
+
 func (b *WeaveBuilder) WithRiteRepository(repo ports.RiteRepository) *WeaveBuilder {
 	b.riteRepo = repo
 	return b
@@ -742,6 +751,11 @@ func (b *WeaveBuilder) Build() (*Weave, error) {
 	}
 	if b.idempotencyStore != nil {
 		engine.idempotencyStore = b.idempotencyStore
+	}
+	if b.checkpointStore != nil {
+		if rs, ok := engine.reasoningService.(*ReasoningService); ok {
+			rs.SetCheckpointStore(b.checkpointStore)
+		}
 	}
 	if b.riteRepo != nil {
 		if err := engine.RegisterAction(actions.NewRequestRiteAction(b.riteRepo, b.pubSub)); err != nil {

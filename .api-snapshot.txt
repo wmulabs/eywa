@@ -565,6 +565,12 @@ type Channel = orchestrator.Channel
     Channel pairs an inbound Receptor with an outbound Voice under a shared
     name.
 
+type CheckpointStore = ports.CheckpointStore
+    CheckpointStore persists in-progress reasoning-turn state for durable
+    execution: an interrupted turn (deploy, crash, request timeout) resumes
+    from its last completed iteration instead of restarting. Wire via
+    WeaveBuilder.WithCheckpointStore; nil = durability off (default).
+
 type Chronicle = entities.Chronicle
     Chronicle is an immutable audit record written after every Weave processing
     call. Query via ChronicleQueryRepository or the /chronicle management API.

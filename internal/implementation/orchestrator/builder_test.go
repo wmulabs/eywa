@@ -102,6 +102,33 @@ func TestWeaveBuilder_WithIdempotencyStore(t *testing.T) {
 	}
 }
 
+func TestWeaveBuilder_WithCheckpointStore(t *testing.T) {
+	b := NewWeaveBuilder(context.Background())
+	store := newMemCheckpointStore()
+	got := b.WithCheckpointStore(store)
+	if got != b {
+		t.Error("expected fluent builder")
+	}
+	if b.checkpointStore != store {
+		t.Error("expected checkpointStore to be set")
+	}
+}
+
+func TestBuild_WithCheckpointStore_WiresReasoningService(t *testing.T) {
+	b := minimalValidBuilder(t).WithCheckpointStore(newMemCheckpointStore())
+	w, err := b.Build()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	rs, ok := w.reasoningService.(*ReasoningService)
+	if !ok {
+		t.Fatal("expected concrete *ReasoningService")
+	}
+	if rs.checkpointStore == nil {
+		t.Error("expected checkpoint store wired into the reasoning service")
+	}
+}
+
 func TestWeaveBuilder_WithToolResultLimits(t *testing.T) {
 	b := NewWeaveBuilder(context.Background())
 	limits := ports.ToolResultLimits{MaxChars: 8000, Strategy: ports.ToolShapeTruncate}
