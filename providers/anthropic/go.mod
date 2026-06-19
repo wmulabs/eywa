@@ -4,7 +4,7 @@ go 1.26.4
 
 require (
 	github.com/anthropics/anthropic-sdk-go v1.51.0
-	github.com/wmulabs/eywa v1.34.0
+	github.com/wmulabs/eywa v1.35.0
 )
 
 require (
