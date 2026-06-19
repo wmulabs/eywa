@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.37.0](https://github.com/wmulabs/eywa/compare/v1.36.0...v1.37.0) (2026-06-19)
+
+
+### Features
+
+* **orchestrator:** memoize tool results across durable resume ([#154](https://github.com/wmulabs/eywa/issues/154)) ([be11e6e](https://github.com/wmulabs/eywa/commit/be11e6ebfc6c7d417e4070abf6fea03039372456))
+
 ## [1.36.0](https://github.com/wmulabs/eywa/compare/v1.35.0...v1.36.0) (2026-06-19)
 
 
