@@ -453,6 +453,32 @@ The orchestrator calls `summon_spirit("researcher", task)` like any other tool. 
 
 ---
 
+## 🧠 Reasoning that thinks about its thinking
+
+Most frameworks give you a fixed ReAct loop. Eywa's loop layers **meta-cognition** on top — all opt-in,
+off by default, so a Spirit that enables none behaves like classic ReAct:
+
+- **Stall detection** — notices it's spinning on the same tool and forces a final answer
+- **Context compression** — summarizes old iterations into an evidence ledger to stay within budget
+- **Reflection** — self-critiques a draft before delivery, with bounded retries
+- **Grounding** — RAG answers must cite the chunks they used
+- **Plan / scratchpad** — a persistent plan across iterations; no premature stop
+- **Model tiering** — cheap model for tool steps, strong model for the final answer
+- **Confidence → handoff** — low-confidence turns escalate to a human instead of guessing
+- **Tool-result shaping** + **arg-aware ban** — a giant result can't blow the window; a failed call isn't blindly retried
+
+```go
+eywa.NewWeaveBuilder(ctx).
+    WithProgressPolicy(eywa.ProgressPolicy{Enabled: true, StallWindow: 3}).
+    WithReflectionPolicy(eywa.ReflectionPolicy{Enabled: true, MaxRounds: 1}).
+    WithPlanPolicy(eywa.PlanPolicy{Enabled: true, MaxItems: 8})
+```
+
+Each is independent, and any Spirit can override any subset via `ReasoningOverrides`. Full reference:
+**[docs/reasoning.md](docs/reasoning.md)**.
+
+---
+
 ## 📚 RAG with Lore
 
 Give Spirits a searchable knowledge base. Ingest documents and let the Oracle retrieve relevant chunks at query time.
@@ -784,6 +810,91 @@ es.onmessage = (e) => {
 | `GET /api/v1/sse/echoes/:memoryKey` | `message_added` · `vigil_acquired` · `vigil_released` · `rite_created` |
 
 Backed by Redis PubSub — all events fan out across every running instance. Connection keeps alive with a 30-second heartbeat ping. Nginx buffering is disabled automatically.
+
+---
+
+## 🌊 Response Streaming
+
+Stream a turn token-by-token end to end — Oracle → reasoning loop → your transport. The loop logic is
+identical to the buffered path; only the LLM call streams and tool-status events are emitted.
+
+```go
+ch, _ := weave.ProcessEventByKeyStream(ctx, "chat", pulse)
+for ev := range ch {
+    switch ev.Type {
+    case eywa.AgentStreamDelta:
+        fmt.Print(ev.Delta)             // partial text
+    case eywa.AgentStreamToolStatus:
+        log.Printf("calling %s", ev.ToolName)
+    case eywa.AgentStreamDone:
+        _ = ev.Response                  // full assembled answer
+    }
+}
+```
+
+Any Oracle that implements the optional `StreamingOracle` capability streams; others fall back to
+buffered automatically. The Fiber API exposes it over SSE at `POST /api/v1/events/:event_key/stream`.
+
+---
+
+## 📤 Structured Output
+
+Make a Spirit's final answer a JSON object validated against a schema — cross-provider, using the
+provider's native structured mode when available and a validated repair pass otherwise.
+
+```go
+spirit.ResponseFormat = &eywa.ResponseFormat{
+    Name:   "ticket",
+    Strict: true,
+    Schema: map[string]any{
+        "type": "object",
+        "properties": map[string]any{
+            "priority": map[string]any{"type": "string", "enum": []string{"low", "high"}},
+            "summary":  map[string]any{"type": "string"},
+        },
+        "required": []string{"priority", "summary"},
+    },
+}
+// the validated JSON object is returned in response.FinalResponse.
+```
+
+---
+
+## 🔭 Observability (OpenTelemetry + Langfuse)
+
+Eywa emits spans following the **OpenTelemetry GenAI semantic conventions** (`gen_ai.*`) for every turn
+and LLM call. Point them at any OTLP backend — or ship to Langfuse with the bundled exporter:
+
+```go
+import eywalangfuse "github.com/wmulabs/eywa/observability/langfuse"
+
+tp, shutdown, _ := eywalangfuse.NewTracerProvider(ctx, eywalangfuse.Config{
+    PublicKey: os.Getenv("LANGFUSE_PUBLIC_KEY"),
+    SecretKey: os.Getenv("LANGFUSE_SECRET_KEY"),
+})
+defer shutdown(ctx)
+otel.SetTracerProvider(tp) // set before Build(); no engine change needed
+```
+
+---
+
+## ⏸️ Durable Execution
+
+Let a turn **survive a crash, deploy, or timeout and resume where it stopped** instead of restarting —
+re-paying tokens and re-running tools. Opt-in via a `CheckpointStore`; off by default.
+
+```go
+import eywaredis "github.com/wmulabs/eywa/redis" // or eywamongo for Mongo
+
+weave, _ := eywa.NewWeaveBuilder(ctx).
+    WithCheckpointStore(eywaredis.NewCheckpointStore(redisClient)).
+    // ...
+    Build()
+```
+
+The loop checkpoints after each iteration and resumes on retry (same idempotency key); successful tool
+results are memoized so side effects aren't duplicated. Full reference:
+**[docs/durable-execution.md](docs/durable-execution.md)**.
 
 ---
 
