@@ -180,6 +180,10 @@ go get github.com/wmulabs/eywa/gcp/gemini         # Gemini: image/audio/document
 
 ## 🚀 Quick Start
 
+> **Fastest path:** the [`starter/`](starter/) project is a runnable agent (chat + a tool + Mongo/Redis
+> via Docker). Clone it, `make up`, set `OPENAI_API_KEY`, `make run` — chatting in under a minute. Fork
+> it as the base for your own agent.
+
 > **No infrastructure?** Use `eywa.NewNoOpBond()` for local development and single-instance
 > prototyping — no Redis required. For production multi-instance deployments, use
 > `redis.NewBondManager()` and MongoDB repositories.
