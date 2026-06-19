@@ -15,6 +15,14 @@ var (
 FUNCTIONS
 
 func NewBondManager(client *redis.Client) eywa.Bond
+func NewCheckpointStore(client *redis.Client) eywa.CheckpointStore
+    NewCheckpointStore creates a Redis-backed CheckpointStore with the default
+    24h checkpoint TTL.
+
+func NewCheckpointStoreWithTTL(client *redis.Client, ttl time.Duration) eywa.CheckpointStore
+    NewCheckpointStoreWithTTL creates a Redis-backed CheckpointStore with a
+    custom TTL for orphan cleanup. A non-positive ttl falls back to the default.
+
 func NewIdempotencyStore(client *redis.Client) eywa.IdempotencyStore
     NewIdempotencyStore creates a Redis-backed IdempotencyStore for
     cross-instance duplicate suppression.
@@ -46,6 +54,19 @@ func (r *BondManager) ExtendLock(ctx context.Context, key string, ttl time.Durat
 func (r *BondManager) ReleaseLock(ctx context.Context, key string) error
     ReleaseLock uses the stored mutex instance for a clean unlock. If the lock
     has already expired or was never acquired, returns nil.
+
+type CheckpointStore struct {
+	// Has unexported fields.
+}
+    CheckpointStore implements eywa.CheckpointStore using Redis string keys
+    with a TTL, persisting reasoning-turn snapshots so an interrupted turn can
+    resume. Each turn is one key; Save overwrites.
+
+func (s *CheckpointStore) Delete(ctx context.Context, turnID string) error
+
+func (s *CheckpointStore) Load(ctx context.Context, turnID string) ([]byte, bool, error)
+
+func (s *CheckpointStore) Save(ctx context.Context, turnID string, data []byte) error
 
 type IdempotencyStore struct {
 	// Has unexported fields.
