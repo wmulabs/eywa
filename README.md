@@ -453,6 +453,32 @@ The orchestrator calls `summon_spirit("researcher", task)` like any other tool. 
 
 ---
 
+## 🧠 Reasoning that thinks about its thinking
+
+Most frameworks give you a fixed ReAct loop. Eywa's loop layers **meta-cognition** on top — all opt-in,
+off by default, so a Spirit that enables none behaves like classic ReAct:
+
+- **Stall detection** — notices it's spinning on the same tool and forces a final answer
+- **Context compression** — summarizes old iterations into an evidence ledger to stay within budget
+- **Reflection** — self-critiques a draft before delivery, with bounded retries
+- **Grounding** — RAG answers must cite the chunks they used
+- **Plan / scratchpad** — a persistent plan across iterations; no premature stop
+- **Model tiering** — cheap model for tool steps, strong model for the final answer
+- **Confidence → handoff** — low-confidence turns escalate to a human instead of guessing
+- **Tool-result shaping** + **arg-aware ban** — a giant result can't blow the window; a failed call isn't blindly retried
+
+```go
+eywa.NewWeaveBuilder(ctx).
+    WithProgressPolicy(eywa.ProgressPolicy{Enabled: true, StallWindow: 3}).
+    WithReflectionPolicy(eywa.ReflectionPolicy{Enabled: true, MaxRounds: 1}).
+    WithPlanPolicy(eywa.PlanPolicy{Enabled: true, MaxItems: 8})
+```
+
+Each is independent, and any Spirit can override any subset via `ReasoningOverrides`. Full reference:
+**[docs/reasoning.md](docs/reasoning.md)**.
+
+---
+
 ## 📚 RAG with Lore
 
 Give Spirits a searchable knowledge base. Ingest documents and let the Oracle retrieve relevant chunks at query time.
@@ -482,6 +508,34 @@ spirit.AllowedActions = []eywa.AllowedAction{{Name: "search_lore"}}
 ```
 
 > **Architecture note:** `LoreEmbedder` and `LoreStore` are ports. The MongoDB adapter uses full-text search out of the box. Swap for pgvector, Qdrant, Pinecone, or Weaviate adapters for semantic vector search.
+
+### Lore as a queryable store — matching, dedup, recommendation
+
+Lore is not only RAG the Oracle pulls from mid-turn. You can drive it **directly**, out of any turn, as
+a scored vector store — for matching, deduplication, or recommendation:
+
+```go
+// Index a structured record: IngestObject verbalizes it via an Oracle (better embeddings than raw
+// JSON) and keeps every field as filterable metadata. Re-ingesting the same DocumentID upserts.
+weave.IngestObject(ctx, "catalog", record, eywa.IngestObjectOptions{
+    DocumentID: "svc-1", Provider: "openai", Model: "gpt-4o-mini",
+})
+
+// Direct, scored, metadata-filtered search — no Spirit, no reasoning loop.
+maxPrice := 100.0
+matches, _ := weave.SearchLore(ctx, "catalog", "affordable analytics platform",
+    eywa.LoreSearchOptions{
+        TopK:            5,
+        Filter:          &eywa.LoreFilter{
+            Equals: map[string]any{"category": "analytics"},
+            Ranges: map[string]eywa.LoreRange{"monthly_price": {Max: &maxPrice}},
+        },
+        GroupByDocument: true, // return distinct objects, not chunks of the same one
+    })
+```
+
+Metadata filtering needs a `FilterableLoreStore` (pgvector, Qdrant, Pinecone). See
+[example 14](./_examples/14_lore_matching/).
 
 ---
 
@@ -759,6 +813,91 @@ Backed by Redis PubSub — all events fan out across every running instance. Con
 
 ---
 
+## 🌊 Response Streaming
+
+Stream a turn token-by-token end to end — Oracle → reasoning loop → your transport. The loop logic is
+identical to the buffered path; only the LLM call streams and tool-status events are emitted.
+
+```go
+ch, _ := weave.ProcessEventByKeyStream(ctx, "chat", pulse)
+for ev := range ch {
+    switch ev.Type {
+    case eywa.AgentStreamDelta:
+        fmt.Print(ev.Delta)             // partial text
+    case eywa.AgentStreamToolStatus:
+        log.Printf("calling %s", ev.ToolName)
+    case eywa.AgentStreamDone:
+        _ = ev.Response                  // full assembled answer
+    }
+}
+```
+
+Any Oracle that implements the optional `StreamingOracle` capability streams; others fall back to
+buffered automatically. The Fiber API exposes it over SSE at `POST /api/v1/events/:event_key/stream`.
+
+---
+
+## 📤 Structured Output
+
+Make a Spirit's final answer a JSON object validated against a schema — cross-provider, using the
+provider's native structured mode when available and a validated repair pass otherwise.
+
+```go
+spirit.ResponseFormat = &eywa.ResponseFormat{
+    Name:   "ticket",
+    Strict: true,
+    Schema: map[string]any{
+        "type": "object",
+        "properties": map[string]any{
+            "priority": map[string]any{"type": "string", "enum": []string{"low", "high"}},
+            "summary":  map[string]any{"type": "string"},
+        },
+        "required": []string{"priority", "summary"},
+    },
+}
+// the validated JSON object is returned in response.FinalResponse.
+```
+
+---
+
+## 🔭 Observability (OpenTelemetry + Langfuse)
+
+Eywa emits spans following the **OpenTelemetry GenAI semantic conventions** (`gen_ai.*`) for every turn
+and LLM call. Point them at any OTLP backend — or ship to Langfuse with the bundled exporter:
+
+```go
+import eywalangfuse "github.com/wmulabs/eywa/observability/langfuse"
+
+tp, shutdown, _ := eywalangfuse.NewTracerProvider(ctx, eywalangfuse.Config{
+    PublicKey: os.Getenv("LANGFUSE_PUBLIC_KEY"),
+    SecretKey: os.Getenv("LANGFUSE_SECRET_KEY"),
+})
+defer shutdown(ctx)
+otel.SetTracerProvider(tp) // set before Build(); no engine change needed
+```
+
+---
+
+## ⏸️ Durable Execution
+
+Let a turn **survive a crash, deploy, or timeout and resume where it stopped** instead of restarting —
+re-paying tokens and re-running tools. Opt-in via a `CheckpointStore`; off by default.
+
+```go
+import eywaredis "github.com/wmulabs/eywa/redis" // or eywamongo for Mongo
+
+weave, _ := eywa.NewWeaveBuilder(ctx).
+    WithCheckpointStore(eywaredis.NewCheckpointStore(redisClient)).
+    // ...
+    Build()
+```
+
+The loop checkpoints after each iteration and resumes on retry (same idempotency key); successful tool
+results are memoized so side effects aren't duplicated. Full reference:
+**[docs/durable-execution.md](docs/durable-execution.md)**.
+
+---
+
 ## 🌿 Roadmap — eywa-cockpit
 
 > *Deep within the Weave, something stirs. The roots of a new tree are taking hold — one that lets you see every Spirit, every Pulse, every Rite and Vigil seat through a single luminous interface.*
@@ -782,7 +921,7 @@ Follow progress or contribute at [github.com/wmulabs/eywa-cockpit](https://githu
 
 ## 🧪 Examples
 
-All 13 examples are runnable with just MongoDB, Redis, and an LLM API key:
+All examples are runnable with just MongoDB, Redis, and an LLM API key:
 
 | Example | Concepts |
 |---------|---------|
@@ -799,6 +938,7 @@ All 13 examples are runnable with just MongoDB, Redis, and an LLM API key:
 | [`11_mcp_client`](_examples/11_mcp_client/) | Conduit: connect to MCP server, auto-discover tools |
 | [`12_management_api`](_examples/12_management_api/) | Full Fiber management API with operator auth |
 | [`13_multi_agent`](_examples/13_multi_agent/) | Orchestrator Spirit: `summon_spirit`, `OrchestratorConfig` |
+| [`14_lore_matching`](_examples/14_lore_matching/) | Lore as a queryable store: `IngestObject`, `SearchLore`, `LoreFilter`, `GroupByDocument` |
 
 ---
 
