@@ -25,6 +25,7 @@ type turnState struct {
 
 	enforceVoiceDelivery bool
 	bannedSignatures     map[string]bool
+	toolMemo             map[string]memoEntry // non-nil only on a durable turn; memoizes successful calls
 	infraTerminal        bool
 	totalActionCalls     int
 	iterBoundaries       []int
@@ -81,6 +82,10 @@ func (r *ReasoningService) run(ctx context.Context, req *ReasoningRequest, emit 
 	if durable && r.resumeFromCheckpoint(ctx, turnID, ts) {
 		startIter = ts.result.IterationsUsed
 		r.logger.Infow("resuming reasoning turn from checkpoint", "turn_id", turnID, "from_iteration", startIter)
+	}
+	// Tool memoization is active only on a durable turn; resume may have already populated the map.
+	if durable && ts.toolMemo == nil {
+		ts.toolMemo = make(map[string]memoEntry)
 	}
 
 	for iteration := startIter; iteration < r.maxIterations; iteration++ {
@@ -262,7 +267,7 @@ func (r *ReasoningService) executeIterationActions(ctx context.Context, ts *turn
 		return false, ErrToolBudgetExceeded(r.maxActionsPerCycle)
 	}
 
-	newBanned, isInfraTerminal, err := r.processActionCalls(ctx, ts.provider, req, ts.result, llmResp.ToolCalls, iterLog, &ts.workingContext, ts.enforceVoiceDelivery, ts.plan, ts.bannedSignatures)
+	newBanned, isInfraTerminal, err := r.processActionCalls(ctx, ts.provider, req, ts.result, llmResp.ToolCalls, iterLog, &ts.workingContext, ts.enforceVoiceDelivery, ts.plan, ts.bannedSignatures, ts.toolMemo)
 	for _, sig := range newBanned {
 		ts.bannedSignatures[sig] = true
 	}

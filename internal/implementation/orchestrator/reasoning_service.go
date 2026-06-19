@@ -543,16 +543,27 @@ func (r *ReasoningService) processActionCalls(
 	enforceVoiceDelivery bool,
 	plan *planState,
 	bannedSignatures map[string]bool,
+	memo map[string]memoEntry,
 ) (banned []string, infraTerminal bool, err error) {
 	// Skip any call whose exact (action, arguments) signature already failed critically this turn —
 	// re-running it would just fail again. The Action stays available for corrected arguments.
+	// On a durable turn, also reuse a memoized successful result instead of re-executing the call, so a
+	// side effect that already happened is not repeated when the turn resumes after a crash.
 	toExec := make([]ports.OracleToolCall, 0, len(actionCalls))
 	for _, call := range actionCalls {
-		if bannedSignatures[callSignature(call)] {
+		sig := callSignature(call)
+		if bannedSignatures[sig] {
 			*workingContext = append(*workingContext, bannedSignatureMessage(call))
 			iterLog.ActionCalls = append(iterLog.ActionCalls, buildActionCallLog(call, ActionResult{ActionName: call.Name}))
 			iterLog.BannedActions = append(iterLog.BannedActions, call.Name)
 			r.logger.Infow("skipped repeated failing call", "action", call.Name)
+			continue
+		}
+		if entry, ok := memo[sig]; ok {
+			reused := ActionResult{ActionName: call.Name, Result: entry.Result, IsVoiceDelivery: entry.IsVoiceDelivery}
+			r.handleActionSuccess(ctx, provider, req, call, reused, result, workingContext)
+			iterLog.ActionCalls = append(iterLog.ActionCalls, buildActionCallLog(call, reused))
+			r.logger.Infow("reused memoized Action result", "action", call.Name)
 			continue
 		}
 		toExec = append(toExec, call)
@@ -569,6 +580,9 @@ func (r *ReasoningService) processActionCalls(
 
 		if actionResult.Error == nil {
 			r.handleActionSuccess(ctx, provider, req, call, actionResult, result, workingContext)
+			if memo != nil {
+				memo[callSignature(call)] = memoEntry{Result: actionResult.Result, IsVoiceDelivery: actionResult.IsVoiceDelivery}
+			}
 		} else {
 			iterLog.Errors = append(iterLog.Errors, fmt.Sprintf("%s: %v", call.Name, actionResult.Error))
 			isBanned, isInfraTerminal, handleErr := r.handleActionError(call, actionResult, workingContext, enforceVoiceDelivery)
