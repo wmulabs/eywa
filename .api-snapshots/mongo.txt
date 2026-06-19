@@ -12,6 +12,28 @@ func NewSpiritRepository(db *mongo.Database) eywa.SpiritRepository
 
 TYPES
 
+type CheckpointStore struct {
+	// Has unexported fields.
+}
+    CheckpointStore implements eywa.CheckpointStore using MongoDB, persisting
+    reasoning-turn snapshots so an interrupted turn can resume. Each turn is
+    one document keyed by turnID; a TTL index on expires_at evicts orphaned
+    checkpoints.
+
+func NewCheckpointStore(database *mongodriver.Database) *CheckpointStore
+    NewCheckpointStore creates a MongoDB-backed CheckpointStore with the default
+    24h checkpoint TTL.
+
+func NewCheckpointStoreWithTTL(database *mongodriver.Database, ttl time.Duration) *CheckpointStore
+    NewCheckpointStoreWithTTL creates a MongoDB-backed CheckpointStore with a
+    custom TTL for orphan cleanup. A non-positive ttl falls back to the default.
+
+func (s *CheckpointStore) Delete(ctx context.Context, turnID string) error
+
+func (s *CheckpointStore) Load(ctx context.Context, turnID string) ([]byte, bool, error)
+
+func (s *CheckpointStore) Save(ctx context.Context, turnID string, data []byte) error
+
 type ChronicleRepository struct {
 	// Has unexported fields.
 }
