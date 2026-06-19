@@ -6,51 +6,25 @@ Runnable examples demonstrating Eywa's core concepts, from minimal setup to adva
 
 ## 📋 Examples
 
-### [01 — Basic Setup](./01_basic_setup/)
-**Complexity:** ⭐ Beginner · **Time:** ~10 minutes
+| # | Example | Complexity | What it shows |
+|---|---------|-----------|---------------|
+| 01 | [Basic Setup](./01_basic_setup/) | ⭐ Beginner | Minimal Weave — connect MongoDB + Redis, register a Spirit, process a Pulse |
+| 02 | [Custom Actions](./02_custom_actions/) | ⭐⭐ Intermediate | Implement the `Action` interface; tools the Oracle invokes; multi-action turns |
+| 03 | [Advanced Routing](./03_advanced_routing/) | ⭐⭐⭐ Advanced | Scouts (context enrichment) + Pathfinder (Spirit selection) across specialist Spirits |
+| 04 | [Sync vs Async](./04_async_concept/) | ⭐⭐ Intermediate | `ProcessMultipleEventsByKey` and the async Cloud Tasks (Keeper) pattern |
+| 05 | [Multi-Provider](./05_multi_provider/) | ⭐⭐ Intermediate | One Weave running Spirits on different LLM providers simultaneously |
+| 06 | [RAG with Lore](./06_rag_with_lore/) | ⭐⭐⭐ Advanced | RAG: ingest documents, `LoreEmbedder` port, `search_lore` action |
+| 07 | [Human Takeover](./07_human_takeover/) | ⭐⭐⭐ Advanced | Vigil: operator acquires/releases a seat; `ErrSessionHeld` |
+| 08 | [Approval Workflow](./08_approval_workflow/) | ⭐⭐⭐ Advanced | Rites: a Spirit requests approval for a high-stakes action; operator decides |
+| 09 | [Long-Term Memory](./09_long_term_memory/) | ⭐⭐ Intermediate | Imprint: `remember_fact`, auto-extraction, cross-session facts |
+| 10 | [Cost Tracking](./10_cost_tracking/) | ⭐⭐ Intermediate | Ledger: `TokenBudget`, `ModelRoutingRule`, usage stats |
+| 11 | [MCP Client](./11_mcp_client/) | ⭐⭐⭐ Advanced | Conduit: connect to an MCP server, auto-discover tools as Actions |
+| 12 | [Management API](./12_management_api/) | ⭐⭐⭐ Advanced | The `eywa/fiber` REST management layer with operator auth |
+| 13 | [Multi-Agent](./13_multi_agent/) | ⭐⭐⭐ Advanced | Orchestrator Spirit delegating via `summon_spirit` / `OrchestratorConfig` |
+| 14 | [Lore Matching](./14_lore_matching/) | ⭐⭐⭐ Advanced | Lore as a queryable store: `IngestObject`, `SearchLore`, `LoreFilter`, `GroupByDocument` |
 
-Minimal Weave setup: connect to MongoDB + Redis, register a Spirit, process a Pulse.
-
-```bash
-export OPENAI_API_KEY="sk-..."
-go run ./01_basic_setup/main.go
-```
-
----
-
-### [02 — Custom Actions](./02_custom_actions/)
-**Complexity:** ⭐⭐ Intermediate · **Time:** ~20 minutes
-
-Implement the `Action` interface and register tools that the Oracle can invoke during reasoning. Demonstrates weather retrieval, math calculation, and multi-action turns.
-
-```bash
-export OPENAI_API_KEY="sk-..."
-go run ./02_custom_actions/main.go
-```
-
----
-
-### [03 — Advanced Routing](./03_advanced_routing/)
-**Complexity:** ⭐⭐⭐ Advanced · **Time:** ~30 minutes
-
-Context enrichment with Scouts + intelligent Spirit selection with a Pathfinder. Three specialized Spirits (support, sales, billing) with a keyword-based router.
-
-```bash
-export OPENAI_API_KEY="sk-..."
-go run ./03_advanced_routing/main.go
-```
-
----
-
-### [04 — Sync vs Async](./04_async_concept/)
-**Complexity:** ⭐⭐ Intermediate · **Time:** ~15 minutes
-
-SYNC processing with `ProcessMultipleEventsByKey` plus explanation of the ASYNC pattern (Cloud Tasks Keeper) for production webhooks.
-
-```bash
-export OPENAI_API_KEY="sk-..."
-go run ./04_async_concept/main.go
-```
+Each example has its own `README.md` with a deeper walkthrough. All run with just MongoDB, Redis, and an
+LLM API key.
 
 ---
 
@@ -88,7 +62,15 @@ go run ./01_basic_setup/main.go
 go run ./02_custom_actions/main.go
 go run ./03_advanced_routing/main.go
 go run ./04_async_concept/main.go
-# ... 05–13 cover RAG, human-in-the-loop, memory, cost, MCP, management API, multi-agent
+go run ./05_multi_provider/main.go
+go run ./06_rag_with_lore/main.go
+go run ./07_human_takeover/main.go
+go run ./08_approval_workflow/main.go
+go run ./09_long_term_memory/main.go
+go run ./10_cost_tracking/main.go
+go run ./11_mcp_client/main.go
+go run ./12_management_api/main.go
+go run ./13_multi_agent/main.go
 go run ./14_lore_matching/main.go
 ```
 
@@ -97,14 +79,27 @@ go run ./14_lore_matching/main.go
 ## 📚 Learning Path
 
 ```
-01_basic_setup
-    ↓ learn: Weave, Spirit, Pulse, Link, MemoryKey
-02_custom_actions
-    ↓ learn: Action interface, ActionRegistry, error classification
-03_advanced_routing
-    ↓ learn: Scout, Pathfinder, multi-Spirit Links
-04_async_concept
-    ↓ learn: ProcessMultipleEventsByKey, SYNC vs ASYNC, Keeper
+Foundations
+  01_basic_setup      → Weave, Spirit, Pulse, Link, MemoryKey
+  02_custom_actions   → Action interface, ActionRegistry, error classification
+  03_advanced_routing → Scout, Pathfinder, multi-Spirit Links
+  04_async_concept    → ProcessMultipleEventsByKey, SYNC vs ASYNC, Keeper
+
+Providers & knowledge
+  05_multi_provider   → multiple Oracles, per-Spirit models
+  06_rag_with_lore    → RAG, LoreEmbedder, search_lore action
+  14_lore_matching    → IngestObject, SearchLore, filters, GroupByDocument
+
+Human-in-the-loop & memory
+  07_human_takeover   → Vigil seat acquire/release
+  08_approval_workflow→ Rites approval gating
+  09_long_term_memory → Imprint persistent facts
+
+Production
+  10_cost_tracking    → Ledger budgets, model routing
+  11_mcp_client       → Conduit / MCP tool discovery
+  12_management_api    → Fiber REST management layer
+  13_multi_agent      → orchestrator + summon_spirit
 ```
 
 ---
@@ -123,7 +118,16 @@ go run ./14_lore_matching/main.go
 | `Pathfinder` interface | 03 |
 | `ProcessMultipleEventsByKey` | 04 |
 | ASYNC via Keeper | 04 |
+| Multiple Oracle providers | 05 |
 | RAG via `search_lore` action | 06 |
+| `LoreEmbedder` port | 06 |
+| Vigil (human takeover) | 07 |
+| Rite (approval workflow) | 08 |
+| Imprint (long-term facts) | 09 |
+| Ledger (`TokenBudget`, `ModelRoutingRule`) | 10 |
+| Conduit (MCP client) | 11 |
+| Fiber management API | 12 |
+| `summon_spirit` / `OrchestratorConfig` | 13 |
 | `IngestObject` / `SearchLore` (matching) | 14 |
 | `LoreFilter` / `GroupByDocument` | 14 |
 
