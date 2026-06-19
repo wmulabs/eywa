@@ -8,6 +8,14 @@ import (
 	"github.com/wmulabs/eywa/internal/domain/ports"
 )
 
+// memoEntry records a successful Action result keyed by its (name, arguments) signature. On a durable
+// turn it lets an identical call reuse the prior result instead of re-executing — so a side effect that
+// already happened (a message sent, a charge made) is not repeated when a turn resumes after a crash.
+type memoEntry struct {
+	Result          string `json:"result"`
+	IsVoiceDelivery bool   `json:"is_voice_delivery,omitempty"`
+}
+
 // turnSnapshot is the serializable state of an in-progress reasoning turn. It carries only data — the
 // provider, emitter, and policies are re-injected by newTurnState on resume. The audit IterationLogs
 // are intentionally excluded: they overlap heavily with WorkingContext and would bloat the record; the
@@ -33,6 +41,9 @@ type turnSnapshot struct {
 	TokensUsed        ports.OracleUsage            `json:"tokens_used"`
 	TokensByModel     map[string]ports.OracleUsage `json:"tokens_by_model,omitempty"`
 	ResponseDelivered bool                         `json:"response_delivered,omitempty"`
+
+	// ToolResults memoizes successful Action calls so a resumed turn reuses them instead of re-running.
+	ToolResults map[string]memoEntry `json:"tool_results,omitempty"`
 }
 
 func (ts *turnState) snapshot() turnSnapshot {
@@ -58,6 +69,7 @@ func (ts *turnState) snapshot() turnSnapshot {
 		TokensUsed:         ts.result.TokensUsed,
 		TokensByModel:      ts.result.TokensByModel,
 		ResponseDelivered:  ts.result.ResponseDelivered,
+		ToolResults:        ts.toolMemo,
 	}
 	if ts.plan != nil {
 		snap.PlanItems = ts.plan.items
@@ -88,6 +100,8 @@ func (ts *turnState) restore(snap turnSnapshot) {
 	if ts.plan != nil {
 		ts.plan.items = snap.PlanItems
 	}
+
+	ts.toolMemo = snap.ToolResults
 
 	ts.result.IterationsUsed = snap.IterationsUsed
 	ts.result.WorkingContext = snap.WorkingContext

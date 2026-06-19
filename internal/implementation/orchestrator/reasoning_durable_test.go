@@ -5,11 +5,30 @@ import (
 	"encoding/json"
 	"errors"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/wmulabs/eywa/internal/domain/entities"
 	"github.com/wmulabs/eywa/internal/domain/ports"
 )
+
+// countingAction records how many times it is executed, so memoization can be asserted.
+type countingAction struct {
+	name   string
+	result string
+	calls  int32
+}
+
+func (a *countingAction) GetName() string                   { return a.name }
+func (a *countingAction) GetDescription() string            { return "counts executions" }
+func (a *countingAction) GetParameters() map[string]any     { return nil }
+func (a *countingAction) IsCritical() bool                  { return false }
+func (a *countingAction) GetCategory() ports.ActionCategory { return "" }
+func (a *countingAction) Validate(_ map[string]any) error   { return nil }
+func (a *countingAction) Execute(_ context.Context, _ map[string]any) (string, error) {
+	atomic.AddInt32(&a.calls, 1)
+	return a.result, nil
+}
 
 // memCheckpointStore is an in-memory CheckpointStore for tests, with call counters and injectable
 // errors to exercise the fail-open paths.
@@ -269,6 +288,82 @@ func TestReasoningService_SaveCheckpoint_EncodeError_FailsOpen(t *testing.T) {
 	svc.saveCheckpoint(context.Background(), "turn-enc", ts)
 	if store.saves != 0 {
 		t.Errorf("Save should not be reached when encoding fails, got saves=%d", store.saves)
+	}
+}
+
+func TestReasoningService_Memoization_ReusesAcrossIterations(t *testing.T) {
+	tc := ports.OracleToolCall{Name: "ping", ID: "tc-1", Arguments: map[string]any{"x": "1"}}
+	mo := &multiOracle{responses: []*ports.OracleResponse{
+		{StopReason: ports.StopReasonToolCalls, ToolCalls: []ports.OracleToolCall{tc}},
+		{StopReason: ports.StopReasonToolCalls, ToolCalls: []ports.OracleToolCall{tc}}, // identical signature
+		terminal("done"),
+	}}
+	action := &countingAction{name: "ping", result: "pong"}
+	svc := newReasoning(t, multiFactory(mo), NewActionExecutor(newRegistry(action), false, testLogger(t), noopTracer()), 5)
+	svc.SetCheckpointStore(newMemCheckpointStore())
+
+	if _, err := svc.Execute(context.Background(), durableRequest("turn-memo")); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got := atomic.LoadInt32(&action.calls); got != 1 {
+		t.Errorf("expected the identical call executed once (memoized), got %d", got)
+	}
+}
+
+func TestReasoningService_Memoization_OffWithoutCheckpointStore(t *testing.T) {
+	tc := ports.OracleToolCall{Name: "ping", ID: "tc-1", Arguments: map[string]any{"x": "1"}}
+	mo := &multiOracle{responses: []*ports.OracleResponse{
+		{StopReason: ports.StopReasonToolCalls, ToolCalls: []ports.OracleToolCall{tc}},
+		{StopReason: ports.StopReasonToolCalls, ToolCalls: []ports.OracleToolCall{tc}},
+		terminal("done"),
+	}}
+	action := &countingAction{name: "ping", result: "pong"}
+	svc := newReasoning(t, multiFactory(mo), NewActionExecutor(newRegistry(action), false, testLogger(t), noopTracer()), 5)
+
+	if _, err := svc.Execute(context.Background(), durableRequest("turn-nomemo")); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got := atomic.LoadInt32(&action.calls); got != 2 {
+		t.Errorf("without durability there is no memoization; expected 2 executions, got %d", got)
+	}
+}
+
+func TestReasoningService_Memoization_SurvivesResume(t *testing.T) {
+	tc := ports.OracleToolCall{Name: "ping", ID: "tc-1", Arguments: map[string]any{"x": "1"}}
+	store := newMemCheckpointStore()
+
+	// Crash: the tool runs in iteration 0 (and is memoized), then iteration 1 fails.
+	crashAction := &countingAction{name: "ping", result: "pong"}
+	crashOracle := &multiOracle{
+		responses: []*ports.OracleResponse{{StopReason: ports.StopReasonToolCalls, ToolCalls: []ports.OracleToolCall{tc}}},
+		errs:      []error{nil, errors.New("connection reset")},
+	}
+	crashSvc := newReasoning(t, multiFactory(crashOracle), NewActionExecutor(newRegistry(crashAction), false, testLogger(t), noopTracer()), 5)
+	crashSvc.SetCheckpointStore(store)
+	if _, err := crashSvc.Execute(context.Background(), durableRequest("turn-r")); err == nil {
+		t.Fatal("expected the injected error to surface")
+	}
+	if got := atomic.LoadInt32(&crashAction.calls); got != 1 {
+		t.Fatalf("expected the tool executed once pre-crash, got %d", got)
+	}
+
+	// Resume: the model re-requests the same call; it must be reused from the memo, not re-executed.
+	resumeAction := &countingAction{name: "ping", result: "pong"}
+	resumeOracle := &multiOracle{responses: []*ports.OracleResponse{
+		{StopReason: ports.StopReasonToolCalls, ToolCalls: []ports.OracleToolCall{tc}},
+		terminal("done"),
+	}}
+	resumeSvc := newReasoning(t, multiFactory(resumeOracle), NewActionExecutor(newRegistry(resumeAction), false, testLogger(t), noopTracer()), 5)
+	resumeSvc.SetCheckpointStore(store)
+	got, err := resumeSvc.Execute(context.Background(), durableRequest("turn-r"))
+	if err != nil {
+		t.Fatalf("resume failed: %v", err)
+	}
+	if calls := atomic.LoadInt32(&resumeAction.calls); calls != 0 {
+		t.Errorf("expected the pre-crash tool reused from memo on resume, executed %d times", calls)
+	}
+	if got.FinalResponse != "done" {
+		t.Errorf("FinalResponse = %q, want %q", got.FinalResponse, "done")
 	}
 }
 
