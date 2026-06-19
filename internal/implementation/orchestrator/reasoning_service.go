@@ -124,6 +124,7 @@ type ReasoningService struct {
 	planPolicy           PlanPolicy             // disabled by default
 	handoffPolicy        HandoffPolicy          // disabled by default
 	handoffSink          HandoffSink            // optional; required for RaiseVigil mode
+	checkpointStore      ports.CheckpointStore  // optional; nil = durable execution off
 	logger               *zap.SugaredLogger
 	tracer               trace.Tracer
 }
@@ -197,6 +198,12 @@ func (r *ReasoningService) SetHandoffPolicy(policy HandoffPolicy) {
 // SetHandoffSink wires the sink used to raise a takeover (RaiseVigil mode). Optional.
 func (r *ReasoningService) SetHandoffSink(sink HandoffSink) {
 	r.handoffSink = sink
+}
+
+// SetCheckpointStore enables durable execution: turn state is checkpointed after each iteration so an
+// interrupted turn resumes from where it stopped. Nil (the default) keeps the synchronous path unchanged.
+func (r *ReasoningService) SetCheckpointStore(store ports.CheckpointStore) {
+	r.checkpointStore = store
 }
 
 // Effective policy resolvers: a per-Spirit override when present, otherwise the global default.

@@ -74,17 +74,38 @@ func (r *ReasoningService) run(ctx context.Context, req *ReasoningRequest, emit 
 		})
 	}()
 
-	for iteration := range r.maxIterations {
+	// Durable execution: resume from the last checkpoint if one exists, then checkpoint after each
+	// completed iteration. turnID/durable is empty when no store is wired — the loop is unchanged.
+	turnID, durable := r.checkpointID(req)
+	startIter := 0
+	if durable && r.resumeFromCheckpoint(ctx, turnID, ts) {
+		startIter = ts.result.IterationsUsed
+		r.logger.Infow("resuming reasoning turn from checkpoint", "turn_id", turnID, "from_iteration", startIter)
+	}
+
+	for iteration := startIter; iteration < r.maxIterations; iteration++ {
 		done, err := r.runIteration(ctx, ts, iteration)
 		if err != nil {
+			// Keep the checkpoint so a retry resumes from here instead of restarting; orphans expire
+			// via the adapter's TTL.
 			return ts.result, err
 		}
 		if done {
+			if durable {
+				r.deleteCheckpoint(ctx, turnID)
+			}
 			return ts.result, nil
+		}
+		if durable {
+			r.saveCheckpoint(ctx, turnID, ts)
 		}
 	}
 
-	return r.handleMaxIterations(ctx, ts)
+	result, err := r.handleMaxIterations(ctx, ts)
+	if durable {
+		r.deleteCheckpoint(ctx, turnID)
+	}
+	return result, err
 }
 
 // newTurnState resolves the provider, working context, effective policies, and turn-scoped state.
