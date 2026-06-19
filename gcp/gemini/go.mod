@@ -3,7 +3,7 @@ module github.com/wmulabs/eywa/gcp/gemini
 go 1.26.4
 
 require (
-	github.com/wmulabs/eywa v1.35.0
+	github.com/wmulabs/eywa v1.36.0
 	google.golang.org/genai v1.61.0
 )
 
