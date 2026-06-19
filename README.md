@@ -483,6 +483,34 @@ spirit.AllowedActions = []eywa.AllowedAction{{Name: "search_lore"}}
 
 > **Architecture note:** `LoreEmbedder` and `LoreStore` are ports. The MongoDB adapter uses full-text search out of the box. Swap for pgvector, Qdrant, Pinecone, or Weaviate adapters for semantic vector search.
 
+### Lore as a queryable store — matching, dedup, recommendation
+
+Lore is not only RAG the Oracle pulls from mid-turn. You can drive it **directly**, out of any turn, as
+a scored vector store — for matching, deduplication, or recommendation:
+
+```go
+// Index a structured record: IngestObject verbalizes it via an Oracle (better embeddings than raw
+// JSON) and keeps every field as filterable metadata. Re-ingesting the same DocumentID upserts.
+weave.IngestObject(ctx, "catalog", record, eywa.IngestObjectOptions{
+    DocumentID: "svc-1", Provider: "openai", Model: "gpt-4o-mini",
+})
+
+// Direct, scored, metadata-filtered search — no Spirit, no reasoning loop.
+maxPrice := 100.0
+matches, _ := weave.SearchLore(ctx, "catalog", "affordable analytics platform",
+    eywa.LoreSearchOptions{
+        TopK:            5,
+        Filter:          &eywa.LoreFilter{
+            Equals: map[string]any{"category": "analytics"},
+            Ranges: map[string]eywa.LoreRange{"monthly_price": {Max: &maxPrice}},
+        },
+        GroupByDocument: true, // return distinct objects, not chunks of the same one
+    })
+```
+
+Metadata filtering needs a `FilterableLoreStore` (pgvector, Qdrant, Pinecone). See
+[example 14](./_examples/14_lore_matching/).
+
 ---
 
 ## 🧠 Long-Term User Memory with Imprint
@@ -782,7 +810,7 @@ Follow progress or contribute at [github.com/wmulabs/eywa-cockpit](https://githu
 
 ## 🧪 Examples
 
-All 13 examples are runnable with just MongoDB, Redis, and an LLM API key:
+All examples are runnable with just MongoDB, Redis, and an LLM API key:
 
 | Example | Concepts |
 |---------|---------|
@@ -799,6 +827,7 @@ All 13 examples are runnable with just MongoDB, Redis, and an LLM API key:
 | [`11_mcp_client`](_examples/11_mcp_client/) | Conduit: connect to MCP server, auto-discover tools |
 | [`12_management_api`](_examples/12_management_api/) | Full Fiber management API with operator auth |
 | [`13_multi_agent`](_examples/13_multi_agent/) | Orchestrator Spirit: `summon_spirit`, `OrchestratorConfig` |
+| [`14_lore_matching`](_examples/14_lore_matching/) | Lore as a queryable store: `IngestObject`, `SearchLore`, `LoreFilter`, `GroupByDocument` |
 
 ---
 

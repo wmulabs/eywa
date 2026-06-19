@@ -88,6 +88,8 @@ go run ./01_basic_setup/main.go
 go run ./02_custom_actions/main.go
 go run ./03_advanced_routing/main.go
 go run ./04_async_concept/main.go
+# ... 05–13 cover RAG, human-in-the-loop, memory, cost, MCP, management API, multi-agent
+go run ./14_lore_matching/main.go
 ```
 
 ---
@@ -121,6 +123,9 @@ go run ./04_async_concept/main.go
 | `Pathfinder` interface | 03 |
 | `ProcessMultipleEventsByKey` | 04 |
 | ASYNC via Keeper | 04 |
+| RAG via `search_lore` action | 06 |
+| `IngestObject` / `SearchLore` (matching) | 14 |
+| `LoreFilter` / `GroupByDocument` | 14 |
 
 ---
 
