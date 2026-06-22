@@ -25,6 +25,10 @@ type (
 	// PulseBuilder constructs a Pulse with a fluent API. Obtain one via NewPulse.
 	PulseBuilder = entities.PulseBuilder
 
+	// AppToken is a revocable, optionally-expiring credential for authenticating inbound event
+	// requests. Create one with MintAppToken and persist it via an AppTokenRepository.
+	AppToken = entities.AppToken
+
 	// MemoryKey uniquely identifies a conversation context. Channel is the inbound
 	// channel name (e.g. "whatsapp", "api"); User is the end-user identifier.
 	MemoryKey = entities.MemoryKey

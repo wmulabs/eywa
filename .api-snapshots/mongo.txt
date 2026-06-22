@@ -12,6 +12,24 @@ func NewSpiritRepository(db *mongo.Database) eywa.SpiritRepository
 
 TYPES
 
+type AppTokenRepository struct {
+	// Has unexported fields.
+}
+    AppTokenRepository implements eywa.AppTokenRepository using MongoDB. Each
+    token is one document keyed by its ID; the secret hash is uniquely indexed
+    for validation lookups, and a TTL index on expires_at evicts expired tokens
+    automatically (tokens with no expiry are never evicted).
+
+func NewAppTokenRepository(database *mongodriver.Database) *AppTokenRepository
+
+func (r *AppTokenRepository) Create(ctx context.Context, token *eywa.AppToken) error
+
+func (r *AppTokenRepository) FindByHash(ctx context.Context, hash []byte) (*eywa.AppToken, error)
+
+func (r *AppTokenRepository) List(ctx context.Context) ([]*eywa.AppToken, error)
+
+func (r *AppTokenRepository) Revoke(ctx context.Context, id string) error
+
 type CheckpointStore struct {
 	// Has unexported fields.
 }

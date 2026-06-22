@@ -20,3 +20,8 @@ func authedRequest(method, target string, body io.Reader) *http.Request {
 	r.Header.Set("Authorization", "Bearer "+testAdminKey)
 	return r
 }
+
+// plainRequest builds an httptest request with no Authorization header.
+func plainRequest(method, target string, body io.Reader) *http.Request {
+	return httptest.NewRequest(method, target, body)
+}

@@ -249,6 +249,14 @@ var (
 	// Suitable for OIDC/SSO integrations.
 	NewJWKSValidator = auth.NewJWKSValidator
 
+	// NewAppTokenValidator returns a TokenValidator backed by an AppTokenRepository: revocable,
+	// optionally-expiring app tokens for authenticating inbound event requests.
+	NewAppTokenValidator = auth.NewAppTokenValidator
+
+	// MintAppToken creates a new app token record and its one-time plaintext secret. A ttl of zero
+	// means the token never expires. Persist the returned *AppToken via an AppTokenRepository.
+	MintAppToken = auth.MintAppToken
+
 	// HashPassword returns a bcrypt hash of password. Use when creating Operator records.
 	HashPassword = auth.HashPassword
 

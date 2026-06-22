@@ -24,6 +24,16 @@ type RouteDeps struct {
 	OperatorAuth   *eywa.OperatorAuth  // Mode 2: built-in operator JWT (also enables POST /api/v1/auth/token)
 	TokenValidator eywa.TokenValidator // Mode 3: external JWT / JWKS
 
+	// EventAuth, when non-empty, requires inbound event requests (POST /api/v1/events/:event_key and
+	// its /stream and /async variants) to present a valid bearer token accepted by one of these
+	// validators — typically an app-token validator (see AppTokenRepo). Empty leaves event ingestion
+	// open (webhook-style), which is the default. Health checks stay open regardless.
+	EventAuth []eywa.TokenValidator
+
+	// AppTokenRepo enables managing revocable app tokens at /api/v1/app-tokens (create/list/revoke),
+	// behind the management auth. Pair it with EventAuth: eywa.NewAppTokenValidator(repo).
+	AppTokenRepo eywa.AppTokenRepository
+
 	// SpiritRepo enables authenticated Spirit CRUD under /api/v1/spirits. Leave nil to not expose it
 	// (e.g. when Spirits are defined in code) — there is no unauthenticated Spirit surface.
 	SpiritRepo eywa.SpiritRepository
@@ -100,11 +110,23 @@ func registerOpenRoutes(app *fiberlib.App, weave *eywa.Weave, deps RouteDeps) {
 	app.Get("/health", health.Health)
 	app.Get("/ready", health.Ready)
 
-	open := app.Group("/api/v1")
-	open.Post("/events/:event_key", NewEventHandler(weave).ProcessEvent)
-	open.Post("/events/:event_key/stream", NewStreamEventHandler(weave).StreamEvent)
+	// Event auth is optional: when EventAuth is set, each event route runs the auth middleware first.
+	// withEventAuth returns a fresh handler chain per route so the shared prefix is not mutated.
+	var eventMW []fiberlib.Handler
+	if len(deps.EventAuth) > 0 {
+		eventMW = []fiberlib.Handler{middleware.AuthMiddleware(deps.EventAuth...)}
+	}
+	withEventAuth := func(final fiberlib.Handler) []fiberlib.Handler {
+		chain := make([]fiberlib.Handler, 0, len(eventMW)+1)
+		chain = append(chain, eventMW...)
+		return append(chain, final)
+	}
+
+	events := app.Group("/api/v1")
+	events.Post("/events/:event_key", withEventAuth(NewEventHandler(weave).ProcessEvent)...)
+	events.Post("/events/:event_key/stream", withEventAuth(NewStreamEventHandler(weave).StreamEvent)...)
 	if weave.GetAsyncDispatcher() != nil {
-		open.Post("/events/:event_key/async", NewAsyncEventHandler(weave).IngestAsyncEvent)
+		events.Post("/events/:event_key/async", withEventAuth(NewAsyncEventHandler(weave).IngestAsyncEvent)...)
 	}
 
 	if weave.GetAsyncDispatcher() != nil || weave.GetRitualManager() != nil {
@@ -147,6 +169,14 @@ func registerProtectedRoutes(api fiberlib.Router, weave *eywa.Weave, deps RouteD
 
 	if deps.EchoRepo != nil {
 		api.Get("/messages", NewMessageHandler(deps.EchoRepo).GetMessages)
+	}
+
+	if deps.AppTokenRepo != nil {
+		th := newAppTokenHandler(deps.AppTokenRepo)
+		tokens := api.Group("/app-tokens")
+		tokens.Post("", th.create)
+		tokens.Get("", th.list)
+		tokens.Delete("/:id", th.revoke)
 	}
 
 	if weave != nil && weave.GetRitualManager() != nil {
@@ -274,6 +304,7 @@ func buildValidatorChain(deps RouteDeps) []eywa.TokenValidator {
 // hasProtectedDeps reports whether any dependency would mount a route that must be authenticated.
 func hasProtectedDeps(deps RouteDeps) bool {
 	return deps.SpiritRepo != nil ||
+		deps.AppTokenRepo != nil ||
 		deps.EchoRepo != nil ||
 		deps.EchoQueryRepo != nil ||
 		deps.ChronicleQueryRepo != nil ||
