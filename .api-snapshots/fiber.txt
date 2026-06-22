@@ -7,45 +7,20 @@ func HandleExecuteEvent(weave *eywa.Weave) fiber.Handler
     HandleExecuteEvent is the Keeper callback handler for POST
     /internal/execute-event.
 
-func RegisterManagementRoutes(app *fiberlib.App, weave *eywa.Weave, deps ManagementDeps) error
-    RegisterManagementRoutes mounts the management API onto app under /api/v1.
-    All management routes require authentication. Route groups are registered
-    conditionally based on which ManagementDeps fields are non-nil.
+func RegisterRoutes(app *fiberlib.App, weave *eywa.Weave, deps RouteDeps) error
+    RegisterRoutes mounts every Eywa HTTP route onto app. Open routes:
+    GET /health, /ready and POST /api/v1/events/:event_key (+ /stream,
+    + /async when an async dispatcher is wired). The Keeper callback
+    POST /internal/execute-event is registered when async dispatch or
+    scheduling is enabled (protect it with RouteDeps.InternalMiddleware).
+    Everything else — Spirit CRUD, messages, scheduling, discovery, operators,
+    chronicle/analytics, echoes, event-configurations, engine config, HTTP
+    tools, Vigil, Rites, imprints, and SSE — is mounted behind authentication,
+    conditional on its dependency.
 
-func RegisterRoutes(
-	app *fiber.App,
-	weave *eywa.Weave,
-	spiritRepo eywa.SpiritRepository,
-	echoRepo eywa.EchoRepository,
-	opts ...RouteOption,
-)
-    RegisterRoutes registers all REST API routes onto app.
-
-    Routes:
-      - GET /health, GET /ready
-      - POST /api/v1/events/:event_key
-      - POST /api/v1/events/:event_key/stream (Server-Sent Events: streamed
-        agent turn)
-      - POST /api/v1/events/:event_key/async (requires async dispatcher on
-        weave)
-      - POST /api/v1/events/:event_key/schedule, GET/DELETE /api/v1/schedule
-      - CRUD /api/v1/spirits
-      - GET /api/v1/messages
-      - POST /internal/execute-event (Keeper callback)
-
-    Security: Spirit mutation endpoints (POST/PUT/DELETE /api/v1/spirits) are
-    registered without authentication by this function. Spirit system prompts
-    are a critical attack surface — an attacker who can write Spirits can
-    inject arbitrary instructions into your AI agents (prompt injection at the
-    infrastructure level). You MUST protect these routes before exposing this
-    server publicly. Options:
-
-     1. Use RegisterManagementRoutes instead, which applies auth middleware to
-        all management endpoints including Spirit CRUD.
-     2. Place this server behind a network boundary (VPC/firewall) and never
-        expose it to the public internet.
-     3. Add your own auth middleware to the Fiber app before calling this
-        function.
+    At least one auth validator (APIKeys, OperatorAuth, or TokenValidator) is
+    required to expose any protected route. Providing a protected repository
+    without a validator fails closed with an error.
 
 
 TYPES
@@ -132,45 +107,6 @@ func (h *HealthHandler) Health(c *fiber.Ctx) error
 
 func (h *HealthHandler) Ready(c *fiber.Ctx) error
 
-type ManagementDeps struct {
-	// Auth — at least one required for management routes to be secured.
-	APIKeys        map[string]string   // Mode 1: static key→role map
-	OperatorAuth   *eywa.OperatorAuth  // Mode 2: built-in operator JWT
-	TokenValidator eywa.TokenValidator // Mode 3: external JWT / JWKS
-
-	// Chronicle read-only queries for the audit log and analytics endpoints.
-	ChronicleQueryRepo eywa.ChronicleQueryRepository
-
-	// Echo repositories for conversation history and real-time operator messaging.
-	EchoRepo      eywa.EchoRepository
-	EchoQueryRepo eywa.EchoQueryRepository
-
-	// Config management — live event-configuration cache and persistent engine config.
-	ConfigCache     *eywa.ConfigCache
-	WeaveConfigRepo eywa.WeaveConfigRepository
-
-	// HTTPToolRepo enables CRUD for HTTP tool definitions managed via the API.
-	HTTPToolRepo eywa.HTTPToolRepository
-
-	// Vigil — human-takeover seat management (operator takes over a conversation).
-	VigilRepo   eywa.VigilRepository
-	VigilConfig eywa.VigilConfig
-
-	// RiteRepo enables approval flow management (create, list, approve/reject Rites).
-	RiteRepo eywa.RiteRepository
-
-	// Real-time (SSE) — requires PubSub (Redis recommended).
-	// When set, enables GET /api/v1/sse/* endpoints and live fanout from
-	// Vigil and Rite handlers.
-	PubSub eywa.PubSub
-
-	// Imprint management — exposes GET/DELETE /api/v1/imprints.
-	ImprintRepo eywa.ImprintRepository
-}
-    ManagementDeps wires optional repositories and auth config into
-    RegisterManagementRoutes. Each route group is only registered when its
-    required dependency is non-nil.
-
 type MessageHandler struct {
 	// Has unexported fields.
 }
@@ -181,14 +117,58 @@ func NewMessageHandler(echoRepo eywa.EchoRepository) *MessageHandler
 func (h *MessageHandler) GetMessages(c *fiber.Ctx) error
     GetMessages handles GET /api/v1/messages.
 
-type RouteOption func(*routeOptions)
+type RouteDeps struct {
+	// Auth — at least one is required to mount any protected route.
+	APIKeys        map[string]string   // Mode 1: static key→role map
+	OperatorAuth   *eywa.OperatorAuth  // Mode 2: built-in operator JWT (also enables POST /api/v1/auth/token)
+	TokenValidator eywa.TokenValidator // Mode 3: external JWT / JWKS
 
-func WithInternalMiddleware(handlers ...fiber.Handler) RouteOption
-    WithInternalMiddleware adds Fiber handlers that run before POST
-    /internal/execute-event. Use this for OIDC token verification, e.g.:
+	// SpiritRepo enables authenticated Spirit CRUD under /api/v1/spirits. Leave nil to not expose it
+	// (e.g. when Spirits are defined in code) — there is no unauthenticated Spirit surface.
+	SpiritRepo eywa.SpiritRepository
 
-        RegisterRoutes(app, weave, spiritRepo, echoRepo,
-            WithInternalMiddleware(gcp.NewCloudTasksOIDCMiddleware(audience)))
+	// Echo repositories: GET /api/v1/messages (EchoRepo) and the /echoes management group (EchoQueryRepo).
+	EchoRepo      eywa.EchoRepository
+	EchoQueryRepo eywa.EchoQueryRepository
+
+	// Chronicle read-only queries for the audit log and analytics endpoints.
+	ChronicleQueryRepo eywa.ChronicleQueryRepository
+
+	// Config management — live event-configuration cache and persistent engine config.
+	ConfigCache     *eywa.ConfigCache
+	WeaveConfigRepo eywa.WeaveConfigRepository
+
+	// HTTPToolRepo enables CRUD for HTTP tool definitions managed via the API.
+	HTTPToolRepo eywa.HTTPToolRepository
+
+	// Vigil — human-takeover seat management.
+	VigilRepo   eywa.VigilRepository
+	VigilConfig eywa.VigilConfig
+
+	// RiteRepo enables approval flow management.
+	RiteRepo eywa.RiteRepository
+
+	// Real-time (SSE) — requires PubSub (Redis recommended). Enables GET /api/v1/sse/*.
+	PubSub eywa.PubSub
+
+	// Imprint management — GET/DELETE /api/v1/imprints.
+	ImprintRepo eywa.ImprintRepository
+
+	// InternalMiddleware guards POST /internal/execute-event (the Keeper/Cloud Tasks callback), e.g.
+	// an OIDC verifier. The callback is registered openly without it — set it before exposing publicly.
+	InternalMiddleware []fiberlib.Handler
+}
+    RouteDeps configures the single route registrar. Auth is required to expose
+    any sensitive route: Spirit management, conversation history, scheduling,
+    and the whole operator/management API all sit behind the configured
+    validator(s). Only event ingestion and health checks are served openly —
+    events are webhook-style (a channel or Cloud Tasks authenticates them,
+    not a bearer token).
+
+    Each management group is mounted only when its backing repository is
+    non-nil. If any protected repository is provided without an auth validator,
+    RegisterRoutes fails closed (returns an error) rather than exposing it
+    unauthenticated.
 
 type ScheduleHandler struct {
 	// Has unexported fields.

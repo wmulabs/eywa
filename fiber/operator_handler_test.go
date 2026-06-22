@@ -100,9 +100,9 @@ func seedOperator(repo *stubOperatorRepo, id, email, role string) *eywa.Operator
 	return op
 }
 
-func adminDeps(repo *stubOperatorRepo) ManagementDeps {
+func adminDeps(repo *stubOperatorRepo) RouteDeps {
 	auth := eywa.NewOperatorAuth(repo, []byte("test-secret"))
-	return ManagementDeps{
+	return RouteDeps{
 		APIKeys:      map[string]string{"admin-key": eywa.RoleAdmin},
 		OperatorAuth: auth,
 	}
@@ -112,7 +112,7 @@ func TestOperatorHandler_Login_Returns200(t *testing.T) {
 	repo := newStubOperatorRepo()
 	seedOperator(repo, "op-1", "admin@test.com", eywa.RoleAdmin)
 	auth := eywa.NewOperatorAuth(repo, []byte("test-secret"))
-	app := buildMgmtTestApp(ManagementDeps{OperatorAuth: auth})
+	app := buildMgmtTestApp(RouteDeps{OperatorAuth: auth})
 
 	body := map[string]string{"email": "admin@test.com", "password": "secret"}
 	b, _ := json.Marshal(body)
@@ -134,7 +134,7 @@ func TestOperatorHandler_Login_WrongPassword_Returns401(t *testing.T) {
 	repo := newStubOperatorRepo()
 	seedOperator(repo, "op-1", "admin@test.com", eywa.RoleAdmin)
 	auth := eywa.NewOperatorAuth(repo, []byte("test-secret"))
-	app := buildMgmtTestApp(ManagementDeps{OperatorAuth: auth})
+	app := buildMgmtTestApp(RouteDeps{OperatorAuth: auth})
 
 	body := map[string]string{"email": "admin@test.com", "password": "wrong"}
 	b, _ := json.Marshal(body)
@@ -169,7 +169,7 @@ func TestOperatorHandler_List_Returns200(t *testing.T) {
 func TestOperatorHandler_List_ForbiddenForOperatorRole_Returns403(t *testing.T) {
 	repo := newStubOperatorRepo()
 	auth := eywa.NewOperatorAuth(repo, []byte("test-secret"))
-	app := buildMgmtTestApp(ManagementDeps{
+	app := buildMgmtTestApp(RouteDeps{
 		APIKeys:      map[string]string{"op-key": eywa.RoleOperator},
 		OperatorAuth: auth,
 	})
@@ -314,7 +314,7 @@ func TestOperatorHandler_Deactivate_NotFound_Returns404(t *testing.T) {
 func TestOperatorHandler_Login_InvalidBody_Returns400(t *testing.T) {
 	repo := newStubOperatorRepo()
 	auth := eywa.NewOperatorAuth(repo, []byte("test-secret"))
-	app := buildMgmtTestApp(ManagementDeps{OperatorAuth: auth})
+	app := buildMgmtTestApp(RouteDeps{OperatorAuth: auth})
 
 	req := httptest.NewRequest("POST", "/api/v1/auth/token", bytes.NewReader([]byte("not-json")))
 	req.Header.Set("Content-Type", "application/json")
@@ -433,7 +433,7 @@ func TestOperatorHandler_Create_InvalidBody_Returns400(t *testing.T) {
 func TestOperatorHandler_Login_MissingFields_Returns400(t *testing.T) {
 	repo := newStubOperatorRepo()
 	auth := eywa.NewOperatorAuth(repo, []byte("test-secret"))
-	app := buildMgmtTestApp(ManagementDeps{OperatorAuth: auth})
+	app := buildMgmtTestApp(RouteDeps{OperatorAuth: auth})
 
 	body := map[string]string{"email": "admin@test.com"}
 	b, _ := json.Marshal(body)

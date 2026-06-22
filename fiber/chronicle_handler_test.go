@@ -45,14 +45,14 @@ func (s *stubChronicleQueryRepo) AggregateSpirits(_ context.Context, _, _ time.T
 	return s.spirits, s.err
 }
 
-func buildMgmtTestApp(deps ManagementDeps) *fiberlib.App {
+func buildMgmtTestApp(deps RouteDeps) *fiberlib.App {
 	app := fiberlib.New(fiberlib.Config{DisableStartupMessage: true})
-	RegisterManagementRoutes(app, nil, deps)
+	RegisterRoutes(app, nil, deps)
 	return app
 }
 
-func chronicleDeps(repo *stubChronicleQueryRepo) ManagementDeps {
-	return ManagementDeps{
+func chronicleDeps(repo *stubChronicleQueryRepo) RouteDeps {
+	return RouteDeps{
 		APIKeys:            map[string]string{"test-key": "admin"},
 		ChronicleQueryRepo: repo,
 	}

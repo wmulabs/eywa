@@ -3,7 +3,6 @@ package fiber
 import (
 	"context"
 	"encoding/json"
-	"net/http/httptest"
 	"testing"
 
 	fiberlib "github.com/gofiber/fiber/v2"
@@ -46,7 +45,9 @@ func (s *stubEchoRepo) CountBySubjectKey(_ context.Context, _ string) (int64, er
 
 func buildMessageTestApp(echoRepo eywa.EchoRepository, weave *eywa.Weave) *fiberlib.App {
 	app := fiberlib.New(fiberlib.Config{DisableStartupMessage: true})
-	RegisterRoutes(app, weave, &stubSpiritRepository{}, echoRepo)
+	if err := RegisterRoutes(app, weave, RouteDeps{EchoRepo: echoRepo, APIKeys: authedAPIKeys()}); err != nil {
+		panic(err)
+	}
 	return app
 }
 
@@ -56,7 +57,7 @@ func TestMessageHandler_MissingBothKeys_Returns400(t *testing.T) {
 	weave := minimalTestWeave(t)
 	app := buildMessageTestApp(&stubEchoRepo{}, weave)
 
-	req := httptest.NewRequest("GET", "/api/v1/messages", nil)
+	req := authedRequest("GET", "/api/v1/messages", nil)
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 400 {
 		t.Errorf("want 400, got %d", resp.StatusCode)
@@ -68,7 +69,7 @@ func TestMessageHandler_ByMemoryKey_Returns200(t *testing.T) {
 	weave := minimalTestWeave(t)
 	app := buildMessageTestApp(&stubEchoRepo{echoes: echoes, count: 2}, weave)
 
-	req := httptest.NewRequest("GET", "/api/v1/messages?memory_key=mem1", nil)
+	req := authedRequest("GET", "/api/v1/messages?memory_key=mem1", nil)
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 200 {
 		t.Errorf("want 200, got %d", resp.StatusCode)
@@ -84,7 +85,7 @@ func TestMessageHandler_BySubjectKey_Returns200(t *testing.T) {
 	weave := minimalTestWeave(t)
 	app := buildMessageTestApp(&stubEchoRepo{}, weave)
 
-	req := httptest.NewRequest("GET", "/api/v1/messages?subject_key=subj1", nil)
+	req := authedRequest("GET", "/api/v1/messages?subject_key=subj1", nil)
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 200 {
 		t.Errorf("want 200, got %d", resp.StatusCode)
@@ -95,7 +96,7 @@ func TestMessageHandler_ByBothKeys_Returns200(t *testing.T) {
 	weave := minimalTestWeave(t)
 	app := buildMessageTestApp(&stubEchoRepo{}, weave)
 
-	req := httptest.NewRequest("GET", "/api/v1/messages?memory_key=mem1&subject_key=subj1", nil)
+	req := authedRequest("GET", "/api/v1/messages?memory_key=mem1&subject_key=subj1", nil)
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 200 {
 		t.Errorf("want 200, got %d", resp.StatusCode)
@@ -106,7 +107,7 @@ func TestMessageHandler_NilEchoes_ReturnsEmptySlice(t *testing.T) {
 	weave := minimalTestWeave(t)
 	app := buildMessageTestApp(&stubEchoRepo{}, weave) // echoes is nil
 
-	req := httptest.NewRequest("GET", "/api/v1/messages?memory_key=mem1", nil)
+	req := authedRequest("GET", "/api/v1/messages?memory_key=mem1", nil)
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 200 {
 		t.Errorf("want 200, got %d", resp.StatusCode)
@@ -123,7 +124,7 @@ func TestMessageHandler_CountError_Returns500(t *testing.T) {
 	weave := minimalTestWeave(t)
 	app := buildMessageTestApp(&stubEchoRepo{countErr: errInternal}, weave)
 
-	req := httptest.NewRequest("GET", "/api/v1/messages?memory_key=mem1", nil)
+	req := authedRequest("GET", "/api/v1/messages?memory_key=mem1", nil)
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 500 {
 		t.Errorf("want 500, got %d", resp.StatusCode)
@@ -134,7 +135,7 @@ func TestMessageHandler_FindError_Returns500(t *testing.T) {
 	weave := minimalTestWeave(t)
 	app := buildMessageTestApp(&stubEchoRepo{findErr: errInternal}, weave)
 
-	req := httptest.NewRequest("GET", "/api/v1/messages?memory_key=mem1", nil)
+	req := authedRequest("GET", "/api/v1/messages?memory_key=mem1", nil)
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 500 {
 		t.Errorf("want 500, got %d", resp.StatusCode)
@@ -145,7 +146,7 @@ func TestMessageHandler_SubjectKey_CountError_Returns500(t *testing.T) {
 	weave := minimalTestWeave(t)
 	app := buildMessageTestApp(&stubEchoRepo{countErr: errInternal}, weave)
 
-	req := httptest.NewRequest("GET", "/api/v1/messages?subject_key=subj1", nil)
+	req := authedRequest("GET", "/api/v1/messages?subject_key=subj1", nil)
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 500 {
 		t.Errorf("want 500, got %d", resp.StatusCode)

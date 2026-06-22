@@ -133,14 +133,17 @@ func main() {
 		WriteTimeout: 30 * time.Second,
 	})
 
-	// ManagementDeps wires repositories into the route handlers.
-	// Each route group is only registered when its required dep is non-nil.
-	deps := eywafiber.ManagementDeps{
+	// RouteDeps wires repositories into the single route registrar. Event ingestion and health are
+	// open; every management group below is mounted only when its dep is non-nil — and behind auth.
+	deps := eywafiber.RouteDeps{
 		// Auth: using static API key + built-in operator JWT
 		APIKeys: map[string]string{
 			getEnv("API_KEY", "dev-key-change-me"): "admin",
 		},
 		OperatorAuth: operatorAuth,
+
+		// Spirit management (authed)
+		SpiritRepo: spiritRepo,
 
 		// Observability
 		ChronicleQueryRepo: chronicleRepo,
@@ -164,23 +167,21 @@ func main() {
 		RiteRepo: riteRepo,
 	}
 
-	if err := eywafiber.RegisterManagementRoutes(app, weave, deps); err != nil {
-		log.Fatalf("failed to register management routes: %v", err)
+	// One registrar: open event/health routes + token-protected management API.
+	if err := eywafiber.RegisterRoutes(app, weave, deps); err != nil {
+		log.Fatalf("failed to register routes: %v", err)
 	}
 
-	// Health check (public)
-	app.Get("/health", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{"status": "ok", "service": serviceName})
-	})
-
 	fmt.Printf("\nManagement API listening on %s\n", addr)
-	fmt.Println("\nEndpoints (use API key header: X-API-Key: dev-key-change-me):")
-	fmt.Println("  GET  /health")
+	fmt.Println("\nOpen endpoints:")
+	fmt.Println("  GET  /health, /ready")
+	fmt.Println("  POST /api/v1/events/:event_key")
+	fmt.Println("  POST /api/v1/auth/token  (operator login)")
+	fmt.Println("\nAuthenticated (Authorization: Bearer dev-key-change-me):")
 	fmt.Println("  GET  /api/v1/spirits")
 	fmt.Println("  GET  /api/v1/chronicle")
 	fmt.Println("  GET  /api/v1/echoes/sessions")
 	fmt.Println("  GET  /api/v1/rites")
-	fmt.Println("  POST /api/v1/auth/token  (operator login — no auth)")
 
 	// Graceful shutdown
 	quit := make(chan os.Signal, 1)

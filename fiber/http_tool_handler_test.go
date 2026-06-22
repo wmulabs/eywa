@@ -60,8 +60,8 @@ func (s *stubHTTPToolRepo) Delete(_ context.Context, id string) error {
 	return s.err
 }
 
-func httpToolDeps(repo *stubHTTPToolRepo) ManagementDeps {
-	return ManagementDeps{
+func httpToolDeps(repo *stubHTTPToolRepo) RouteDeps {
+	return RouteDeps{
 		APIKeys:      map[string]string{"test-key": "admin"},
 		HTTPToolRepo: repo,
 	}
@@ -200,7 +200,7 @@ func TestHTTPToolHandler_Delete_Returns204(t *testing.T) {
 }
 
 func buildMgmtTestAppWithTester(
-	deps ManagementDeps,
+	deps RouteDeps,
 	testerFunc func(eywa.HTTPTool, map[string]any) (*eywa.HTTPToolTestResult, error),
 ) *fiberlib.App {
 	app := fiberlib.New(fiberlib.Config{DisableStartupMessage: true})
@@ -271,7 +271,7 @@ func TestHTTPToolHandler_List_NilSlice_Returns200WithEmptyItems(t *testing.T) {
 	orig := newStubHTTPToolRepo()
 	repo := &nilListRepo{stubHTTPToolRepo: orig}
 	// Override via function-level stub that returns nil
-	deps := ManagementDeps{
+	deps := RouteDeps{
 		APIKeys:      map[string]string{"test-key": "admin"},
 		HTTPToolRepo: &stubNilHTTPToolRepo{},
 	}

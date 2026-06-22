@@ -72,15 +72,15 @@ func (s *stubEchoRepoForMgmt) CountBySubjectKey(_ context.Context, _ string) (in
 	return 0, nil
 }
 
-func echoDeps(queryRepo *stubEchoQueryRepo) ManagementDeps {
-	return ManagementDeps{
+func echoDeps(queryRepo *stubEchoQueryRepo) RouteDeps {
+	return RouteDeps{
 		APIKeys:       map[string]string{"test-key": "admin"},
 		EchoQueryRepo: queryRepo,
 	}
 }
 
-func echoSendDeps(queryRepo *stubEchoQueryRepo, echoRepo eywa.EchoRepository) ManagementDeps {
-	return ManagementDeps{
+func echoSendDeps(queryRepo *stubEchoQueryRepo, echoRepo eywa.EchoRepository) RouteDeps {
+	return RouteDeps{
 		APIKeys:       map[string]string{"test-key": "admin"},
 		EchoQueryRepo: queryRepo,
 		EchoRepo:      echoRepo,

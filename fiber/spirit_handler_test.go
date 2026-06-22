@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"net/http/httptest"
 	"testing"
 
 	fiberlib "github.com/gofiber/fiber/v2"
@@ -84,10 +83,13 @@ func (s *stubSpiritRepository) ListAll(_ context.Context) ([]*eywa.Spirit, error
 	return s.spirits, s.listErr
 }
 
-// buildSpiritTestApp wires a spirit repo into RegisterRoutes (no auth needed here).
+// buildSpiritTestApp wires a spirit repo into RegisterRoutes behind API-key auth; requests use
+// authedRequest to carry the token.
 func buildSpiritTestApp(repo eywa.SpiritRepository, weave *eywa.Weave) *fiberlib.App {
 	app := fiberlib.New(fiberlib.Config{DisableStartupMessage: true})
-	RegisterRoutes(app, weave, repo, nil)
+	if err := RegisterRoutes(app, weave, RouteDeps{SpiritRepo: repo, APIKeys: authedAPIKeys()}); err != nil {
+		panic(err)
+	}
 	return app
 }
 
@@ -107,7 +109,7 @@ func TestSpiritHandler_Create_Returns201(t *testing.T) {
 	weave := minimalTestWeave(t)
 	app := buildSpiritTestApp(repo, weave)
 
-	req := httptest.NewRequest("POST", "/api/v1/spirits", bytes.NewReader(validSpiritBody()))
+	req := authedRequest("POST", "/api/v1/spirits", bytes.NewReader(validSpiritBody()))
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := app.Test(req)
 	if err != nil {
@@ -128,7 +130,7 @@ func TestSpiritHandler_Create_InvalidJSON_Returns400(t *testing.T) {
 	weave := minimalTestWeave(t)
 	app := buildSpiritTestApp(repo, weave)
 
-	req := httptest.NewRequest("POST", "/api/v1/spirits", bytes.NewReader([]byte("not-json")))
+	req := authedRequest("POST", "/api/v1/spirits", bytes.NewReader([]byte("not-json")))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 400 {
@@ -145,7 +147,7 @@ func TestSpiritHandler_Create_MissingName_Returns400(t *testing.T) {
 		"system_prompt": "You are a helpful assistant that answers questions.",
 		"model_config":  map[string]any{"provider": "openai", "model": "gpt-4"},
 	})
-	req := httptest.NewRequest("POST", "/api/v1/spirits", bytes.NewReader(body))
+	req := authedRequest("POST", "/api/v1/spirits", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 400 {
@@ -158,7 +160,7 @@ func TestSpiritHandler_Create_RepoError_Returns500(t *testing.T) {
 	weave := minimalTestWeave(t)
 	app := buildSpiritTestApp(repo, weave)
 
-	req := httptest.NewRequest("POST", "/api/v1/spirits", bytes.NewReader(validSpiritBody()))
+	req := authedRequest("POST", "/api/v1/spirits", bytes.NewReader(validSpiritBody()))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 500 {
@@ -174,7 +176,7 @@ func TestSpiritHandler_Get_Returns200(t *testing.T) {
 	weave := minimalTestWeave(t)
 	app := buildSpiritTestApp(repo, weave)
 
-	req := httptest.NewRequest("GET", "/api/v1/spirits/test_spirit", nil)
+	req := authedRequest("GET", "/api/v1/spirits/test_spirit", nil)
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 200 {
 		t.Errorf("want 200, got %d", resp.StatusCode)
@@ -186,7 +188,7 @@ func TestSpiritHandler_Get_NotFound_Returns404(t *testing.T) {
 	weave := minimalTestWeave(t)
 	app := buildSpiritTestApp(repo, weave)
 
-	req := httptest.NewRequest("GET", "/api/v1/spirits/missing", nil)
+	req := authedRequest("GET", "/api/v1/spirits/missing", nil)
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 404 {
 		t.Errorf("want 404, got %d", resp.StatusCode)
@@ -205,7 +207,7 @@ func TestSpiritHandler_Update_Returns200(t *testing.T) {
 		"system_prompt": "Updated system prompt for tests.",
 		"model_config":  map[string]any{"provider": "openai", "model": "gpt-4"},
 	})
-	req := httptest.NewRequest("PUT", "/api/v1/spirits/test_spirit", bytes.NewReader(body))
+	req := authedRequest("PUT", "/api/v1/spirits/test_spirit", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 200 {
@@ -218,7 +220,7 @@ func TestSpiritHandler_Update_InvalidJSON_Returns400(t *testing.T) {
 	weave := minimalTestWeave(t)
 	app := buildSpiritTestApp(repo, weave)
 
-	req := httptest.NewRequest("PUT", "/api/v1/spirits/test_spirit", bytes.NewReader([]byte("not-json")))
+	req := authedRequest("PUT", "/api/v1/spirits/test_spirit", bytes.NewReader([]byte("not-json")))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 400 {
@@ -236,7 +238,7 @@ func TestSpiritHandler_Update_ValidationFails_Returns400(t *testing.T) {
 		"system_prompt": "",
 		"model_config":  map[string]any{"provider": "openai", "model": "gpt-4"},
 	})
-	req := httptest.NewRequest("PUT", "/api/v1/spirits/test_spirit", bytes.NewReader(body))
+	req := authedRequest("PUT", "/api/v1/spirits/test_spirit", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 400 {
@@ -253,7 +255,7 @@ func TestSpiritHandler_Update_RepoError_Returns500(t *testing.T) {
 		"system_prompt": "Updated system prompt for tests.",
 		"model_config":  map[string]any{"provider": "openai", "model": "gpt-4"},
 	})
-	req := httptest.NewRequest("PUT", "/api/v1/spirits/test_spirit", bytes.NewReader(body))
+	req := authedRequest("PUT", "/api/v1/spirits/test_spirit", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 500 {
@@ -269,7 +271,7 @@ func TestSpiritHandler_Delete_Returns200(t *testing.T) {
 	weave := minimalTestWeave(t)
 	app := buildSpiritTestApp(repo, weave)
 
-	req := httptest.NewRequest("DELETE", "/api/v1/spirits/test_spirit", nil)
+	req := authedRequest("DELETE", "/api/v1/spirits/test_spirit", nil)
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 200 {
 		t.Errorf("want 200, got %d", resp.StatusCode)
@@ -281,7 +283,7 @@ func TestSpiritHandler_Delete_NotFound_Returns404(t *testing.T) {
 	weave := minimalTestWeave(t)
 	app := buildSpiritTestApp(repo, weave)
 
-	req := httptest.NewRequest("DELETE", "/api/v1/spirits/missing", nil)
+	req := authedRequest("DELETE", "/api/v1/spirits/missing", nil)
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 404 {
 		t.Errorf("want 404, got %d", resp.StatusCode)
@@ -294,7 +296,7 @@ func TestSpiritHandler_Delete_DeactivateError_Returns500(t *testing.T) {
 	weave := minimalTestWeave(t)
 	app := buildSpiritTestApp(repo, weave)
 
-	req := httptest.NewRequest("DELETE", "/api/v1/spirits/test_spirit", nil)
+	req := authedRequest("DELETE", "/api/v1/spirits/test_spirit", nil)
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 500 {
 		t.Errorf("want 500, got %d", resp.StatusCode)
@@ -309,7 +311,7 @@ func TestSpiritHandler_List_Returns200(t *testing.T) {
 	weave := minimalTestWeave(t)
 	app := buildSpiritTestApp(repo, weave)
 
-	req := httptest.NewRequest("GET", "/api/v1/spirits", nil)
+	req := authedRequest("GET", "/api/v1/spirits", nil)
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 200 {
 		t.Errorf("want 200, got %d", resp.StatusCode)
@@ -326,7 +328,7 @@ func TestSpiritHandler_List_EmptyRepo_ReturnsEmptySlice(t *testing.T) {
 	weave := minimalTestWeave(t)
 	app := buildSpiritTestApp(repo, weave)
 
-	req := httptest.NewRequest("GET", "/api/v1/spirits", nil)
+	req := authedRequest("GET", "/api/v1/spirits", nil)
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 200 {
 		t.Errorf("want 200, got %d", resp.StatusCode)
@@ -338,7 +340,7 @@ func TestSpiritHandler_List_CountError_Returns500(t *testing.T) {
 	weave := minimalTestWeave(t)
 	app := buildSpiritTestApp(repo, weave)
 
-	req := httptest.NewRequest("GET", "/api/v1/spirits", nil)
+	req := authedRequest("GET", "/api/v1/spirits", nil)
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 500 {
 		t.Errorf("want 500, got %d", resp.StatusCode)
@@ -350,7 +352,7 @@ func TestSpiritHandler_List_ListError_Returns500(t *testing.T) {
 	weave := minimalTestWeave(t)
 	app := buildSpiritTestApp(repo, weave)
 
-	req := httptest.NewRequest("GET", "/api/v1/spirits", nil)
+	req := authedRequest("GET", "/api/v1/spirits", nil)
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 500 {
 		t.Errorf("want 500, got %d", resp.StatusCode)
@@ -365,7 +367,7 @@ func TestSpiritHandler_Activate_Returns200(t *testing.T) {
 	app := buildSpiritTestApp(repo, weave)
 
 	body, _ := json.Marshal(map[string]int{"version": 2})
-	req := httptest.NewRequest("POST", "/api/v1/spirits/test_spirit/activate", bytes.NewReader(body))
+	req := authedRequest("POST", "/api/v1/spirits/test_spirit/activate", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 200 {
@@ -378,7 +380,7 @@ func TestSpiritHandler_Activate_InvalidBody_Returns400(t *testing.T) {
 	weave := minimalTestWeave(t)
 	app := buildSpiritTestApp(repo, weave)
 
-	req := httptest.NewRequest("POST", "/api/v1/spirits/test_spirit/activate", bytes.NewReader([]byte("not-json")))
+	req := authedRequest("POST", "/api/v1/spirits/test_spirit/activate", bytes.NewReader([]byte("not-json")))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 400 {
@@ -392,7 +394,7 @@ func TestSpiritHandler_Activate_ZeroVersion_Returns400(t *testing.T) {
 	app := buildSpiritTestApp(repo, weave)
 
 	body, _ := json.Marshal(map[string]int{"version": 0})
-	req := httptest.NewRequest("POST", "/api/v1/spirits/test_spirit/activate", bytes.NewReader(body))
+	req := authedRequest("POST", "/api/v1/spirits/test_spirit/activate", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 400 {
@@ -406,7 +408,7 @@ func TestSpiritHandler_Activate_RepoError_Returns500(t *testing.T) {
 	app := buildSpiritTestApp(repo, weave)
 
 	body, _ := json.Marshal(map[string]int{"version": 1})
-	req := httptest.NewRequest("POST", "/api/v1/spirits/test_spirit/activate", bytes.NewReader(body))
+	req := authedRequest("POST", "/api/v1/spirits/test_spirit/activate", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 500 {
@@ -422,7 +424,7 @@ func TestSpiritHandler_Deactivate_Returns200(t *testing.T) {
 	weave := minimalTestWeave(t)
 	app := buildSpiritTestApp(repo, weave)
 
-	req := httptest.NewRequest("POST", "/api/v1/spirits/test_spirit/deactivate", nil)
+	req := authedRequest("POST", "/api/v1/spirits/test_spirit/deactivate", nil)
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 200 {
 		t.Errorf("want 200, got %d", resp.StatusCode)
@@ -434,7 +436,7 @@ func TestSpiritHandler_Deactivate_NotFound_Returns404(t *testing.T) {
 	weave := minimalTestWeave(t)
 	app := buildSpiritTestApp(repo, weave)
 
-	req := httptest.NewRequest("POST", "/api/v1/spirits/missing/deactivate", nil)
+	req := authedRequest("POST", "/api/v1/spirits/missing/deactivate", nil)
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 404 {
 		t.Errorf("want 404, got %d", resp.StatusCode)
@@ -447,7 +449,7 @@ func TestSpiritHandler_Deactivate_DeactivateError_Returns500(t *testing.T) {
 	weave := minimalTestWeave(t)
 	app := buildSpiritTestApp(repo, weave)
 
-	req := httptest.NewRequest("POST", "/api/v1/spirits/test_spirit/deactivate", nil)
+	req := authedRequest("POST", "/api/v1/spirits/test_spirit/deactivate", nil)
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 500 {
 		t.Errorf("want 500, got %d", resp.StatusCode)
@@ -462,7 +464,7 @@ func TestSpiritHandler_GetVersions_Returns200(t *testing.T) {
 	weave := minimalTestWeave(t)
 	app := buildSpiritTestApp(repo, weave)
 
-	req := httptest.NewRequest("GET", "/api/v1/spirits/test_spirit/versions", nil)
+	req := authedRequest("GET", "/api/v1/spirits/test_spirit/versions", nil)
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 200 {
 		t.Errorf("want 200, got %d", resp.StatusCode)
@@ -479,7 +481,7 @@ func TestSpiritHandler_GetVersions_EmptyHistory_ReturnsEmptySlice(t *testing.T) 
 	weave := minimalTestWeave(t)
 	app := buildSpiritTestApp(repo, weave)
 
-	req := httptest.NewRequest("GET", "/api/v1/spirits/test_spirit/versions", nil)
+	req := authedRequest("GET", "/api/v1/spirits/test_spirit/versions", nil)
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 200 {
 		t.Errorf("want 200, got %d", resp.StatusCode)
@@ -491,7 +493,7 @@ func TestSpiritHandler_GetVersions_RepoError_Returns500(t *testing.T) {
 	weave := minimalTestWeave(t)
 	app := buildSpiritTestApp(repo, weave)
 
-	req := httptest.NewRequest("GET", "/api/v1/spirits/test_spirit/versions", nil)
+	req := authedRequest("GET", "/api/v1/spirits/test_spirit/versions", nil)
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 500 {
 		t.Errorf("want 500, got %d", resp.StatusCode)
@@ -505,9 +507,11 @@ func TestRegisterRoutes_WithAsyncDispatcher_RegistersAsyncRoute(t *testing.T) {
 	receptor := &testReceptor{name: "rcpt-async-routes", events: []*eywa.Pulse{pulse}}
 	weave := testWeaveWithAsyncDispatch(t, &testKeeper{}, receptor)
 	app := fiberlib.New(fiberlib.Config{DisableStartupMessage: true})
-	RegisterRoutes(app, weave, &stubSpiritRepository{}, nil)
+	if err := RegisterRoutes(app, weave, RouteDeps{}); err != nil {
+		t.Fatalf("register: %v", err)
+	}
 
-	req := httptest.NewRequest("POST", "/api/v1/events/test_event/async", bytes.NewReader([]byte(`{"test":1}`)))
+	req := authedRequest("POST", "/api/v1/events/test_event/async", bytes.NewReader([]byte(`{"test":1}`)))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app.Test(req)
 	// route is registered — any response (200/400/422) means it was reached
@@ -529,15 +533,17 @@ func TestWithInternalMiddleware_RegistersMiddleware(t *testing.T) {
 		called = true
 		return c.Next()
 	}
-	// Register routes including the middleware
-	RegisterRoutes(app, weave, &stubSpiritRepository{}, nil, WithInternalMiddleware(mw))
+	// Register routes including the internal middleware
+	if err := RegisterRoutes(app, weave, RouteDeps{InternalMiddleware: []fiberlib.Handler{mw}}); err != nil {
+		t.Fatalf("register: %v", err)
+	}
 
 	// /internal/execute-event is registered when RitualManager != nil
 	body, _ := json.Marshal(map[string]any{
 		"event_key": "test",
 		"event":     map[string]any{"memory_key": "m1"},
 	})
-	req := httptest.NewRequest("POST", "/internal/execute-event", bytes.NewReader(body))
+	req := authedRequest("POST", "/internal/execute-event", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	app.Test(req) //nolint:errcheck
 
