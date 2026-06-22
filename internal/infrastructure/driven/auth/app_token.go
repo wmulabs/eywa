@@ -17,6 +17,9 @@ import (
 // machine callers (event ingestion); they are not "admin" and so cannot reach admin-gated routes.
 const appTokenRole = "app"
 
+// randRead is crypto/rand.Read, indirected so the failure path can be tested.
+var randRead = rand.Read
+
 // HashAppToken returns the SHA-256 hash stored for a token secret. The plaintext is never persisted.
 func HashAppToken(secret string) []byte {
 	sum := sha256.Sum256([]byte(secret))
@@ -26,7 +29,7 @@ func HashAppToken(secret string) []byte {
 // GenerateAppTokenSecret returns a high-entropy URL-safe secret for a new app token.
 func GenerateAppTokenSecret() (string, error) {
 	b := make([]byte, 32)
-	if _, err := rand.Read(b); err != nil {
+	if _, err := randRead(b); err != nil {
 		return "", fmt.Errorf("generate app token: %w", err)
 	}
 	return base64.RawURLEncoding.EncodeToString(b), nil
@@ -42,7 +45,7 @@ func MintAppToken(name string, ttl time.Duration) (secret string, token *entitie
 	}
 
 	id := make([]byte, 16)
-	if _, err = rand.Read(id); err != nil {
+	if _, err = randRead(id); err != nil {
 		return "", nil, fmt.Errorf("generate app token id: %w", err)
 	}
 

@@ -59,6 +59,47 @@ func TestMintAppToken(t *testing.T) {
 	}
 }
 
+func TestMintAppToken_RandError(t *testing.T) {
+	orig := randRead
+	defer func() { randRead = orig }()
+
+	// Fails on the first read → secret generation error.
+	randRead = func([]byte) (int, error) { return 0, errors.New("no entropy") }
+	if _, _, err := MintAppToken("x", time.Hour); err == nil {
+		t.Error("expected error when secret generation fails")
+	}
+	if _, err := GenerateAppTokenSecret(); err == nil {
+		t.Error("expected error from GenerateAppTokenSecret")
+	}
+
+	// Succeeds for the secret, fails on the id read → id generation error.
+	calls := 0
+	randRead = func(b []byte) (int, error) {
+		calls++
+		if calls == 1 {
+			return len(b), nil
+		}
+		return 0, errors.New("no entropy")
+	}
+	if _, _, err := MintAppToken("x", time.Hour); err == nil {
+		t.Error("expected error when id generation fails")
+	}
+}
+
+func TestAppTokenValidator_DefaultsRole(t *testing.T) {
+	secret, token, _ := MintAppToken("ci", time.Hour)
+	token.Role = "" // a record with no explicit role
+	v := NewAppTokenValidator(newFakeAppTokenRepo(token))
+
+	claims, err := v.Validate(context.Background(), secret)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if claims.Role != appTokenRole {
+		t.Errorf("role = %q, want default %q", claims.Role, appTokenRole)
+	}
+}
+
 func TestAppTokenValidator_Validate(t *testing.T) {
 	secret, token, _ := MintAppToken("ci", time.Hour)
 	v := NewAppTokenValidator(newFakeAppTokenRepo(token))

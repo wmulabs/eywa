@@ -96,6 +96,58 @@ func TestAppTokenRepository_Revoke_NotFound(t *testing.T) {
 	})
 }
 
+func TestAppTokenRepository_Create_Error(t *testing.T) {
+	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
+	mt.Run("error", func(mt *mtest.T) {
+		mt.AddMockResponses(mtest.CreateWriteErrorsResponse(mtest.WriteError{Index: 0, Code: 11000, Message: "dup"}))
+		err := newAppTokenRepo(mt).Create(context.Background(), &eywa.AppToken{ID: "t1", Hash: []byte("h")})
+		if err == nil {
+			t.Error("expected error from a failed insert")
+		}
+	})
+}
+
+func TestAppTokenRepository_FindByHash_Error(t *testing.T) {
+	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
+	mt.Run("error", func(mt *mtest.T) {
+		mt.AddMockResponses(mtest.CreateCommandErrorResponse(mtest.CommandError{Code: 1, Message: "boom"}))
+		_, err := newAppTokenRepo(mt).FindByHash(context.Background(), []byte("h"))
+		if err == nil || err == eywa.ErrNotFound {
+			t.Errorf("expected a non-not-found error, got %v", err)
+		}
+	})
+}
+
+func TestAppTokenRepository_List_Error(t *testing.T) {
+	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
+	mt.Run("error", func(mt *mtest.T) {
+		mt.AddMockResponses(mtest.CreateCommandErrorResponse(mtest.CommandError{Code: 1, Message: "boom"}))
+		if _, err := newAppTokenRepo(mt).List(context.Background()); err == nil {
+			t.Error("expected error when the find command fails")
+		}
+	})
+}
+
+func TestAppTokenRepository_Revoke_Error(t *testing.T) {
+	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
+	mt.Run("error", func(mt *mtest.T) {
+		mt.AddMockResponses(mtest.CreateCommandErrorResponse(mtest.CommandError{Code: 1, Message: "boom"}))
+		if err := newAppTokenRepo(mt).Revoke(context.Background(), "t1"); err == nil {
+			t.Error("expected error when the update command fails")
+		}
+	})
+}
+
+func TestNewAppTokenRepository_IndexError_LogsAndContinues(t *testing.T) {
+	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
+	mt.Run("index error", func(mt *mtest.T) {
+		mt.AddMockResponses(mtest.CreateCommandErrorResponse(mtest.CommandError{Code: 1, Message: "boom"}))
+		if repo := NewAppTokenRepository(mt.DB); repo == nil {
+			t.Fatal("constructor must not fail when index creation errors")
+		}
+	})
+}
+
 func TestNewAppTokenRepository_Constructs(t *testing.T) {
 	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
 	mt.Run("constructs", func(mt *mtest.T) {
