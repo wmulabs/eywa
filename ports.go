@@ -245,6 +245,10 @@ type (
 	// AuthClaims carries identity claims extracted by a TokenValidator.
 	AuthClaims = ports.AuthClaims
 
+	// AppTokenRepository persists revocable app tokens for authenticating inbound event requests.
+	// Use the Mongo adapter (eywamongo.NewAppTokenRepository) in production.
+	AppTokenRepository = ports.AppTokenRepository
+
 	// OperatorRepository persists Operator records and validates credentials.
 	OperatorRepository = ports.OperatorRepository
 

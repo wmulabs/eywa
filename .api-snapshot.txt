@@ -280,6 +280,14 @@ var (
 	// Suitable for OIDC/SSO integrations.
 	NewJWKSValidator = auth.NewJWKSValidator
 
+	// NewAppTokenValidator returns a TokenValidator backed by an AppTokenRepository: revocable,
+	// optionally-expiring app tokens for authenticating inbound event requests.
+	NewAppTokenValidator = auth.NewAppTokenValidator
+
+	// MintAppToken creates a new app token record and its one-time plaintext secret. A ttl of zero
+	// means the token never expires. Persist the returned *AppToken via an AppTokenRepository.
+	MintAppToken = auth.MintAppToken
+
 	// HashPassword returns a bcrypt hash of password. Use when creating Operator records.
 	HashPassword = auth.HashPassword
 
@@ -537,6 +545,16 @@ type AllowedAction = entities.AllowedAction
 
 type AppInfo = orchestrator.AppInfo
     AppInfo carries service identity metadata logged with every Chronicle entry.
+
+type AppToken = entities.AppToken
+    AppToken is a revocable, optionally-expiring credential for authenticating
+    inbound event requests. Create one with MintAppToken and persist it via an
+    AppTokenRepository.
+
+type AppTokenRepository = ports.AppTokenRepository
+    AppTokenRepository persists revocable app tokens for authenticating inbound
+    event requests. Use the Mongo adapter (eywamongo.NewAppTokenRepository) in
+    production.
 
 type Archivist = ports.Archivist
     Archivist summarises a conversation Thread when it exceeds a message

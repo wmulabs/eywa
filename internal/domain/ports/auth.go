@@ -15,6 +15,15 @@ type AuthClaims struct {
 	Role    string
 }
 
+// AppTokenRepository persists revocable app tokens used to authenticate inbound event requests.
+// FindByHash returns the matching token (active or not) or a not-found error; callers check IsActive.
+type AppTokenRepository interface {
+	Create(ctx context.Context, token *entities.AppToken) error
+	FindByHash(ctx context.Context, hash []byte) (*entities.AppToken, error)
+	List(ctx context.Context) ([]*entities.AppToken, error)
+	Revoke(ctx context.Context, id string) error
+}
+
 type OperatorRepository interface {
 	Create(ctx context.Context, op *entities.Operator) error
 	FindByEmail(ctx context.Context, email string) (*entities.Operator, error)
