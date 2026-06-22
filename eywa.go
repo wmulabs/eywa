@@ -257,6 +257,17 @@ var (
 	// means the token never expires. Persist the returned *AppToken via an AppTokenRepository.
 	MintAppToken = auth.MintAppToken
 
+	// NewHMACVerifier returns a RequestVerifier that checks a Stripe-style HMAC-SHA256 signature over
+	// the raw request body (header "t=<unix>,v1=<hex>"), with a timestamp tolerance against replay.
+	// Configure with WithHMACHeader / WithHMACTolerance.
+	NewHMACVerifier = auth.NewHMACVerifier
+
+	// WithHMACHeader overrides the signature header name used by NewHMACVerifier.
+	WithHMACHeader = auth.WithHMACHeader
+
+	// WithHMACTolerance overrides the timestamp skew tolerance used by NewHMACVerifier.
+	WithHMACTolerance = auth.WithHMACTolerance
+
 	// HashPassword returns a bcrypt hash of password. Use when creating Operator records.
 	HashPassword = auth.HashPassword
 

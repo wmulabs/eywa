@@ -2,6 +2,7 @@ package ports
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/wmulabs/eywa/internal/domain/entities"
 )
@@ -13,6 +14,23 @@ type TokenValidator interface {
 type AuthClaims struct {
 	Subject string
 	Role    string
+}
+
+// VerifiableRequest is the transport-agnostic view of an inbound request that a RequestVerifier
+// inspects. URL is the full reconstructed request URL (scheme://host/path?query); Body is the raw,
+// unparsed request body — both needed for signature schemes (HMAC over the body, provider webhooks).
+type VerifiableRequest struct {
+	Method string
+	URL    string
+	Header http.Header
+	Body   []byte
+}
+
+// RequestVerifier authenticates an inbound event request from its full content (headers + raw body),
+// enabling signature-based schemes (HMAC, provider webhook signatures) that a bearer-only
+// TokenValidator cannot express. Return non-nil claims on success, an error to reject.
+type RequestVerifier interface {
+	Verify(ctx context.Context, req VerifiableRequest) (*AuthClaims, error)
 }
 
 // AppTokenRepository persists revocable app tokens used to authenticate inbound event requests.

@@ -245,6 +245,14 @@ type (
 	// AuthClaims carries identity claims extracted by a TokenValidator.
 	AuthClaims = ports.AuthClaims
 
+	// RequestVerifier authenticates an inbound event request from its full content (headers + raw
+	// body), enabling signature schemes (HMAC, provider webhooks) a bearer TokenValidator cannot.
+	// Wire via RouteDeps.EventVerifiers. Implementations: NewHMACVerifier, channel signature verifiers.
+	RequestVerifier = ports.RequestVerifier
+
+	// VerifiableRequest is the transport-agnostic request view a RequestVerifier inspects.
+	VerifiableRequest = ports.VerifiableRequest
+
 	// AppTokenRepository persists revocable app tokens for authenticating inbound event requests.
 	// Use the Mongo adapter (eywamongo.NewAppTokenRepository) in production.
 	AppTokenRepository = ports.AppTokenRepository

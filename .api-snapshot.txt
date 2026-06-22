@@ -288,6 +288,17 @@ var (
 	// means the token never expires. Persist the returned *AppToken via an AppTokenRepository.
 	MintAppToken = auth.MintAppToken
 
+	// NewHMACVerifier returns a RequestVerifier that checks a Stripe-style HMAC-SHA256 signature over
+	// the raw request body (header "t=<unix>,v1=<hex>"), with a timestamp tolerance against replay.
+	// Configure with WithHMACHeader / WithHMACTolerance.
+	NewHMACVerifier = auth.NewHMACVerifier
+
+	// WithHMACHeader overrides the signature header name used by NewHMACVerifier.
+	WithHMACHeader = auth.WithHMACHeader
+
+	// WithHMACTolerance overrides the timestamp skew tolerance used by NewHMACVerifier.
+	WithHMACTolerance = auth.WithHMACTolerance
+
 	// HashPassword returns a bcrypt hash of password. Use when creating Operator records.
 	HashPassword = auth.HashPassword
 
@@ -961,6 +972,12 @@ type ReplayOptions = trial.ReplayOptions
     ReplayOptions selects which recorded interactions to replay from the
     Chronicle. Pass to LoadReplayCases.
 
+type RequestVerifier = ports.RequestVerifier
+    RequestVerifier authenticates an inbound event request from its full
+    content (headers + raw body), enabling signature schemes (HMAC, provider
+    webhooks) a bearer TokenValidator cannot. Wire via RouteDeps.EventVerifiers.
+    Implementations: NewHMACVerifier, channel signature verifiers.
+
 type Response = entities.Response
     Response is the result returned by Weave.ProcessEventByKey. It contains the
     assistant message, which Spirit was used, Actions executed, and token usage.
@@ -1133,6 +1150,10 @@ type TypingIndicator = ports.TypingIndicator
 type Vault = ports.Vault
     Vault is the object storage port for media files (images, audio, documents).
     Use the GCS adapter for Google Cloud Storage.
+
+type VerifiableRequest = ports.VerifiableRequest
+    VerifiableRequest is the transport-agnostic request view a RequestVerifier
+    inspects.
 
 type Vigil = entities.Vigil
     Vigil represents an operator's active seat on a conversation. While a Vigil

@@ -123,11 +123,14 @@ type RouteDeps struct {
 	OperatorAuth   *eywa.OperatorAuth  // Mode 2: built-in operator JWT (also enables POST /api/v1/auth/token)
 	TokenValidator eywa.TokenValidator // Mode 3: external JWT / JWKS
 
-	// EventAuth, when non-empty, requires inbound event requests (POST /api/v1/events/:event_key and
-	// its /stream and /async variants) to present a valid bearer token accepted by one of these
-	// validators — typically an app-token validator (see AppTokenRepo). Empty leaves event ingestion
-	// open (webhook-style), which is the default. Health checks stay open regardless.
-	EventAuth []eywa.TokenValidator
+	// EventAuth and EventVerifiers gate inbound event requests (POST /api/v1/events/:event_key and its
+	// /stream and /async variants). EventAuth accepts a bearer token (e.g. an app-token validator);
+	// EventVerifiers authenticate from the full request — headers + raw body — for signature schemes
+	// (HMAC, provider webhook signatures). A request is accepted if ANY configured validator or
+	// verifier accepts it. Both empty leaves event ingestion open (webhook-style), the default. Health
+	// checks stay open regardless.
+	EventAuth      []eywa.TokenValidator
+	EventVerifiers []eywa.RequestVerifier
 
 	// AppTokenRepo enables managing revocable app tokens at /api/v1/app-tokens (create/list/revoke),
 	// behind the management auth. Pair it with EventAuth: eywa.NewAppTokenValidator(repo).
