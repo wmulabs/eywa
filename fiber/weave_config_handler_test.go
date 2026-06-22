@@ -28,8 +28,8 @@ func (s *stubWeaveConfigRepo) Save(_ context.Context, cfg *eywa.WeaveConfig) err
 	return s.err
 }
 
-func weaveConfigDeps(repo *stubWeaveConfigRepo) ManagementDeps {
-	return ManagementDeps{
+func weaveConfigDeps(repo *stubWeaveConfigRepo) RouteDeps {
+	return RouteDeps{
 		APIKeys:         map[string]string{"test-key": "admin"},
 		WeaveConfigRepo: repo,
 	}
@@ -151,7 +151,7 @@ func TestWeaveConfigHandler_Reload_WithConfigCache_Returns200(t *testing.T) {
 	_ = cache.LoadAll(context.Background())
 
 	app := fiberlib.New(fiberlib.Config{DisableStartupMessage: true})
-	RegisterManagementRoutes(app, nil, ManagementDeps{
+	RegisterRoutes(app, nil, RouteDeps{
 		APIKeys:         map[string]string{"test-key": "admin"},
 		WeaveConfigRepo: repo,
 		ConfigCache:     cache,
@@ -172,7 +172,7 @@ func TestWeaveConfigHandler_Reload_ConfigCacheError_Returns500(t *testing.T) {
 	cache := eywa.NewConfigCache(linkRepo, nil, nil)
 
 	app := fiberlib.New(fiberlib.Config{DisableStartupMessage: true})
-	RegisterManagementRoutes(app, nil, ManagementDeps{
+	RegisterRoutes(app, nil, RouteDeps{
 		APIKeys:         map[string]string{"test-key": "admin"},
 		WeaveConfigRepo: repo,
 		ConfigCache:     cache,

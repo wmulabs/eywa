@@ -46,10 +46,10 @@ func (s *stubLinkRepo) Delete(_ context.Context, eventType string) error {
 	return s.err
 }
 
-func linkCacheDeps(repo *stubLinkRepo) ManagementDeps {
+func linkCacheDeps(repo *stubLinkRepo) RouteDeps {
 	cache := eywa.NewConfigCache(repo, nil, nil)
 	_ = cache.LoadAll(context.Background())
-	return ManagementDeps{
+	return RouteDeps{
 		APIKeys:     map[string]string{"test-key": "admin"},
 		ConfigCache: cache,
 	}

@@ -241,10 +241,10 @@ func TestDiscoveryHandler_Get(t *testing.T) {
 	weave := minimalTestWeave(t)
 
 	app := fiberlib.New(fiberlib.Config{DisableStartupMessage: true})
-	if err := RegisterManagementRoutes(app, weave, ManagementDeps{
+	if err := RegisterRoutes(app, weave, RouteDeps{
 		APIKeys: map[string]string{"test-key": "admin"},
 	}); err != nil {
-		t.Fatalf("unexpected RegisterManagementRoutes error: %v", err)
+		t.Fatalf("unexpected RegisterRoutes error: %v", err)
 	}
 
 	req := httptest.NewRequest("GET", "/api/v1/discovery", nil)
@@ -593,10 +593,10 @@ func TestDiscoveryHandler_Get_NoActionRegistry_ReturnsEmptyActions(t *testing.T)
 	}
 
 	app := fiberlib.New(fiberlib.Config{DisableStartupMessage: true})
-	if err := RegisterManagementRoutes(app, weave, ManagementDeps{
+	if err := RegisterRoutes(app, weave, RouteDeps{
 		APIKeys: map[string]string{"test-key": "admin"},
 	}); err != nil {
-		t.Fatalf("unexpected RegisterManagementRoutes error: %v", err)
+		t.Fatalf("unexpected RegisterRoutes error: %v", err)
 	}
 
 	req := httptest.NewRequest("GET", "/api/v1/discovery", nil)
@@ -620,10 +620,10 @@ func TestDiscoveryHandler_Get_WithRegistries(t *testing.T) {
 	weave := testWeaveWithRegistries(t)
 
 	app := fiberlib.New(fiberlib.Config{DisableStartupMessage: true})
-	if err := RegisterManagementRoutes(app, weave, ManagementDeps{
+	if err := RegisterRoutes(app, weave, RouteDeps{
 		APIKeys: map[string]string{"test-key": "admin"},
 	}); err != nil {
-		t.Fatalf("unexpected RegisterManagementRoutes error: %v", err)
+		t.Fatalf("unexpected RegisterRoutes error: %v", err)
 	}
 
 	req := httptest.NewRequest("GET", "/api/v1/discovery", nil)
@@ -688,10 +688,10 @@ func (s *stubTokenValidator) Validate(_ context.Context, token string) (*eywa.Au
 func TestManagement_TokenValidator_AuthenticatesRequest(t *testing.T) {
 	weave := minimalTestWeave(t)
 	app := fiberlib.New(fiberlib.Config{DisableStartupMessage: true})
-	if err := RegisterManagementRoutes(app, weave, ManagementDeps{
+	if err := RegisterRoutes(app, weave, RouteDeps{
 		TokenValidator: &stubTokenValidator{},
 	}); err != nil {
-		t.Fatalf("unexpected RegisterManagementRoutes error: %v", err)
+		t.Fatalf("unexpected RegisterRoutes error: %v", err)
 	}
 
 	req := httptest.NewRequest("GET", "/api/v1/discovery", nil)
@@ -703,14 +703,14 @@ func TestManagement_TokenValidator_AuthenticatesRequest(t *testing.T) {
 }
 
 func TestManagement_PubSub_RegistersSSERoutes(t *testing.T) {
-	// Registering with non-nil PubSub covers the SSE branch in RegisterManagementRoutes.
+	// Registering with non-nil PubSub covers the SSE branch in RegisterRoutes.
 	// We don't call the SSE route (it streams forever); just verify registration returns no error.
 	app := fiberlib.New(fiberlib.Config{DisableStartupMessage: true})
-	if err := RegisterManagementRoutes(app, nil, ManagementDeps{
+	if err := RegisterRoutes(app, nil, RouteDeps{
 		APIKeys: map[string]string{"k": "admin"},
 		PubSub:  &noopPubSub{},
 	}); err != nil {
-		t.Fatalf("unexpected RegisterManagementRoutes error: %v", err)
+		t.Fatalf("unexpected RegisterRoutes error: %v", err)
 	}
 	// Verify SSE routes exist — auth-guarded, so unauthenticated returns 401, not 404.
 	req := httptest.NewRequest("GET", "/api/v1/sse/rites", nil)
@@ -746,10 +746,10 @@ func TestAsyncEventHandler_EmptyEventKey_Returns400(t *testing.T) {
 func TestManagement_TokenValidator_Rejects_InvalidToken(t *testing.T) {
 	weave := minimalTestWeave(t)
 	app := fiberlib.New(fiberlib.Config{DisableStartupMessage: true})
-	if err := RegisterManagementRoutes(app, weave, ManagementDeps{
+	if err := RegisterRoutes(app, weave, RouteDeps{
 		TokenValidator: &stubTokenValidator{},
 	}); err != nil {
-		t.Fatalf("unexpected RegisterManagementRoutes error: %v", err)
+		t.Fatalf("unexpected RegisterRoutes error: %v", err)
 	}
 
 	req := httptest.NewRequest("GET", "/api/v1/discovery", nil)
@@ -760,13 +760,24 @@ func TestManagement_TokenValidator_Rejects_InvalidToken(t *testing.T) {
 	}
 }
 
-func TestRegisterManagementRoutes_NoValidators_ReturnsError(t *testing.T) {
+func TestRegisterRoutes_ProtectedDepWithoutAuth_ReturnsError(t *testing.T) {
 	weave := minimalTestWeave(t)
 	app := fiberlib.New(fiberlib.Config{DisableStartupMessage: true})
 
-	err := RegisterManagementRoutes(app, weave, ManagementDeps{})
+	// A protected repository with no auth validator must fail closed.
+	err := RegisterRoutes(app, weave, RouteDeps{SpiritRepo: &stubSpiritRepository{}})
 
 	if err == nil {
-		t.Error("expected error when no validators configured, got nil")
+		t.Error("expected error when a protected repository is provided without an auth validator")
+	}
+}
+
+func TestRegisterRoutes_OpenOnly_NoAuthIsFine(t *testing.T) {
+	weave := minimalTestWeave(t)
+	app := fiberlib.New(fiberlib.Config{DisableStartupMessage: true})
+
+	// No protected deps and no validators → an events-only service; no error.
+	if err := RegisterRoutes(app, weave, RouteDeps{}); err != nil {
+		t.Errorf("expected no error for an open-only service, got %v", err)
 	}
 }

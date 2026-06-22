@@ -59,8 +59,8 @@ func (s *stubRiteRepoForFiber) Decide(_ context.Context, id, operatorID string, 
 	return nil
 }
 
-func riteDeps(rr *stubRiteRepoForFiber) ManagementDeps {
-	return ManagementDeps{
+func riteDeps(rr *stubRiteRepoForFiber) RouteDeps {
+	return RouteDeps{
 		APIKeys:  map[string]string{"test-key": "admin"},
 		RiteRepo: rr,
 	}
@@ -290,7 +290,7 @@ func TestRiteHandler_Approve_WithWeave_Returns200(t *testing.T) {
 	weave := minimalTestWeave(t)
 
 	app := fiberlib.New(fiberlib.Config{DisableStartupMessage: true})
-	RegisterManagementRoutes(app, weave, ManagementDeps{
+	RegisterRoutes(app, weave, RouteDeps{
 		APIKeys:  map[string]string{"test-key": "admin"},
 		RiteRepo: repo,
 	})
@@ -312,7 +312,7 @@ func TestRiteHandler_Approve_WithWeaveAndNote_Returns200(t *testing.T) {
 	weave := minimalTestWeave(t)
 
 	app := fiberlib.New(fiberlib.Config{DisableStartupMessage: true})
-	RegisterManagementRoutes(app, weave, ManagementDeps{
+	RegisterRoutes(app, weave, RouteDeps{
 		APIKeys:  map[string]string{"test-key": "admin"},
 		RiteRepo: repo,
 	})
@@ -335,7 +335,7 @@ func TestRiteHandler_Approve_WithWeave_InvalidMemoryKey_Returns200(t *testing.T)
 	weave := minimalTestWeave(t)
 
 	app := fiberlib.New(fiberlib.Config{DisableStartupMessage: true})
-	RegisterManagementRoutes(app, weave, ManagementDeps{
+	RegisterRoutes(app, weave, RouteDeps{
 		APIKeys:  map[string]string{"test-key": "admin"},
 		RiteRepo: repo,
 	})

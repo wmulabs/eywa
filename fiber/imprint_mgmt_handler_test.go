@@ -27,8 +27,8 @@ func (s *stubImprintRepo) List(_ context.Context, _ eywa.ImprintListOptions) ([]
 func (s *stubImprintRepo) Delete(_ context.Context, _ string) error          { return s.delErr }
 func (s *stubImprintRepo) Prune(_ context.Context, _, _ string, _ int) error { return nil }
 
-func imprintDeps(repo eywa.ImprintRepository) ManagementDeps {
-	return ManagementDeps{
+func imprintDeps(repo eywa.ImprintRepository) RouteDeps {
+	return RouteDeps{
 		APIKeys:     map[string]string{"test-key": "admin"},
 		ImprintRepo: repo,
 	}

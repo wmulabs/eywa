@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -70,7 +69,7 @@ func TestScheduleHandler_MissingExecuteAt_Returns400(t *testing.T) {
 	app := buildSpiritTestApp(&stubSpiritRepository{}, weave)
 
 	body, _ := json.Marshal(map[string]any{"payload": map[string]any{}})
-	req := httptest.NewRequest("POST", "/api/v1/events/test_event/schedule", bytes.NewReader(body))
+	req := authedRequest("POST", "/api/v1/events/test_event/schedule", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 400 {
@@ -83,7 +82,7 @@ func TestScheduleHandler_InvalidRFC3339_Returns400(t *testing.T) {
 	app := buildSpiritTestApp(&stubSpiritRepository{}, weave)
 
 	body, _ := json.Marshal(map[string]any{"execute_at": "not-a-date"})
-	req := httptest.NewRequest("POST", "/api/v1/events/test_event/schedule", bytes.NewReader(body))
+	req := authedRequest("POST", "/api/v1/events/test_event/schedule", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 400 {
@@ -97,7 +96,7 @@ func TestScheduleHandler_ExecuteAtInPast_Returns400(t *testing.T) {
 
 	past := time.Now().Add(-time.Hour).UTC().Format(time.RFC3339)
 	body, _ := json.Marshal(map[string]any{"execute_at": past})
-	req := httptest.NewRequest("POST", "/api/v1/events/test_event/schedule", bytes.NewReader(body))
+	req := authedRequest("POST", "/api/v1/events/test_event/schedule", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 400 {
@@ -111,7 +110,7 @@ func TestScheduleHandler_ExecuteAtTooFar_Returns400(t *testing.T) {
 
 	future := time.Now().Add(31 * 24 * time.Hour).UTC().Format(time.RFC3339)
 	body, _ := json.Marshal(map[string]any{"execute_at": future})
-	req := httptest.NewRequest("POST", "/api/v1/events/test_event/schedule", bytes.NewReader(body))
+	req := authedRequest("POST", "/api/v1/events/test_event/schedule", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 400 {
@@ -123,7 +122,7 @@ func TestScheduleHandler_InvalidBody_Returns400(t *testing.T) {
 	weave := testWeaveWithRitual(t, &stubRitualManager{})
 	app := buildSpiritTestApp(&stubSpiritRepository{}, weave)
 
-	req := httptest.NewRequest("POST", "/api/v1/events/test_event/schedule", bytes.NewReader([]byte("not-json")))
+	req := authedRequest("POST", "/api/v1/events/test_event/schedule", bytes.NewReader([]byte("not-json")))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 400 {
@@ -138,7 +137,7 @@ func TestScheduleHandler_EventConfigNotFound_Returns400(t *testing.T) {
 
 	validTime := time.Now().Add(30 * time.Second).UTC().Format(time.RFC3339)
 	body, _ := json.Marshal(map[string]any{"execute_at": validTime})
-	req := httptest.NewRequest("POST", "/api/v1/events/test_event/schedule", bytes.NewReader(body))
+	req := authedRequest("POST", "/api/v1/events/test_event/schedule", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 400 {
@@ -181,7 +180,7 @@ func TestScheduleHandler_Cancel_MissingMemoryKey_Returns400(t *testing.T) {
 	weave := testWeaveWithRitual(t, &stubRitualManager{})
 	app := buildSpiritTestApp(&stubSpiritRepository{}, weave)
 
-	req := httptest.NewRequest("DELETE", "/api/v1/schedule/task-1", nil) // no memory_key query param
+	req := authedRequest("DELETE", "/api/v1/schedule/task-1", nil) // no memory_key query param
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 400 {
 		t.Errorf("want 400, got %d", resp.StatusCode)
@@ -192,7 +191,7 @@ func TestScheduleHandler_Cancel_Success_Returns204(t *testing.T) {
 	weave := testWeaveWithRitual(t, &stubRitualManager{})
 	app := buildSpiritTestApp(&stubSpiritRepository{}, weave)
 
-	req := httptest.NewRequest("DELETE", "/api/v1/schedule/task-1?memory_key=mem1", nil)
+	req := authedRequest("DELETE", "/api/v1/schedule/task-1?memory_key=mem1", nil)
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 204 {
 		t.Errorf("want 204, got %d", resp.StatusCode)
@@ -204,7 +203,7 @@ func TestScheduleHandler_Cancel_NotFound_Returns404(t *testing.T) {
 	weave := testWeaveWithRitual(t, manager)
 	app := buildSpiritTestApp(&stubSpiritRepository{}, weave)
 
-	req := httptest.NewRequest("DELETE", "/api/v1/schedule/task-1?memory_key=mem1", nil)
+	req := authedRequest("DELETE", "/api/v1/schedule/task-1?memory_key=mem1", nil)
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 404 {
 		t.Errorf("want 404, got %d", resp.StatusCode)
@@ -216,7 +215,7 @@ func TestScheduleHandler_Cancel_RepoError_Returns500(t *testing.T) {
 	weave := testWeaveWithRitual(t, manager)
 	app := buildSpiritTestApp(&stubSpiritRepository{}, weave)
 
-	req := httptest.NewRequest("DELETE", "/api/v1/schedule/task-1?memory_key=mem1", nil)
+	req := authedRequest("DELETE", "/api/v1/schedule/task-1?memory_key=mem1", nil)
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 500 {
 		t.Errorf("want 500, got %d", resp.StatusCode)
@@ -229,7 +228,7 @@ func TestScheduleHandler_ListPending_MissingMemoryKey_Returns400(t *testing.T) {
 	weave := testWeaveWithRitual(t, &stubRitualManager{})
 	app := buildSpiritTestApp(&stubSpiritRepository{}, weave)
 
-	req := httptest.NewRequest("GET", "/api/v1/schedule", nil)
+	req := authedRequest("GET", "/api/v1/schedule", nil)
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 400 {
 		t.Errorf("want 400, got %d", resp.StatusCode)
@@ -242,7 +241,7 @@ func TestScheduleHandler_ListPending_Returns200(t *testing.T) {
 	weave := testWeaveWithRitual(t, manager)
 	app := buildSpiritTestApp(&stubSpiritRepository{}, weave)
 
-	req := httptest.NewRequest("GET", "/api/v1/schedule?memory_key=mem1", nil)
+	req := authedRequest("GET", "/api/v1/schedule?memory_key=mem1", nil)
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 200 {
 		t.Errorf("want 200, got %d", resp.StatusCode)
@@ -254,7 +253,7 @@ func TestScheduleHandler_ListPending_CountError_Returns500(t *testing.T) {
 	weave := testWeaveWithRitual(t, manager)
 	app := buildSpiritTestApp(&stubSpiritRepository{}, weave)
 
-	req := httptest.NewRequest("GET", "/api/v1/schedule?memory_key=mem1", nil)
+	req := authedRequest("GET", "/api/v1/schedule?memory_key=mem1", nil)
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 500 {
 		t.Errorf("want 500, got %d", resp.StatusCode)
@@ -267,7 +266,7 @@ func TestScheduleHandler_ListPending_NilRituals_Returns200WithEmptyItems(t *test
 	weave := testWeaveWithRitual(t, manager)
 	app := buildSpiritTestApp(&stubSpiritRepository{}, weave)
 
-	req := httptest.NewRequest("GET", "/api/v1/schedule?memory_key=mem1", nil)
+	req := authedRequest("GET", "/api/v1/schedule?memory_key=mem1", nil)
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 200 {
 		t.Fatalf("want 200, got %d", resp.StatusCode)
@@ -285,7 +284,7 @@ func TestScheduleHandler_ListPending_ListError_Returns500(t *testing.T) {
 	weave := testWeaveWithRitual(t, manager)
 	app := buildSpiritTestApp(&stubSpiritRepository{}, weave)
 
-	req := httptest.NewRequest("GET", "/api/v1/schedule?memory_key=mem1", nil)
+	req := authedRequest("GET", "/api/v1/schedule?memory_key=mem1", nil)
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 500 {
 		t.Errorf("want 500, got %d", resp.StatusCode)
@@ -298,7 +297,7 @@ func TestHandleExecuteEvent_InvalidBody_Returns400(t *testing.T) {
 	weave := testWeaveWithRitual(t, &stubRitualManager{})
 	app := buildSpiritTestApp(&stubSpiritRepository{}, weave)
 
-	req := httptest.NewRequest("POST", "/internal/execute-event", bytes.NewReader([]byte("not-json")))
+	req := authedRequest("POST", "/internal/execute-event", bytes.NewReader([]byte("not-json")))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 400 {
@@ -314,7 +313,7 @@ func TestHandleExecuteEvent_MissingEventKey_Returns400(t *testing.T) {
 	body, _ := json.Marshal(map[string]any{
 		"event": map[string]any{"memory_key": "mem1"},
 	})
-	req := httptest.NewRequest("POST", "/internal/execute-event", bytes.NewReader(body))
+	req := authedRequest("POST", "/internal/execute-event", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 400 {
@@ -327,7 +326,7 @@ func TestHandleExecuteEvent_MissingEvent_Returns400(t *testing.T) {
 	app := buildSpiritTestApp(&stubSpiritRepository{}, weave)
 
 	body, _ := json.Marshal(map[string]any{"event_key": "test_event"})
-	req := httptest.NewRequest("POST", "/internal/execute-event", bytes.NewReader(body))
+	req := authedRequest("POST", "/internal/execute-event", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 400 {
@@ -346,7 +345,7 @@ func TestHandleExecuteEvent_ProcessingError_NonRetriable_Returns200Discarded(t *
 			"memory_key": "mem1",
 		},
 	})
-	req := httptest.NewRequest("POST", "/internal/execute-event", bytes.NewReader(body))
+	req := authedRequest("POST", "/internal/execute-event", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app.Test(req)
 	// non-retriable error returns 200 with discarded:true OR 500 for retriable
@@ -399,7 +398,7 @@ func TestScheduleHandler_Success_Returns202(t *testing.T) {
 
 	validTime := time.Now().Add(30 * time.Second).UTC().Format(time.RFC3339)
 	body, _ := json.Marshal(map[string]any{"execute_at": validTime})
-	req := httptest.NewRequest("POST", "/api/v1/events/test_event/schedule", bytes.NewReader(body))
+	req := authedRequest("POST", "/api/v1/events/test_event/schedule", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 202 {
@@ -422,7 +421,7 @@ func TestScheduleHandler_WithRecurrence_Returns202(t *testing.T) {
 			"ends_at": endsAt,
 		},
 	})
-	req := httptest.NewRequest("POST", "/api/v1/events/test_event/schedule", bytes.NewReader(body))
+	req := authedRequest("POST", "/api/v1/events/test_event/schedule", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 202 {
@@ -439,7 +438,7 @@ func TestScheduleHandler_ScheduleError_Returns500(t *testing.T) {
 
 	validTime := time.Now().Add(30 * time.Second).UTC().Format(time.RFC3339)
 	body, _ := json.Marshal(map[string]any{"execute_at": validTime})
-	req := httptest.NewRequest("POST", "/api/v1/events/test_event/schedule", bytes.NewReader(body))
+	req := authedRequest("POST", "/api/v1/events/test_event/schedule", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 500 {
@@ -461,7 +460,7 @@ func TestScheduleHandler_RecurrenceInvalidEndsAt_ViaHTTP_Returns400(t *testing.T
 			"ends_at": "not-rfc3339",
 		},
 	})
-	req := httptest.NewRequest("POST", "/api/v1/events/test_event/schedule", bytes.NewReader(body))
+	req := authedRequest("POST", "/api/v1/events/test_event/schedule", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 400 {
@@ -476,7 +475,7 @@ func TestScheduleHandler_NoEventsProduced_Returns400(t *testing.T) {
 
 	validTime := time.Now().Add(30 * time.Second).UTC().Format(time.RFC3339)
 	body, _ := json.Marshal(map[string]any{"execute_at": validTime})
-	req := httptest.NewRequest("POST", "/api/v1/events/test_event/schedule", bytes.NewReader(body))
+	req := authedRequest("POST", "/api/v1/events/test_event/schedule", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 400 {
@@ -522,7 +521,7 @@ func TestHandleExecuteEvent_RetriableError_Returns500(t *testing.T) {
 			"event_key":  "test_event",
 		},
 	})
-	req := httptest.NewRequest("POST", "/internal/execute-event", bytes.NewReader(body))
+	req := authedRequest("POST", "/internal/execute-event", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app.Test(req)
 	// retriable error (lock acquisition failed) → 500
@@ -544,7 +543,7 @@ func TestHandleExecuteEvent_NonRetriable_MarkFailed_Error_StillDiscards(t *testi
 			"metadata":   map[string]any{eywa.MetadataKeyRitualID: "ritual-xyz"},
 		},
 	})
-	req := httptest.NewRequest("POST", "/internal/execute-event", bytes.NewReader(body))
+	req := authedRequest("POST", "/internal/execute-event", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 200 {
@@ -565,7 +564,7 @@ func TestHandleExecuteEvent_NonRetriable_WithRitualID_MarksFailedAndDiscards(t *
 			"metadata":   map[string]any{eywa.MetadataKeyRitualID: "ritual-abc"},
 		},
 	})
-	req := httptest.NewRequest("POST", "/internal/execute-event", bytes.NewReader(body))
+	req := authedRequest("POST", "/internal/execute-event", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, _ := app.Test(req)
 	// non-retriable → discarded 200

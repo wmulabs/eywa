@@ -93,8 +93,8 @@ func (s *stubEchoRepoForVigil) CountBySubjectKey(_ context.Context, _ string) (i
 	return 0, nil
 }
 
-func vigilDeps(vr *stubVigilRepo, er eywa.EchoRepository) ManagementDeps {
-	return ManagementDeps{
+func vigilDeps(vr *stubVigilRepo, er eywa.EchoRepository) RouteDeps {
+	return RouteDeps{
 		APIKeys:     map[string]string{"test-key": "admin"},
 		VigilRepo:   vr,
 		VigilConfig: eywa.VigilConfig{InactivityTimeout: 30 * time.Minute},
