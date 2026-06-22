@@ -744,15 +744,19 @@ When the conversation reaches 20 messages, the Archivist summarizes the oldest h
 
 ## 🌐 REST Management API (Fiber)
 
-Mount a full management API in two lines:
+A single registrar mounts the whole HTTP surface — open event ingestion + the authenticated
+management API:
 
 ```go
 import eywafiber "github.com/wmulabs/eywa/fiber"
 
 app := fiber.New()
-eywafiber.RegisterManagementRoutes(app, weave, eywafiber.ManagementDeps{
+eywafiber.RegisterRoutes(app, weave, eywafiber.RouteDeps{
+    // Management auth (required to expose any management route):
     APIKeys:            map[string]string{"my-api-key": "admin"},
     OperatorAuth:       eywa.NewOperatorAuth(operatorRepo, []byte(jwtSecret)),
+    // Management groups (each mounts only when its repo is set):
+    SpiritRepo:         spiritRepo, // authenticated Spirit CRUD
     EchoRepo:           echoRepo,
     EchoQueryRepo:      echoRepo,
     ChronicleQueryRepo: chronicleRepo,
@@ -763,12 +767,13 @@ eywafiber.RegisterManagementRoutes(app, weave, eywafiber.ManagementDeps{
     VigilConfig:        eywa.VigilConfig{InactivityTimeout: 30 * time.Minute},
     RiteRepo:           eywamongo.NewRiteRepository(db),
     ImprintRepo:        eywamongo.NewImprintRepository(db),
-    PubSub:             eywaredis.NewPubSub(redisClient), // enables SSE + real-time event fanout
+    AppTokenRepo:       eywamongo.NewAppTokenRepository(db), // manage event app-tokens
+    PubSub:             eywaredis.NewPubSub(redisClient),    // enables SSE + real-time event fanout
 })
 app.Listen(":8080")
 ```
 
-Routes registered (all under `/api/v1`, auth required except `/auth/token`):
+Routes registered (all under `/api/v1`; management routes behind auth, events open by default):
 
 | Resource | Routes |
 |----------|--------|
@@ -783,16 +788,21 @@ Routes registered (all under `/api/v1`, auth required except `/auth/token`):
 | 🙋 Vigil | `GET /vigil` (all active) · `POST/DELETE/GET /vigil/:memoryKey` · `POST /vigil/:memoryKey/echoes` |
 | ✅ Rites | `GET /rites` · `GET /rites/:id` · `POST /rites/:id/approve` · `POST /rites/:id/reject` |
 | 👤 Operators | `GET/POST /operators` · `GET/PUT/DELETE /operators/:id` |
+| 🔑 App Tokens | `POST /app-tokens` · `GET /app-tokens` · `DELETE /app-tokens/:id` (revocable event credentials) |
 | 📡 SSE | `GET /sse/rites` · `GET /sse/vigil` · `GET /sse/echoes/:memoryKey` |
 | 🔑 Auth | `POST /auth/token` (public) |
 
-> **Security note:** The fiber package also exports `RegisterRoutes`, a lighter alternative that mounts only the event-ingestion and Spirit CRUD endpoints — without authentication middleware. Do not expose `RegisterRoutes` to the public internet without adding your own auth layer or placing the server behind a network boundary. Spirit system prompts are a critical attack surface: an unauthenticated write to `/api/v1/spirits` is prompt injection at the infrastructure level. For production deployments, prefer `RegisterManagementRoutes`, which enforces authentication on all management endpoints.
+> **Two auth axes.** Management routes (above) are always behind auth — API key, operator JWT, or
+> external JWT/JWKS (all via `Authorization: Bearer`). Event ingestion (`POST /api/v1/events/:key`) is a
+> separate axis: open by default (webhook-style), or gated by `EventAuth` (app tokens) / `EventVerifiers`
+> (HMAC + channel signatures). Spirit CRUD mounts only with `SpiritRepo` and is always authenticated.
+> Full reference: **[docs/authentication.md](docs/authentication.md)**.
 
 ---
 
 ## 📡 Real-Time SSE
 
-When `PubSub` is set in `ManagementDeps`, the management API gains three Server-Sent Events endpoints. The cockpit and any custom dashboard can subscribe to lifecycle events without polling.
+When `PubSub` is set in `RouteDeps`, the management API gains three Server-Sent Events endpoints. The cockpit and any custom dashboard can subscribe to lifecycle events without polling.
 
 ```typescript
 // Browser — subscribe to Rite lifecycle events
