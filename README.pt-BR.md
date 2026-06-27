@@ -161,6 +161,10 @@ go get github.com/wmulabs/eywa/gcp/gemini         # Gemini: processamento de ima
 
 ## 🚀 Quick Start
 
+> **Começo mais rápido:** clone o template **[eywa-starter](https://github.com/wmulabs/eywa-starter)** —
+> um projeto hexagonal pronto para rodar (Spirit Gemini, actions, scouts, servidor REST, `docker compose`
+> para Mongo+Redis). `git clone`, coloque sua chave e você tem um agente funcionando em minutos.
+
 ```go
 package main
 
