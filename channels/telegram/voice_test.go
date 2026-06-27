@@ -59,6 +59,30 @@ func TestVoice_SendResponse_Errors(t *testing.T) {
 	}
 }
 
+func TestVoice_SendResponse_ClientError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"ok":false}`))
+	}))
+	defer srv.Close()
+
+	client := NewClient("TOKEN")
+	client.baseURL = srv.URL
+	if err := NewVoice(client).SendResponse(context.Background(), eventWithChatID(int64(1)), "hi"); err == nil {
+		t.Error("expected error when the Bot API rejects the send")
+	}
+}
+
+func TestChatIDFromEvent_NilSafe(t *testing.T) {
+	if _, ok := chatIDFromEvent(nil); ok {
+		t.Error("nil event must not yield a chat id")
+	}
+	noMeta := eywa.NewPulse(eywa.MemoryKey{Channel: "telegram", User: "1"}).Build()
+	if _, ok := chatIDFromEvent(noMeta); ok {
+		t.Error("event without metadata must not yield a chat id")
+	}
+}
+
 func TestChatIDFromEvent_Types(t *testing.T) {
 	for _, v := range []any{int64(7), float64(7), int(7)} {
 		got, ok := chatIDFromEvent(eventWithChatID(v))
