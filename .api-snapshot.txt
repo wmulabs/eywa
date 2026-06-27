@@ -102,6 +102,14 @@ const (
     Confidence band constants for HandoffPolicy.MinConfidence.
 
 const (
+	PIIEmail      = helpers.PIIEmail
+	PIICreditCard = helpers.PIICreditCard
+	PIIPhone      = helpers.PIIPhone
+)
+    PII kinds recognised by OutputGuardConfig.RedactPII. An empty PIIKinds slice
+    redacts all of them.
+
+const (
 	RoleUser      = ports.RoleUser
 	RoleAssistant = ports.RoleAssistant
 	RoleSystem    = ports.RoleSystem
@@ -916,6 +924,14 @@ type OracleUsage = ports.OracleUsage
 type OrchestratorConfig = entities.OrchestratorConfig
     OrchestratorConfig configures a SpiritTypeOrchestrator. SubSpirits lists the
     names the orchestrator may summon; MaxDepth caps delegation chains.
+
+type OutputGuardConfig = orchestrator.OutputGuardConfig
+    OutputGuardConfig gates the final response (PII redaction + denylist) before
+    it leaves the agent. Set on WeaveBuilder.WithOutputGuard.
+
+type PIIKind = helpers.PIIKind
+    PIIKind identifies a category of PII recognised by
+    OutputGuardConfig.RedactPII.
 
 type Pathfinder = ports.Pathfinder
     Pathfinder is the Spirit-selection port. Implement it for custom routing

@@ -3,9 +3,11 @@ package orchestrator
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/wmulabs/eywa/internal/domain/ports"
+	"github.com/wmulabs/eywa/internal/helpers"
 )
 
 // GuardConfig controls input validation checks applied before each Pulse enters the pipeline.
@@ -19,6 +21,32 @@ type GuardConfig struct {
 	PromptInjectionDetection bool `json:"prompt_injection_detection"`
 	// MaxLineCount rejects messages that exceed this many newline-separated lines. 0 = disabled.
 	MaxLineCount int `json:"max_line_count"`
+}
+
+// OutputGuardConfig gates the final agent response before it is persisted, delivered, and audited.
+// Disabled by default — an agent that does not opt in behaves identically. Set on
+// WeaveBuilder.WithOutputGuard.
+//
+// Coverage note: the guard runs on the standard reasoning auto-response. Streamed turns and notifier
+// Spirits emit tokens to the channel before this point; for those, the guard still sanitises the
+// persisted and audited copy but cannot recall what was already sent live.
+type OutputGuardConfig struct {
+	// RedactPII replaces detected PII in the response with RedactionMask.
+	RedactPII bool `json:"redact_pii"`
+	// PIIKinds limits redaction to specific kinds. Empty = all supported kinds.
+	PIIKinds []helpers.PIIKind `json:"pii_kinds"`
+	// RedactionMask replaces detected PII. Defaults to "[REDACTED]" when empty.
+	RedactionMask string `json:"redaction_mask"`
+	// BlockedPatterns are regular expressions; if the response matches any, it is replaced wholesale
+	// with BlockedMessage. Invalid expressions are rejected by Validate.
+	BlockedPatterns []string `json:"blocked_patterns"`
+	// BlockedMessage replaces a response that matched a blocked pattern. Defaults to a generic safe
+	// message when empty.
+	BlockedMessage string `json:"blocked_message"`
+}
+
+func (g OutputGuardConfig) enabled() bool {
+	return g.RedactPII || len(g.BlockedPatterns) > 0
 }
 
 type WeaveConfig struct {
@@ -54,8 +82,9 @@ type WeaveConfig struct {
 
 	// MaxActionsPerCycle caps total Action calls across all iterations in one reasoning cycle.
 	// Prevents runaway Spirits from burning tokens in infinite Action loops. 0 disables the limit.
-	MaxActionsPerCycle int         `json:"max_actions_per_cycle"`
-	InputGuard         GuardConfig `json:"input_guard"`
+	MaxActionsPerCycle int               `json:"max_actions_per_cycle"`
+	InputGuard         GuardConfig       `json:"input_guard"`
+	OutputGuard        OutputGuardConfig `json:"output_guard"`
 
 	// ToolResultLimits bounds how much a single Action result contributes to the reasoning context.
 	// A zero MaxChars (the default) disables shaping — no behavior change for existing agents.
@@ -168,6 +197,11 @@ func (c *WeaveConfig) Validate() error {
 	}
 	if c.MaxUserMessageLength <= 0 {
 		return ErrInvalidConfig("MaxUserMessageLength must be positive")
+	}
+	for _, p := range c.OutputGuard.BlockedPatterns {
+		if _, err := regexp.Compile(p); err != nil {
+			return ErrInvalidConfig(fmt.Sprintf("OutputGuard.BlockedPatterns: invalid pattern %q: %v", p, err))
+		}
 	}
 	return nil
 }

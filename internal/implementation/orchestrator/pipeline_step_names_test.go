@@ -68,6 +68,16 @@ func TestResponseDeliveryStep_NameTimeout(t *testing.T) {
 	}
 }
 
+func TestOutputGuardStep_NameTimeout(t *testing.T) {
+	s := &OutputGuardStep{timeout: 6 * time.Second}
+	if s.Name() != "OutputGuard" {
+		t.Errorf("Name = %q", s.Name())
+	}
+	if s.Timeout() != 6*time.Second {
+		t.Errorf("Timeout = %v", s.Timeout())
+	}
+}
+
 func TestTypingStartStep_NameTimeout(t *testing.T) {
 	s := &TypingStartStep{}
 	if s.Name() != "TypingStart" {

@@ -12,7 +12,8 @@
 | **Common** | `WithActionRegistry`, `WithVoiceRegistry`, `WithScoutRegistry`, `WithLogger` | Most applications |
 | **Human-in-the-Loop** | `WithVigilRepository`, `WithRiteRepository` | Operator takeover + approval flows |
 | **Memory & Knowledge** | `WithLoreRepository + WithLoreStore`, `WithImprintRepository`, `WithArchivist` | Long conversations, RAG |
-| **Cost Control** | `WithLedgerRepository`, `WithRateLimiter`, `WithInputGuard` | Production hardening |
+| **Cost Control** | `WithLedgerRepository`, `WithRateLimiter` | Production hardening |
+| **Guardrails** | `WithInputGuard`, `WithOutputGuard` | Prompt-injection/jailbreak block, PII redaction, output denylist |
 | **Scheduling** | `WithRitualManager` + Keeper | Recurring events, delayed messages |
 | **External Tools** | `WithConduit` | MCP protocol integrations |
 | **Routing** | `WithPathfinderRegistry`, `WithDefaultLLMPathfinder` | Multi-Spirit routing |
@@ -167,6 +168,18 @@ builder.WithInputGuard(eywa.GuardConfig{
 ```
 
 Content-level validation applied before any processing. `PromptInjectionDetection` rejects messages matching known injection patterns.
+
+### WithOutputGuard
+
+```go
+builder.WithOutputGuard(eywa.OutputGuardConfig{
+    RedactPII:       true,
+    PIIKinds:        []eywa.PIIKind{eywa.PIIEmail, eywa.PIICreditCard, eywa.PIIPhone},
+    BlockedPatterns: []string{`(?i)\bssn\b`},
+})
+```
+
+Sanitizes the final response before it is persisted, delivered, and audited: PII redaction plus a denylist that replaces matched responses wholesale. Disabled by default. See [Guardrails](guardrails.md) for coverage notes on streamed and notifier turns.
 
 ### WithMessageInbox + WithInboxMinWindow
 

@@ -27,6 +27,7 @@ package eywa
 
 import (
 	"github.com/wmulabs/eywa/internal/domain/entities"
+	"github.com/wmulabs/eywa/internal/helpers"
 	"github.com/wmulabs/eywa/internal/helpers/otelgenai"
 	"github.com/wmulabs/eywa/internal/implementation/archivists"
 	"github.com/wmulabs/eywa/internal/implementation/orchestrator"
@@ -58,6 +59,13 @@ type (
 	// GuardConfig defines allow/block rules that gate Pulses before processing begins.
 	// Set on WeaveBuilder.WithInputGuard.
 	GuardConfig = orchestrator.GuardConfig
+
+	// OutputGuardConfig gates the final response (PII redaction + denylist) before it leaves the agent.
+	// Set on WeaveBuilder.WithOutputGuard.
+	OutputGuardConfig = orchestrator.OutputGuardConfig
+
+	// PIIKind identifies a category of PII recognised by OutputGuardConfig.RedactPII.
+	PIIKind = helpers.PIIKind
 
 	// ProgressPolicy configures reasoning-loop stall detection.
 	// Set on WeaveBuilder.WithProgressPolicy.
@@ -284,4 +292,11 @@ var (
 	// suppression. Use for single-instance deployments and tests. For multi-instance production
 	// use redis.NewIdempotencyStore from the redis sub-module.
 	NewInMemoryIdempotencyStore = orchestrator.NewInMemoryIdempotencyStore
+)
+
+// PII kinds recognised by OutputGuardConfig.RedactPII. An empty PIIKinds slice redacts all of them.
+const (
+	PIIEmail      = helpers.PIIEmail
+	PIICreditCard = helpers.PIICreditCard
+	PIIPhone      = helpers.PIIPhone
 )
