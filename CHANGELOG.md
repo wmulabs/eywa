@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.38.0](https://github.com/wmulabs/eywa/compare/v1.37.0...v1.38.0) (2026-06-27)
+
+
+### ⚠ BREAKING CHANGES
+
+* **fiber:** single secure route registrar; auth all sensitive endpoints ([#158](https://github.com/wmulabs/eywa/issues/158))
+
+### Features
+
+* **fiber:** single secure route registrar; auth all sensitive endpoints ([#158](https://github.com/wmulabs/eywa/issues/158)) ([ce4e07f](https://github.com/wmulabs/eywa/commit/ce4e07f1efcaa9c9fc12f08677f2b2db0a5ed0ce))
+
 ## [2.0.0](https://github.com/wmulabs/eywa/compare/v1.37.0...v2.0.0) (2026-06-22)
 
 
