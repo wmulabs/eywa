@@ -21,7 +21,7 @@ require (
 	github.com/nyaruka/phonenumbers v1.8.0 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 // indirect
-	github.com/wmulabs/eywa v1.37.0 // indirect
+	github.com/wmulabs/eywa v1.38.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.69.0 // indirect
 	go.opentelemetry.io/otel v1.44.0 // indirect
