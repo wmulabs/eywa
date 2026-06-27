@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.43.0](https://github.com/wmulabs/eywa/compare/v1.42.0...v1.43.0) (2026-06-27)
+
+
+### Features
+
+* peer-to-peer Spirit handoff (transfer of control) ([#176](https://github.com/wmulabs/eywa/issues/176)) ([3831cde](https://github.com/wmulabs/eywa/commit/3831cdebfa092ebeaae05c881c08aadc25a4dcd9))
+
 ## [1.42.0](https://github.com/wmulabs/eywa/compare/v1.41.0...v1.42.0) (2026-06-27)
 
 
