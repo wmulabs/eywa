@@ -263,6 +263,12 @@ builder.AddOracle(oracle)
 
 **Supports:** text, images, audio (via Whisper-compatible input). Does not support document upload in the messages API.
 
+**OpenAI-compatible endpoints** (same package, distinct provider names): `NewOllamaOracle`,
+`NewGroqOracle`, `NewMistralOracle`, `NewTogetherOracle`, `NewOpenRouterOracle`, `NewXAIOracle`, and
+`NewAzureOracle(endpoint, apiKey, apiVersion)` for **Azure OpenAI** (api-key header, `api-version`
+query, deployment-based URLs handled internally; set `Spirit.ModelConfig.Model` to the deployment name
+and `Provider` to `"azure"`).
+
 ---
 
 ## 🔵 providers/gemini

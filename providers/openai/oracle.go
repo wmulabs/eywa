@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/openai/openai-go"
+	"github.com/openai/openai-go/azure"
 	"github.com/openai/openai-go/option"
 	"github.com/openai/openai-go/shared"
 	eywa "github.com/wmulabs/eywa"
@@ -20,6 +21,9 @@ const (
 	ProviderNameTogether   = "together"
 	ProviderNameOpenRouter = "openrouter"
 	ProviderNameXAI        = "xai"
+	ProviderNameAzure      = "azure"
+
+	defaultAzureAPIVersion = "2024-10-21"
 
 	defaultMaxRetries = 3
 	defaultTimeout    = 60 // seconds
@@ -49,6 +53,12 @@ type Config struct {
 	BaseURL    string
 	MaxRetries int
 	Timeout    int // seconds
+
+	// Endpoint, when set, switches the client to Azure OpenAI: requests use the api-key header, the
+	// api-version query parameter, and deployment-based URLs. Spirit.ModelConfig.Model is the Azure
+	// deployment name. APIVersion defaults to a recent stable version when empty.
+	Endpoint   string
+	APIVersion string
 }
 
 func NewOracle(apiKey string) *OpenAIOracle {
@@ -141,7 +151,37 @@ func NewXAIOracle(apiKey string) *OpenAIOracle {
 	})
 }
 
+// NewAzureOracle creates an Oracle backed by Azure OpenAI. endpoint is the resource endpoint
+// (e.g. "https://my-resource.openai.azure.com"); apiKey is the resource key; apiVersion is optional
+// (a recent stable version is used when empty). Set Spirit.ModelConfig.Model to the Azure deployment
+// name and Spirit.ModelConfig.Provider to "azure".
+func NewAzureOracle(endpoint, apiKey, apiVersion string) *OpenAIOracle {
+	return NewOracleWithConfig(Config{
+		Name:       ProviderNameAzure,
+		APIKey:     apiKey,
+		Endpoint:   endpoint,
+		APIVersion: apiVersion,
+	})
+}
+
 func createOpenAIClient(config Config) openai.Client {
+	// Azure OpenAI: api-key header + api-version query + deployment URLs, configured via the azure
+	// helpers instead of the standard API key / base URL.
+	if config.Endpoint != "" {
+		apiVersion := config.APIVersion
+		if apiVersion == "" {
+			apiVersion = defaultAzureAPIVersion
+		}
+		opts := []option.RequestOption{
+			azure.WithEndpoint(config.Endpoint, apiVersion),
+			azure.WithAPIKey(config.APIKey),
+		}
+		if config.MaxRetries > 0 {
+			opts = append(opts, option.WithMaxRetries(config.MaxRetries))
+		}
+		return openai.NewClient(opts...)
+	}
+
 	opts := []option.RequestOption{
 		option.WithAPIKey(config.APIKey),
 	}
