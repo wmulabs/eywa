@@ -716,3 +716,32 @@ weave.RegisterReceptor("whatsapp_twilio", twilio.NewWhatsAppTwilioInbound(client
 
 > [!TIP]
 > **Error classification:** Twilio error codes are mapped to `BusinessError` (invalid number, unsubscribed) or `InfrastructureError` (service unavailable, rate limit) automatically.
+
+---
+
+## ✈️ channels/telegram
+
+```bash
+go get github.com/wmulabs/eywa/channels/telegram
+```
+
+Telegram Bot API channel (webhook-based). Implements `eywa.Receptor` (webhook `Update` → Pulse), `eywa.Voice` (response → chat), and a `RequestVerifier` for the webhook secret token.
+
+```go
+import "github.com/wmulabs/eywa/channels/telegram"
+
+client := telegram.NewClient(os.Getenv("TELEGRAM_BOT_TOKEN"))
+
+weave.RegisterReceptor("telegram", telegram.NewInbound())
+voiceRegistry.Register(telegram.NewVoice(client))
+
+// Event auth: verify the secret token set via Telegram's setWebhook.
+verifier := telegram.NewSecretTokenVerifier(os.Getenv("TELEGRAM_WEBHOOK_SECRET"))
+```
+
+- **Inbound:** maps `message.chat.id` to the MemoryKey (`telegram:<chatID>`), `message.text` to the user message, `update_id` to the idempotency key. Bot-authored messages are ignored; v1 handles text only.
+- **Outbound:** `sendMessage` via the Bot API (fixed host — no SSRF surface; response body is bounded).
+- **Auth:** constant-time compare of the `X-Telegram-Bot-Api-Secret-Token` header.
+
+> [!NOTE]
+> Slack is on the roadmap with the same shape (Receptor + Voice + signed-request verifier).
