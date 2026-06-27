@@ -53,12 +53,18 @@ type Config struct {
 	BaseURL    string
 	MaxRetries int
 	Timeout    int // seconds
+}
 
-	// Endpoint, when set, switches the client to Azure OpenAI: requests use the api-key header, the
-	// api-version query parameter, and deployment-based URLs. Spirit.ModelConfig.Model is the Azure
-	// deployment name. APIVersion defaults to a recent stable version when empty.
-	Endpoint   string
-	APIVersion string
+// AzureConfig configures an Azure OpenAI-backed Oracle. Azure speaks the OpenAI API but authenticates
+// with the api-key header, selects the API surface via the api-version query parameter, and routes to
+// deployment-based URLs. Set Spirit.ModelConfig.Model to the Azure deployment name and
+// Spirit.ModelConfig.Provider to "azure".
+type AzureConfig struct {
+	Endpoint   string // resource endpoint, e.g. "https://my-resource.openai.azure.com"
+	APIKey     string // resource key
+	APIVersion string // optional; defaultAzureAPIVersion is used when empty
+	MaxRetries int
+	Timeout    int // seconds
 }
 
 func NewOracle(apiKey string) *OpenAIOracle {
@@ -156,32 +162,50 @@ func NewXAIOracle(apiKey string) *OpenAIOracle {
 // (a recent stable version is used when empty). Set Spirit.ModelConfig.Model to the Azure deployment
 // name and Spirit.ModelConfig.Provider to "azure".
 func NewAzureOracle(endpoint, apiKey, apiVersion string) *OpenAIOracle {
-	return NewOracleWithConfig(Config{
-		Name:       ProviderNameAzure,
-		APIKey:     apiKey,
+	return NewAzureOracleWithConfig(AzureConfig{
 		Endpoint:   endpoint,
+		APIKey:     apiKey,
 		APIVersion: apiVersion,
 	})
 }
 
-func createOpenAIClient(config Config) openai.Client {
-	// Azure OpenAI: api-key header + api-version query + deployment URLs, configured via the azure
-	// helpers instead of the standard API key / base URL.
-	if config.Endpoint != "" {
-		apiVersion := config.APIVersion
-		if apiVersion == "" {
-			apiVersion = defaultAzureAPIVersion
-		}
-		opts := []option.RequestOption{
-			azure.WithEndpoint(config.Endpoint, apiVersion),
-			azure.WithAPIKey(config.APIKey),
-		}
-		if config.MaxRetries > 0 {
-			opts = append(opts, option.WithMaxRetries(config.MaxRetries))
-		}
-		return openai.NewClient(opts...)
+func NewAzureOracleWithConfig(cfg AzureConfig) *OpenAIOracle {
+	if cfg.MaxRetries == 0 {
+		cfg.MaxRetries = defaultMaxRetries
 	}
+	if cfg.Timeout == 0 {
+		cfg.Timeout = defaultTimeout
+	}
+	client := createAzureClient(cfg)
 
+	return &OpenAIOracle{
+		client: &client,
+		apiKey: cfg.APIKey,
+		config: Config{
+			Name:       ProviderNameAzure,
+			APIKey:     cfg.APIKey,
+			MaxRetries: cfg.MaxRetries,
+			Timeout:    cfg.Timeout,
+		},
+	}
+}
+
+func createAzureClient(cfg AzureConfig) openai.Client {
+	apiVersion := cfg.APIVersion
+	if apiVersion == "" {
+		apiVersion = defaultAzureAPIVersion
+	}
+	opts := []option.RequestOption{
+		azure.WithEndpoint(cfg.Endpoint, apiVersion),
+		azure.WithAPIKey(cfg.APIKey),
+	}
+	if cfg.MaxRetries > 0 {
+		opts = append(opts, option.WithMaxRetries(cfg.MaxRetries))
+	}
+	return openai.NewClient(opts...)
+}
+
+func createOpenAIClient(config Config) openai.Client {
 	opts := []option.RequestOption{
 		option.WithAPIKey(config.APIKey),
 	}

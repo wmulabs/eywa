@@ -267,7 +267,8 @@ builder.AddOracle(oracle)
 `NewGroqOracle`, `NewMistralOracle`, `NewTogetherOracle`, `NewOpenRouterOracle`, `NewXAIOracle`, and
 `NewAzureOracle(endpoint, apiKey, apiVersion)` for **Azure OpenAI** (api-key header, `api-version`
 query, deployment-based URLs handled internally; set `Spirit.ModelConfig.Model` to the deployment name
-and `Provider` to `"azure"`).
+and `Provider` to `"azure"`). For retry/timeout overrides use `NewAzureOracleWithConfig(AzureConfig{…})`.
+Azure has its own `AzureConfig` type — the standard `Config` (BaseURL/OrgID) stays OpenAI-only.
 
 ---
 

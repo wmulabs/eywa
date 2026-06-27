@@ -15,8 +15,18 @@ func TestNewAzureOracle_Config(t *testing.T) {
 	if o.GetName() != ProviderNameAzure {
 		t.Errorf("name = %q, want %q", o.GetName(), ProviderNameAzure)
 	}
-	if o.config.Endpoint != "https://res.openai.azure.com" || o.config.APIVersion != "2024-10-21" {
-		t.Errorf("unexpected config: %+v", o.config)
+	if o.config.Timeout != defaultTimeout || o.config.MaxRetries != defaultMaxRetries {
+		t.Errorf("defaults not applied: %+v", o.config)
+	}
+}
+
+func TestNewAzureOracleWithConfig_Defaults(t *testing.T) {
+	o := NewAzureOracleWithConfig(AzureConfig{Endpoint: "https://res.openai.azure.com", APIKey: "k"})
+	if o.GetName() != ProviderNameAzure {
+		t.Errorf("name = %q, want %q", o.GetName(), ProviderNameAzure)
+	}
+	if o.config.Timeout != defaultTimeout || o.config.MaxRetries != defaultMaxRetries {
+		t.Errorf("defaults not applied: %+v", o.config)
 	}
 }
 
