@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.39.0](https://github.com/wmulabs/eywa/compare/v1.38.0...v1.39.0) (2026-06-27)
+
+
+### Features
+
+* signature-based authentication for event ingestion (HMAC + provider webhooks) ([#161](https://github.com/wmulabs/eywa/issues/161)) ([71d1ff3](https://github.com/wmulabs/eywa/commit/71d1ff3d7ea064789ca45c3e177f159491cf4573))
+
 ## [1.38.0](https://github.com/wmulabs/eywa/compare/v1.37.0...v1.38.0) (2026-06-27)
 
 
