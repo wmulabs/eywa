@@ -377,6 +377,25 @@ Para cada solicitação: acione o pesquisador, depois passe os resultados para o
 }
 ```
 
+### Handoff (transferência de controle)
+
+Diferente do summon (chama-e-volta), um **handoff** transfere a posse da conversa para um Spirit par:
+o alvo responde o turno atual e **assume os próximos turnos** (triagem → especialista). Requer um
+`HandoffStore` (in-memory, ou adaptadores redis/mongo). Cada líder decide sozinho, restrito aos seus
+`AllowedTargets`; `MaxHandoffs` corta loops de repasse no turno.
+
+```go
+builder.WithHandoffStore(eywa.NewInMemoryHandoffStore())
+
+triagem.HandoffConfig = eywa.HandoffConfig{
+    AllowedTargets:  []string{"billing", "sales"},
+    ContextTransfer: eywa.HandoffContextSession, // "session" | "summary" | "none"
+    MaxHandoffs:     3,
+}
+```
+
+Sem `HandoffStore`, o handoff fica desligado. Detalhes em [Multi-agente](docs/multi-agent.md).
+
 ---
 
 ## 📚 RAG com Lore
@@ -692,6 +711,39 @@ Todos os 13 exemplos são executáveis com apenas MongoDB, Redis e uma API key d
 
 ---
 
+## 🔒 Padrões de Segurança
+
+**Detecção de prompt injection ligada por padrão.** `InputGuard.PromptInjectionDetection` é `true` em `DefaultWeaveConfig()` e cobre tentativas de injeção e jailbreak (DAN, developer mode, extração de system prompt, bypass de segurança). Cada padrão exige um qualificador hostil, então roleplay legítimo não é barrado. Para desligar em fontes confiáveis:
+
+```go
+weave, err := eywa.NewWeaveBuilder(ctx).
+    WithInputGuard(eywa.GuardConfig{
+        MaxLineCount:             200,   // rejeita mensagens com mais de N linhas (0 = desligado)
+        PromptInjectionDetection: false, // só desligue se confiar em toda entrada
+    }).
+    Build()
+```
+
+**Guardrails de saída são opt-in.** `WithOutputGuard` sanitiza a resposta final antes de persistir, entregar e auditar — redação de PII (email, cartão com Luhn, telefone) + denylist de padrões que substituem a resposta inteira:
+
+```go
+weave, err := eywa.NewWeaveBuilder(ctx).
+    WithOutputGuard(eywa.OutputGuardConfig{
+        RedactPII:       true,                       // PIIKinds vazio = todos os tipos
+        PIIKinds:        []eywa.PIIKind{eywa.PIIEmail, eywa.PIICreditCard},
+        BlockedPatterns: []string{`(?i)\bcpf\b`},    // respostas que casam são substituídas
+    }).
+    Build()
+```
+
+Turnos com streaming e Spirits notificadores emitem antes do guard rodar; nesses casos ele ainda sanitiza a cópia persistida e auditada. Detalhes em [Guardrails](docs/guardrails.md).
+
+**Nunca logar:** evite logar `Pulse.UserMessage` cru em produção — pode conter PII/credenciais. O log estruturado (Zap) registra metadados, não o conteúdo, por padrão.
+
+**Chaves de API (Oracle):** via variáveis de ambiente, nunca hard-coded. Os valores não são armazenados nem logados.
+
+---
+
 ## 🏗️ Arquitetura
 
 Eywa é construído sobre **arquitetura hexagonal** (ports & adapters). O domínio não tem dependências de infraestrutura — você troca MongoDB por Postgres, Redis por Valkey, OpenAI por Bedrock, sem tocar no engine.
@@ -720,6 +772,8 @@ Eywa é construído sobre **arquitetura hexagonal** (ports & adapters). O domín
 | [🏗️ Arquitetura](docs/architecture.md) | Pipeline completo, entidades, fluxo de dados, estrutura hexagonal |
 | [🔧 Referência do Builder](docs/builder.md) | Todas as opções do WeaveBuilder com exemplos |
 | [📖 Conceitos e Interfaces](docs/concepts.md) | Como implementar cada ponto de extensão |
+| [🤝 Multi-agente](docs/multi-agent.md) | Pathfinder, summon e handoff |
+| [⚖️ Comparação](docs/comparison.md) | Eywa vs Eino, Genkit Go, LangChainGo |
 | [🧩 Sub-módulos](docs/sub-modules.md) | MongoDB, Redis, GCP, Fiber, WhatsApp, provedores LLM e vector stores |
 
 > [!NOTE]

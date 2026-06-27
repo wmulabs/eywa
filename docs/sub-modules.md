@@ -81,6 +81,9 @@ operatorRepo  := eywamongo.NewOperatorRepository(db)
 
 // Engine config (stored in DB, hot-reloaded)
 weaveConfigRepo := eywamongo.NewWeaveConfigRepository(db)
+
+// Multi-agent handoff (active-Spirit pin per session)
+handoffStore  := eywamongo.NewHandoffStore(db)
 ```
 
 > [!NOTE]

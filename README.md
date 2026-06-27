@@ -85,7 +85,7 @@ Every name in Eywa carries meaning from the world of Pandora. This isn't cosmeti
 
 🤖 **Conversational AI agents** that handle thousands of concurrent users, maintain memory between sessions, call external APIs, and never produce duplicate responses.
 
-🧭 **Multi-agent pipelines** where Pulses route between specialized Spirits — an orchestrator delegates to a researcher, which delegates to a writer — with configurable depth and parallel execution.
+🧭 **Multi-agent pipelines** where Pulses route between specialized Spirits — an orchestrator delegates to specialists (summon, call-and-return), or a Spirit **hands off** control to a peer that owns the conversation from then on (triage → specialist). See [Multi-agent](docs/multi-agent.md).
 
 📚 **RAG-powered assistants** that search a private knowledge base (Lore) at query time, retrieving the right chunks and injecting them as context before the Oracle reasons.
 
