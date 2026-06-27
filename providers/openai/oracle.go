@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/openai/openai-go"
+	"github.com/openai/openai-go/azure"
 	"github.com/openai/openai-go/option"
 	"github.com/openai/openai-go/shared"
 	eywa "github.com/wmulabs/eywa"
@@ -20,6 +21,9 @@ const (
 	ProviderNameTogether   = "together"
 	ProviderNameOpenRouter = "openrouter"
 	ProviderNameXAI        = "xai"
+	ProviderNameAzure      = "azure"
+
+	defaultAzureAPIVersion = "2024-10-21"
 
 	defaultMaxRetries = 3
 	defaultTimeout    = 60 // seconds
@@ -47,6 +51,18 @@ type Config struct {
 	APIKey     string
 	OrgID      string
 	BaseURL    string
+	MaxRetries int
+	Timeout    int // seconds
+}
+
+// AzureConfig configures an Azure OpenAI-backed Oracle. Azure speaks the OpenAI API but authenticates
+// with the api-key header, selects the API surface via the api-version query parameter, and routes to
+// deployment-based URLs. Set Spirit.ModelConfig.Model to the Azure deployment name and
+// Spirit.ModelConfig.Provider to "azure".
+type AzureConfig struct {
+	Endpoint   string // resource endpoint, e.g. "https://my-resource.openai.azure.com"
+	APIKey     string // resource key
+	APIVersion string // optional; defaultAzureAPIVersion is used when empty
 	MaxRetries int
 	Timeout    int // seconds
 }
@@ -139,6 +155,54 @@ func NewXAIOracle(apiKey string) *OpenAIOracle {
 		APIKey:  apiKey,
 		BaseURL: "https://api.x.ai/v1",
 	})
+}
+
+// NewAzureOracle creates an Oracle backed by Azure OpenAI. endpoint is the resource endpoint
+// (e.g. "https://my-resource.openai.azure.com"); apiKey is the resource key; apiVersion is optional
+// (a recent stable version is used when empty). Set Spirit.ModelConfig.Model to the Azure deployment
+// name and Spirit.ModelConfig.Provider to "azure".
+func NewAzureOracle(endpoint, apiKey, apiVersion string) *OpenAIOracle {
+	return NewAzureOracleWithConfig(AzureConfig{
+		Endpoint:   endpoint,
+		APIKey:     apiKey,
+		APIVersion: apiVersion,
+	})
+}
+
+func NewAzureOracleWithConfig(cfg AzureConfig) *OpenAIOracle {
+	if cfg.MaxRetries == 0 {
+		cfg.MaxRetries = defaultMaxRetries
+	}
+	if cfg.Timeout == 0 {
+		cfg.Timeout = defaultTimeout
+	}
+	client := createAzureClient(cfg)
+
+	return &OpenAIOracle{
+		client: &client,
+		apiKey: cfg.APIKey,
+		config: Config{
+			Name:       ProviderNameAzure,
+			APIKey:     cfg.APIKey,
+			MaxRetries: cfg.MaxRetries,
+			Timeout:    cfg.Timeout,
+		},
+	}
+}
+
+func createAzureClient(cfg AzureConfig) openai.Client {
+	apiVersion := cfg.APIVersion
+	if apiVersion == "" {
+		apiVersion = defaultAzureAPIVersion
+	}
+	opts := []option.RequestOption{
+		azure.WithEndpoint(cfg.Endpoint, apiVersion),
+		azure.WithAPIKey(cfg.APIKey),
+	}
+	if cfg.MaxRetries > 0 {
+		opts = append(opts, option.WithMaxRetries(cfg.MaxRetries))
+	}
+	return openai.NewClient(opts...)
 }
 
 func createOpenAIClient(config Config) openai.Client {
