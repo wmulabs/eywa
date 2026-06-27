@@ -64,7 +64,8 @@ func main() {
 			Model:     "gpt-4o-mini",
 			MaxTokens: 200,
 		},
-		AlertThreshold: 0.8, // fire hook at 80% usage
+		AlertThreshold:       0.8,  // fire hook at 80% usage
+		DowngradeAtThreshold: true, // switch to DowngradeModel at 80%, before the hard limit
 	}
 	if err := ledgerRepo.SetBudget(ctx, budget); err != nil {
 		log.Printf("set budget: %v", err)
