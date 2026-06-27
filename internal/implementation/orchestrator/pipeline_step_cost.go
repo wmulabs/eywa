@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/wmulabs/eywa/internal/domain/entities"
 	"github.com/wmulabs/eywa/internal/domain/ports"
 	"go.uber.org/zap"
 )
@@ -59,7 +60,9 @@ func (s *CostEnforcementStep) Execute(ctx context.Context, state *ProcessingStat
 	limit := budget.MonthlyTokenLimit
 	pct := float64(used) / float64(limit)
 
-	if budget.AlertThreshold > 0 && pct >= budget.AlertThreshold && s.alertHook != nil {
+	atThreshold := budget.AlertThreshold > 0 && pct >= budget.AlertThreshold
+
+	if atThreshold && s.alertHook != nil {
 		go func() {
 			alertCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
@@ -68,6 +71,9 @@ func (s *CostEnforcementStep) Execute(ctx context.Context, state *ProcessingStat
 	}
 
 	if used < limit {
+		if atThreshold && budget.DowngradeAtThreshold && budget.DowngradeModel.Model != "" {
+			s.downgradeModel(state, budget.DowngradeModel, "threshold reached — downgrading model proactively")
+		}
 		return nil
 	}
 
@@ -94,11 +100,7 @@ func (s *CostEnforcementStep) Execute(ctx context.Context, state *ProcessingStat
 
 	case "downgrade":
 		if budget.DowngradeModel.Model != "" {
-			s.logger.Infow("token budget exceeded — downgrading model",
-				"spirit", spiritName,
-				"from_model", state.Spirit.ModelConfig.Model,
-				"to_model", budget.DowngradeModel.Model)
-			state.Spirit.ModelConfig = budget.DowngradeModel
+			s.downgradeModel(state, budget.DowngradeModel, "exceeded — downgrading model")
 		}
 
 	default:
@@ -108,6 +110,14 @@ func (s *CostEnforcementStep) Execute(ctx context.Context, state *ProcessingStat
 	}
 
 	return nil
+}
+
+func (s *CostEnforcementStep) downgradeModel(state *ProcessingState, to entities.SpiritModel, reason string) {
+	s.logger.Infow("token budget "+reason,
+		"spirit", state.Spirit.Name,
+		"from_model", state.Spirit.ModelConfig.Model,
+		"to_model", to.Model)
+	state.Spirit.ModelConfig = to
 }
 
 // LedgerUpdateStep records token usage and estimated cost after reasoning completes.

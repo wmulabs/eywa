@@ -516,11 +516,12 @@ Rastreie uso de tokens por Spirit com orçamentos mensais e roteamento automáti
 ledgerRepo := eywamongo.NewLedgerRepository(db)
 
 ledgerRepo.SetBudget(ctx, eywa.TokenBudget{
-    SpiritID:          "assistant",
-    MonthlyTokenLimit: 100_000,
-    OnExceed:          "downgrade", // "block" | "downgrade" | "alert"
-    DowngradeModel:    eywa.SpiritModel{Provider: "openai", Model: "gpt-4o-mini"},
-    AlertThreshold:    0.8,
+    SpiritName:           "assistant",
+    MonthlyTokenLimit:    100_000,
+    OnExceed:             "downgrade", // "block" | "downgrade" | "alert" — no limite duro
+    DowngradeModel:       eywa.SpiritModel{Provider: "openai", Model: "gpt-4o-mini"},
+    AlertThreshold:       0.8,
+    DowngradeAtThreshold: true, // troca pro DowngradeModel já nos 80%, antes do limite
 })
 
 weave, _ := eywa.NewWeaveBuilder(ctx).
