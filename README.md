@@ -708,6 +708,9 @@ together := openai.NewTogetherOracle(os.Getenv("TOGETHER_API_KEY"))
 router   := openai.NewOpenRouterOracle(os.Getenv("OPENROUTER_API_KEY"))
 xai      := openai.NewXAIOracle(os.Getenv("XAI_API_KEY"))
 
+// Azure OpenAI (api-key + deployment-based URLs handled for you; Model = your deployment name)
+azure    := openai.NewAzureOracle(os.Getenv("AZURE_OPENAI_ENDPOINT"), os.Getenv("AZURE_OPENAI_KEY"), "2024-10-21")
+
 // Mix them all
 weave, _ := eywa.NewWeaveBuilder(ctx).
     AddOracle(groq).
