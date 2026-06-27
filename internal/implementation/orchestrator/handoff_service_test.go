@@ -123,6 +123,23 @@ func TestHandoff_ReasoningFails_InfraError(t *testing.T) {
 	}
 }
 
+type errSetHandoffStore struct{}
+
+func (errSetHandoffStore) GetActiveSpirit(context.Context, string) (string, error) { return "", nil }
+func (errSetHandoffStore) SetActiveSpirit(context.Context, string, string) error {
+	return errors.New("store down")
+}
+func (errSetHandoffStore) ClearActiveSpirit(context.Context, string) error { return nil }
+
+func TestHandoff_PinError_InfraError(t *testing.T) {
+	repo := &stubSpiritRepo{spirit: &entities.Spirit{Name: "billing", Type: entities.SpiritTypeConversational}}
+	svc := newHandoffSvc(t, repo, &stubReasoningExec{}, errSetHandoffStore{}, nil)
+	_, err := svc.Handoff(context.Background(), "billing", handoffParentPulse(), leaderSpirit("billing"), &entities.Memory{}, nil)
+	if err == nil || !domainerrors.IsInfrastructureError(err) {
+		t.Fatalf("expected infra error when pin fails, got %v", err)
+	}
+}
+
 // --- transferContext ---
 
 func TestTransferContext_Session_PassesFullHistory(t *testing.T) {

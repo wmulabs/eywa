@@ -183,6 +183,29 @@ func TestExecuteHandoff_DisallowedTarget_ContinuesNonTerminal(t *testing.T) {
 	}
 }
 
+func TestExecuteIterationActions_HandoffIsTerminal(t *testing.T) {
+	repo := &stubSpiritRepo{spirit: &entities.Spirit{Name: "billing", Type: entities.SpiritTypeConversational}}
+	reasoning := &stubReasoningExec{result: &ReasoningResult{FinalResponse: "refund issued"}}
+	hs := NewHandoffService(repo, nil, reasoning, NewInMemoryHandoffStore(), nil, testLogger(t))
+	rs := newReasoningServiceForHandoff(t, hs)
+
+	ts := handoffTurnState(leaderSpirit("billing"))
+	llmResp := &ports.OracleResponse{ToolCalls: []ports.OracleToolCall{
+		{ID: "c1", Name: handoffSpiritActionName, Arguments: map[string]any{"target_spirit": "billing"}},
+	}}
+
+	done, err := rs.executeIterationActions(context.Background(), ts, llmResp, &entities.IterationLog{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !done {
+		t.Error("a handoff call must make the iteration terminal")
+	}
+	if ts.result.FinalResponse != "refund issued" {
+		t.Errorf("expected target response, got %q", ts.result.FinalResponse)
+	}
+}
+
 func TestExecuteHandoff_MissingTarget_ContinuesNonTerminal(t *testing.T) {
 	hs := NewHandoffService(&stubSpiritRepo{}, nil, &stubReasoningExec{}, NewInMemoryHandoffStore(), nil, testLogger(t))
 	rs := newReasoningServiceForHandoff(t, hs)
