@@ -3,8 +3,8 @@ module github.com/wmulabs/eywa/gcp/gemini
 go 1.26.4
 
 require (
-	github.com/wmulabs/eywa v1.37.0
-	google.golang.org/genai v1.61.0
+	github.com/wmulabs/eywa v1.38.0
+	google.golang.org/genai v1.62.0
 )
 
 require (
@@ -35,7 +35,7 @@ require (
 	golang.org/x/net v0.56.0 // indirect
 	golang.org/x/sys v0.46.0 // indirect
 	golang.org/x/text v0.38.0 // indirect
-	google.golang.org/api v0.285.0 // indirect
+	google.golang.org/api v0.286.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260610212136-7ab31c22f7ad // indirect
 	google.golang.org/grpc v1.81.1 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect

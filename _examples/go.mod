@@ -4,12 +4,12 @@ go 1.26.4
 
 require (
 	github.com/gofiber/fiber/v2 v2.52.13
-	github.com/wmulabs/eywa v1.37.0
-	github.com/wmulabs/eywa/fiber v1.37.0
-	github.com/wmulabs/eywa/mcp v1.37.0
-	github.com/wmulabs/eywa/mongo v1.37.0
-	github.com/wmulabs/eywa/providers/openai v1.37.0
-	github.com/wmulabs/eywa/redis v1.37.0
+	github.com/wmulabs/eywa v1.38.0
+	github.com/wmulabs/eywa/fiber v1.38.0
+	github.com/wmulabs/eywa/mcp v1.38.0
+	github.com/wmulabs/eywa/mongo v1.38.0
+	github.com/wmulabs/eywa/providers/openai v1.38.0
+	github.com/wmulabs/eywa/redis v1.38.0
 )
 
 require (
@@ -33,9 +33,9 @@ require (
 	github.com/nyaruka/phonenumbers v1.8.0 // indirect
 	github.com/openai/openai-go v1.12.0 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
-	github.com/redis/go-redis/extra/rediscmd/v9 v9.20.1 // indirect
-	github.com/redis/go-redis/extra/redisotel/v9 v9.20.1 // indirect
-	github.com/redis/go-redis/v9 v9.20.1 // indirect
+	github.com/redis/go-redis/extra/rediscmd/v9 v9.21.0 // indirect
+	github.com/redis/go-redis/extra/redisotel/v9 v9.21.0 // indirect
+	github.com/redis/go-redis/v9 v9.21.0 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 // indirect
 	github.com/tidwall/gjson v1.19.0 // indirect
