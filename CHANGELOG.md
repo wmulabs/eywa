@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.42.0](https://github.com/wmulabs/eywa/compare/v1.41.0...v1.42.0) (2026-06-27)
+
+
+### Features
+
+* proactive model downgrade when budget hits AlertThreshold ([#174](https://github.com/wmulabs/eywa/issues/174)) ([2ad65e4](https://github.com/wmulabs/eywa/commit/2ad65e445b50a55164e0963ab0674e5f30efaa17))
+
 ## [1.41.0](https://github.com/wmulabs/eywa/compare/v1.40.0...v1.41.0) (2026-06-27)
 
 
