@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.41.0](https://github.com/wmulabs/eywa/compare/v1.40.0...v1.41.0) (2026-06-27)
+
+
+### Features
+
+* output guardrails (PII redaction + denylist) and jailbreak hardening ([#171](https://github.com/wmulabs/eywa/issues/171)) ([42fe424](https://github.com/wmulabs/eywa/commit/42fe424925c07a5ff22f950ca8d7724eee5d3b5c))
+
 ## [1.40.0](https://github.com/wmulabs/eywa/compare/v1.39.0...v1.40.0) (2026-06-27)
 
 
