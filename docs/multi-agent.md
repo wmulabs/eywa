@@ -1,7 +1,24 @@
 # 🤝 Multi-agent
 
-Eywa offers two complementary ways to compose Spirits. They are building blocks — pick whichever fits
-the flow, or combine them.
+Eywa composes Spirits with three building blocks that operate at different points in a turn. They are
+**complementary** — a real system often uses all three: a Pathfinder routes the first message, a
+specialist hands off to another, and an orchestrator summons workers to build an answer.
+
+| Mechanism | Who decides | When | State | Picks from |
+|---|---|---|---|---|
+| **Pathfinder** | The system (rule or LLM classifier) | On entry, **before** reasoning | Stateless — re-evaluated every Pulse | `Link.AllowedSpirits` |
+| **Summon** | The orchestrator Spirit (its LLM) | **During** reasoning, call-and-return | Per-turn, returns to the caller | `OrchestratorConfig.SubSpirits` |
+| **Handoff** | The leading Spirit (its LLM) | **During** reasoning, transfer of control | Stateful — pins the new owner across turns | `HandoffConfig.AllowedTargets` |
+
+- **Pathfinder** = the receptionist: decides which Spirit takes *this* Pulse, fresh each time.
+- **Summon** = a manager calling a worker and getting the result back — the manager stays in control.
+- **Handoff** = the agent on the line transferring you to a specialist who then *stays* with you.
+
+**Interaction:** a handoff pin is checked first in Spirit selection, so while a conversation is pinned to
+a specialist the Pathfinder is skipped — handoff overrides entry routing until control is handed back.
+
+The rest of this page covers **summon** and **handoff** (the Pathfinder is documented under
+[concepts](concepts.md)).
 
 | Pattern | Control flow | Who answers the user | Use when |
 |---|---|---|---|
