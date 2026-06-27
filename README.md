@@ -1002,6 +1002,24 @@ weave, err := eywa.NewWeaveBuilder(ctx).
 
 See [`WithInputGuard`](docs/builder.md#withinputguard) for tuning options.
 
+**Output guardrails are opt-in.** `WithOutputGuard` sanitizes the final response before it is
+persisted, delivered, and audited — PII redaction (email, credit card with Luhn check, phone) plus a
+denylist of patterns that replace the response wholesale:
+
+```go
+weave, err := eywa.NewWeaveBuilder(ctx).
+    // ... other options ...
+    WithOutputGuard(eywa.OutputGuardConfig{
+        RedactPII:       true,                       // empty PIIKinds = all kinds
+        PIIKinds:        []eywa.PIIKind{eywa.PIIEmail, eywa.PIICreditCard},
+        BlockedPatterns: []string{`(?i)\bssn\b`},    // matched responses are replaced
+    }).
+    Build()
+```
+
+Streamed turns and notifier Spirits emit to the channel before the guard runs; for those it still
+sanitizes the persisted and audited copy. See [Guardrails](docs/guardrails.md) for full coverage notes.
+
 **What to never log:** Avoid logging raw `Pulse.UserMessage` in production — it may contain PII or
 credentials. Eywa's structured logging (Zap) logs metadata but not message content by default.
 

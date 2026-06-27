@@ -172,6 +172,14 @@ func (b *WeaveBuilder) WithInputGuard(cfg GuardConfig) *WeaveBuilder {
 	return b
 }
 
+// WithOutputGuard sanitises the final agent response before it is persisted, delivered, and audited:
+// PII redaction and a denylist of patterns that, when matched, replace the response wholesale.
+// Disabled by default. See OutputGuardConfig for the coverage caveat on streamed and notifier turns.
+func (b *WeaveBuilder) WithOutputGuard(cfg OutputGuardConfig) *WeaveBuilder {
+	b.config.OutputGuard = cfg
+	return b
+}
+
 // WithToolResultLimits bounds how much a single Action result contributes to the reasoning context.
 // Large results are shaped (truncated, or summarized via the Oracle) before re-entering the model's
 // window; the full result is always kept in the audit log. A zero MaxChars disables shaping.

@@ -894,7 +894,15 @@ func (e *Weave) buildProcessingPipeline() *Pipeline {
 	pipeline.
 		AddStep(NewConditionEvaluationStep(e.config.ScoutTimeout, e.logger)).
 		AddStep(NewReasoningStep(e.reasoningService, e.config.ReasoningTimeout, e.distributedLock, e.config.LockTTL, e.logger)).
-		AddStep(NewNotificationStep(e.voiceRegistry, e.GetLLMFactory(), e.config.ReasoningTimeout, e.logger)).
+		AddStep(NewNotificationStep(e.voiceRegistry, e.GetLLMFactory(), e.config.ReasoningTimeout, e.logger))
+
+	// Output guard sits after Notification so it sanitises whatever response is persisted and audited,
+	// and before ResponseDelivery so the standard reasoning auto-response is guarded prior to sending.
+	if e.config.OutputGuard.enabled() {
+		pipeline.AddStep(NewOutputGuardStep(e.config.OutputGuard, e.config.ScoutTimeout, e.logger))
+	}
+
+	pipeline.
 		AddStep(NewPersistenceStep(e.memoryManager, e.messageManager, e.config.PersistenceTimeout, e.logger)).
 		AddStep(NewResponseDeliveryStep(e.voiceRegistry, e.config.PersistenceTimeout, e.logger)).
 		AddStep(NewAuditLogStep(e, e.config.PersistenceTimeout, e.logger))

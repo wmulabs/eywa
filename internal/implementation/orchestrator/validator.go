@@ -24,6 +24,15 @@ var injectionPatterns = []*regexp.Regexp{
 	regexp.MustCompile("[\x00]"),                     // null bytes
 	regexp.MustCompile("[\u202E\u202D]"),             // RTL/LTR override characters
 	regexp.MustCompile("[\u200B\u200C\u200D\uFEFF]"), // zero-width characters
+
+	// Jailbreak attempts. Each requires an explicit hostile qualifier so ordinary roleplay
+	// ("act as a translator", "pretend to be a pirate") is not flagged.
+	regexp.MustCompile(`(?i)\bdo\s+anything\s+now\b`),
+	regexp.MustCompile(`(?i)\bjailbreak\b`),
+	regexp.MustCompile(`(?i)developer\s+mode\s+(enabled|on)`),
+	regexp.MustCompile(`(?i)(reveal|show|print|repeat|expose)\s+(me\s+)?(your\s+|the\s+)?(system\s+prompt|initial\s+instructions|system\s+message)`),
+	regexp.MustCompile(`(?i)(ignore|bypass|disable|turn\s+off)\s+(your\s+|the\s+)?(safety|content|moderation)\s+(guidelines?|policy|policies|filters?|rules?)`),
+	regexp.MustCompile(`(?i)(you\s+are\s+now|pretend\s+(you\s+are|to\s+be)|act\s+as)\s+(an?\s+)?(unrestricted|uncensored|jailbroken|evil)`),
 }
 
 type EventValidator struct {
