@@ -732,14 +732,14 @@ import "github.com/wmulabs/eywa/channels/telegram"
 
 client := telegram.NewClient(os.Getenv("TELEGRAM_BOT_TOKEN"))
 
-weave.RegisterReceptor("telegram", telegram.NewInbound())
+weave.RegisterReceptor("telegram", telegram.NewInbound(client)) // client enables media downloads
 voiceRegistry.Register(telegram.NewVoice(client))
 
 // Event auth: verify the secret token set via Telegram's setWebhook.
 verifier := telegram.NewSecretTokenVerifier(os.Getenv("TELEGRAM_WEBHOOK_SECRET"))
 ```
 
-- **Inbound:** maps `message.chat.id` to the MemoryKey (`telegram:<chatID>`), `message.text` to the user message, `update_id` to the idempotency key. Bot-authored messages are ignored; v1 handles text only.
+- **Inbound:** maps `message.chat.id` to the MemoryKey (`telegram:<chatID>`), `message.text` (or caption) to the user message, `update_id` to the idempotency key. Handles text and media (photo, voice, audio, video, document) — media bytes are downloaded via `getFile` and attached for the media pipeline. Bot-authored messages are ignored.
 - **Outbound:** `sendMessage` via the Bot API (fixed host — no SSRF surface; response body is bounded).
 - **Auth:** constant-time compare of the `X-Telegram-Bot-Api-Secret-Token` header.
 
