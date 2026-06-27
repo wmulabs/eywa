@@ -330,7 +330,7 @@ func (s *stubSpiritSelectorImpl) selectSpirit(_ context.Context, _ *entities.Pul
 
 func TestSpiritSelectionStep_PopulatesSpiritName(t *testing.T) {
 	selector := &stubSpiritSelectorImpl{spiritName: "support_spirit"}
-	step := NewSpiritSelectionStep(selector, time.Second, testLogger(t))
+	step := NewSpiritSelectionStep(selector, nil, time.Second, testLogger(t))
 	state := &ProcessingState{
 		Event:       &entities.Pulse{MemoryKey: "user:1"},
 		EventConfig: &entities.Link{AllowedSpirits: []string{"support_spirit", "sales_spirit"}},
@@ -346,7 +346,7 @@ func TestSpiritSelectionStep_PopulatesSpiritName(t *testing.T) {
 
 func TestSpiritSelectionStep_SetsPathfinderUsed(t *testing.T) {
 	selector := &stubSpiritSelectorImpl{spiritName: "support_spirit"}
-	step := NewSpiritSelectionStep(selector, time.Second, testLogger(t))
+	step := NewSpiritSelectionStep(selector, nil, time.Second, testLogger(t))
 	state := &ProcessingState{
 		Event:       &entities.Pulse{MemoryKey: "user:1"},
 		EventConfig: &entities.Link{PathfinderName: "llm_pathfinder"},

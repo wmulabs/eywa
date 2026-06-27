@@ -507,6 +507,18 @@ func TestWeaveBuilder_WithInputGuard(t *testing.T) {
 	}
 }
 
+func TestWeaveBuilder_WithHandoffStore(t *testing.T) {
+	b := NewWeaveBuilder(context.Background())
+	store := NewInMemoryHandoffStore()
+	got := b.WithHandoffStore(store)
+	if got != b {
+		t.Error("expected fluent builder")
+	}
+	if b.handoffStore != store {
+		t.Error("expected handoffStore to be set")
+	}
+}
+
 func TestWeaveBuilder_WithMessageInbox(t *testing.T) {
 	b := NewWeaveBuilder(context.Background())
 	inbox := &stubBuilderInbox{}

@@ -40,6 +40,25 @@ type OrchestratorConfig struct {
 	ParallelSummon  bool     `bson:"parallel_summon,omitempty" json:"parallel_summon,omitempty"`
 }
 
+// Context-transfer modes for HandoffConfig.
+const (
+	HandoffContextSession = "session" // receiver inherits the full session history
+	HandoffContextSummary = "summary" // receiver inherits an Archivist summary of the session
+	HandoffContextNone    = "none"    // receiver starts with no prior context
+)
+
+// HandoffConfig enables a Spirit to transfer control of the conversation to a peer Spirit. Unlike an
+// orchestrator's summon (call-and-return within the turn), a handoff pins the target as the session's
+// active Spirit so subsequent turns route to it directly. Requires a HandoffStore to be wired.
+type HandoffConfig struct {
+	// AllowedTargets are the Spirits this one may hand off to. Empty disables handoff.
+	AllowedTargets []string `bson:"allowed_targets,omitempty" json:"allowed_targets,omitempty"`
+	// ContextTransfer controls what the receiver inherits: "session", "summary", or "none" (default).
+	ContextTransfer string `bson:"context_transfer,omitempty" json:"context_transfer,omitempty"`
+	// MaxHandoffs bounds transfers within a single turn to prevent relay loops. 0 = default.
+	MaxHandoffs int `bson:"max_handoffs,omitempty" json:"max_handoffs,omitempty"`
+}
+
 type AllowedAction struct {
 	Name                string `bson:"name"                  json:"name"`
 	IsCritical          *bool  `bson:"is_critical,omitempty" json:"is_critical,omitempty"`
@@ -69,6 +88,7 @@ type Spirit struct {
 	ExecutorConfig       ExecutorConfig       `bson:"executor_config,omitempty" json:"executor_config,omitempty"`
 	NotifierConfig       NotifierConfig       `bson:"notifier_config,omitempty" json:"notifier_config,omitempty"`
 	OrchestratorConfig   OrchestratorConfig   `bson:"orchestrator_config,omitempty" json:"orchestrator_config,omitempty"`
+	HandoffConfig        HandoffConfig        `bson:"handoff_config,omitempty" json:"handoff_config,omitempty"`
 
 	// ReasoningOverrides optionally overrides global reasoning policies for this Spirit.
 	// nil = use the WeaveConfig defaults for every policy.
@@ -102,6 +122,10 @@ func (s Spirit) IsNotifier() bool {
 
 func (s Spirit) IsOrchestrator() bool {
 	return s.Type == SpiritTypeOrchestrator
+}
+
+func (s Spirit) HasHandoff() bool {
+	return len(s.HandoffConfig.AllowedTargets) > 0
 }
 
 func (s Spirit) NeedsSession() bool {

@@ -79,6 +79,7 @@ type Weave struct {
 	configCache       *ConfigCache
 	httpToolRepo      ports.HTTPToolRepository
 	vigilRepo         ports.VigilRepository
+	handoffStore      ports.HandoffStore
 
 	pipeline *Pipeline // built once in Build(), reused per Pulse
 
@@ -525,6 +526,11 @@ func (e *Weave) wireOrchestration() {
 	}
 	summonSvc := NewSummonService(e.spiritRepo, e.scoutRegistry, rs, e.logger)
 	rs.SetSummonService(summonSvc)
+
+	if e.handoffStore != nil {
+		handoffSvc := NewHandoffService(e.spiritRepo, e.scoutRegistry, rs, e.handoffStore, e.archivist, e.logger)
+		rs.SetSpiritHandoffService(handoffSvc)
+	}
 }
 
 func (e *Weave) RegisterEventConfiguration(config *entities.Link) {
@@ -846,7 +852,7 @@ func (e *Weave) buildProcessingPipeline() *Pipeline {
 
 	// --- Spirit selection & loading
 	pipeline.
-		AddStep(NewSpiritSelectionStep(e, e.config.SpiritSelectionTimeout, e.logger)).
+		AddStep(NewSpiritSelectionStep(e, e.handoffStore, e.config.SpiritSelectionTimeout, e.logger)).
 		AddStep(NewSpiritLoadStep(e.spiritRepo, e.config.SpiritLoadTimeout, e.logger))
 
 	if e.httpToolRepo != nil {

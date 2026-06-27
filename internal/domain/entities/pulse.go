@@ -76,6 +76,10 @@ type Pulse struct {
 	// Orchestration fields — set when this Pulse is a sub-task delegated by an orchestrator Spirit.
 	ParentPulseID      string `json:"parent_pulse_id,omitempty"`
 	OrchestrationDepth int    `json:"orchestration_depth,omitempty"`
+
+	// HandoffCount tracks how many times control was transferred between Spirits within the current
+	// turn (transfer-and-continue). It bounds relay loops the same way OrchestrationDepth bounds summon.
+	HandoffCount int `json:"handoff_count,omitempty"`
 }
 
 type ArtifactType string

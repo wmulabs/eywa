@@ -114,6 +114,11 @@ type (
 	// for the same MemoryKey. Use the Redis adapter (eywaredis.NewBondManager) in production.
 	Bond = ports.Bond
 
+	// HandoffStore persists which Spirit owns a conversation after a peer handoff, so subsequent
+	// Pulses route to it. Wire via WeaveBuilder.WithHandoffStore. Use NewInMemoryHandoffStore for
+	// single-instance, or the redis/mongo adapters for multi-instance deployments.
+	HandoffStore = ports.HandoffStore
+
 	// Inbox is the message-coalescing port. When multiple Pulses arrive in quick
 	// succession for the same user, the Inbox accumulates them into a single Pulse.
 	Inbox = ports.Inbox

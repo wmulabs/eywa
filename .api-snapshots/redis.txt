@@ -23,6 +23,11 @@ func NewCheckpointStoreWithTTL(client *redis.Client, ttl time.Duration) eywa.Che
     NewCheckpointStoreWithTTL creates a Redis-backed CheckpointStore with a
     custom TTL for orphan cleanup. A non-positive ttl falls back to the default.
 
+func NewHandoffStore(client *redis.Client, ttl time.Duration) eywa.HandoffStore
+    NewHandoffStore creates a Redis-backed HandoffStore. ttl bounds how long a
+    pin survives without a new turn; pass 0 to keep it until explicitly cleared.
+    Size ttl at or above the session/memory TTL.
+
 func NewIdempotencyStore(client *redis.Client) eywa.IdempotencyStore
     NewIdempotencyStore creates a Redis-backed IdempotencyStore for
     cross-instance duplicate suppression.
@@ -67,6 +72,19 @@ func (s *CheckpointStore) Delete(ctx context.Context, turnID string) error
 func (s *CheckpointStore) Load(ctx context.Context, turnID string) ([]byte, bool, error)
 
 func (s *CheckpointStore) Save(ctx context.Context, turnID string, data []byte) error
+
+type HandoffStore struct {
+	// Has unexported fields.
+}
+    HandoffStore implements eywa.HandoffStore using a Redis string per session
+    key. It records which Spirit owns a conversation after a handoff so
+    subsequent Pulses route to it across instances.
+
+func (s *HandoffStore) ClearActiveSpirit(ctx context.Context, sessionKey string) error
+
+func (s *HandoffStore) GetActiveSpirit(ctx context.Context, sessionKey string) (string, error)
+
+func (s *HandoffStore) SetActiveSpirit(ctx context.Context, sessionKey, spiritName string) error
 
 type IdempotencyStore struct {
 	// Has unexported fields.

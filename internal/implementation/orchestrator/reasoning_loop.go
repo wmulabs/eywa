@@ -260,6 +260,12 @@ func (r *ReasoningService) executeIterationActions(ctx context.Context, ts *turn
 		}
 	}
 
+	// Handoff is terminal: control transfers to a peer Spirit that answers this turn. Intercept before
+	// regular action processing so the turn finalizes with the target's response.
+	if call, ok := r.findHandoffCall(req.Spirit, llmResp.ToolCalls); ok {
+		return r.executeHandoff(ctx, ts, call, iterLog)
+	}
+
 	ts.totalActionCalls += len(llmResp.ToolCalls)
 	if r.maxActionsPerCycle > 0 && ts.totalActionCalls > r.maxActionsPerCycle {
 		ts.result.FinalError = fmt.Sprintf("action budget of %d exceeded", r.maxActionsPerCycle)

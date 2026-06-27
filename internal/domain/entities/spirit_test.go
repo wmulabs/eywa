@@ -90,6 +90,16 @@ func TestSpirit_IsOrchestrator_False(t *testing.T) {
 	}
 }
 
+func TestSpirit_HasHandoff(t *testing.T) {
+	if (Spirit{}).HasHandoff() {
+		t.Error("expected no handoff without allowed targets")
+	}
+	s := Spirit{HandoffConfig: HandoffConfig{AllowedTargets: []string{"billing"}}}
+	if !s.HasHandoff() {
+		t.Error("expected handoff when allowed targets are set")
+	}
+}
+
 func TestSpirit_NeedsSession_Conversational(t *testing.T) {
 	s := Spirit{Type: SpiritTypeConversational}
 

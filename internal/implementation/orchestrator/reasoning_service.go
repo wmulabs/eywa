@@ -111,8 +111,9 @@ const infraClosingInstruction = "\n\n--- CLOSING INSTRUCTION ---\n" +
 type ReasoningService struct {
 	oracleFactory        ports.OracleFactory
 	actionExecutor       ActionExecutor
-	memoryManager        MemoryManager  // optional; enables topic-switch memory reload
-	summonService        *SummonService // optional; enables summon_spirit for orchestrators
+	memoryManager        MemoryManager   // optional; enables topic-switch memory reload
+	summonService        *SummonService  // optional; enables summon_spirit for orchestrators
+	spiritHandoff        *HandoffService // optional; enables handoff_spirit (peer transfer of control)
 	maxIterations        int
 	maxIterationsMessage string
 	maxActionsPerCycle   int                    // 0 = unlimited
@@ -153,6 +154,10 @@ func NewReasoningService(
 		logger:               logger,
 		tracer:               tracer,
 	}
+}
+
+func (r *ReasoningService) SetSpiritHandoffService(s *HandoffService) {
+	r.spiritHandoff = s
 }
 
 func (r *ReasoningService) SetSummonService(s *SummonService) {
@@ -791,6 +796,10 @@ func (r *ReasoningService) availableActions(req *ReasoningRequest) []ports.Oracl
 		actions = append(actions, summonSpiritTool(req.Spirit.OrchestratorConfig.SubSpirits))
 	}
 
+	if r.spiritHandoff != nil && req.Spirit.HasHandoff() {
+		actions = append(actions, handoffSpiritTool(req.Spirit.HandoffConfig.AllowedTargets))
+	}
+
 	if r.effectivePlan(req).Enabled {
 		actions = append(actions, updatePlanTool())
 	}
@@ -911,6 +920,78 @@ func summonSpiritTool(subSpirits []string) ports.OracleTool {
 			"required": []string{"spirit_name", "task"},
 		},
 	}
+}
+
+const handoffSpiritActionName = "handoff_spirit"
+
+func handoffSpiritTool(targets []string) ports.OracleTool {
+	return ports.OracleTool{
+		Name: handoffSpiritActionName,
+		Description: "Transfers control of this conversation to a peer Spirit. The target answers the " +
+			"user now and owns the conversation from here on (use for triage to a specialist). " +
+			"Available targets: " + fmt.Sprintf("%v", targets),
+		Parameters: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"target_spirit": map[string]any{
+					"type":        "string",
+					"description": "Name of the Spirit to hand off to.",
+					"enum":        targets,
+				},
+				"reason": map[string]any{
+					"type":        "string",
+					"description": "Short reason for the handoff (for audit/logging).",
+				},
+			},
+			"required": []string{"target_spirit"},
+		},
+	}
+}
+
+// findHandoffCall returns the first handoff_spirit call when handoff is wired and the Spirit allows it.
+func (r *ReasoningService) findHandoffCall(spirit *entities.Spirit, calls []ports.OracleToolCall) (ports.OracleToolCall, bool) {
+	if r.spiritHandoff == nil || !spirit.HasHandoff() {
+		return ports.OracleToolCall{}, false
+	}
+	for _, c := range calls {
+		if c.Name == handoffSpiritActionName {
+			return c, true
+		}
+	}
+	return ports.OracleToolCall{}, false
+}
+
+// executeHandoff transfers control to the target Spirit. On success it is terminal: the target's answer
+// becomes the turn's final response (transfer-and-continue). On a recoverable failure it feeds an error
+// back so the current Spirit can keep handling the turn itself.
+func (r *ReasoningService) executeHandoff(ctx context.Context, ts *turnState, call ports.OracleToolCall, iterLog *entities.IterationLog) (bool, error) {
+	req := ts.req
+	target, _ := call.Arguments["target_spirit"].(string)
+	if target == "" {
+		res := ActionResult{ActionName: call.Name, Error: errors.NewBusinessError("handoff_spirit requires target_spirit")}
+		ts.workingContext = append(ts.workingContext, actionErrorMessage(call.ID, call.Name, res))
+		ts.result.WorkingContext = ts.workingContext
+		iterLog.ActionCalls = append(iterLog.ActionCalls, buildActionCallLog(call, res))
+		return false, nil
+	}
+
+	sub, err := r.spiritHandoff.Handoff(ctx, target, req.Event, req.Spirit, req.Session, req.ConversationContext)
+	if err != nil {
+		res := ActionResult{ActionName: call.Name, Error: err, IsCritical: !errors.IsBusinessError(err)}
+		ts.workingContext = append(ts.workingContext, actionErrorMessage(call.ID, call.Name, res))
+		ts.result.WorkingContext = ts.workingContext
+		iterLog.ActionCalls = append(iterLog.ActionCalls, buildActionCallLog(call, res))
+		r.logger.Warnw("handoff failed, current Spirit continues", "target", target, "error", err)
+		return false, nil
+	}
+
+	r.accrueTokens(req, ts.result, "", sub.TokensUsed)
+	ts.result.FinalResponse = sub.FinalResponse
+	ts.result.Structured = sub.Structured
+	ts.result.FinalSession = req.Session
+	iterLog.ActionCalls = append(iterLog.ActionCalls, buildActionCallLog(call, ActionResult{ActionName: call.Name, Result: sub.FinalResponse}))
+	r.logger.Infow("control handed off; turn finalized with target response", "target", target, "memory_key", req.Event.MemoryKey)
+	return true, nil
 }
 
 func applyIsCriticalOverrides(calls []ports.OracleToolCall, allowed []entities.AllowedAction) []ports.OracleToolCall {

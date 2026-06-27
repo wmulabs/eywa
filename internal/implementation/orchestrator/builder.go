@@ -32,6 +32,7 @@ type WeaveBuilder struct {
 	interactionLogRepo   ports.ChronicleRepository
 	distributedLock      ports.Bond
 	lockTTLExplicit      bool
+	handoffStore         ports.HandoffStore
 	idempotencyStore     ports.IdempotencyStore
 	rateLimiter          ports.Limiter
 	messageInbox         ports.Inbox
@@ -169,6 +170,15 @@ func (b *WeaveBuilder) WithIdempotencyStore(store ports.IdempotencyStore) *Weave
 // are rejected before any processing. MaxLineCount limits multi-line message abuse.
 func (b *WeaveBuilder) WithInputGuard(cfg GuardConfig) *WeaveBuilder {
 	b.config.InputGuard = cfg
+	return b
+}
+
+// WithHandoffStore enables peer-to-peer Spirit handoff: a Spirit with HandoffConfig can transfer the
+// conversation to a peer, which the store pins so subsequent turns route to it. Use the in-memory store
+// for single-instance deployments, or redis/mongo adapters for multi-instance. Without it, handoff is
+// disabled and behaviour is unchanged.
+func (b *WeaveBuilder) WithHandoffStore(store ports.HandoffStore) *WeaveBuilder {
+	b.handoffStore = store
 	return b
 }
 
@@ -841,6 +851,10 @@ func (b *WeaveBuilder) Build() (*Weave, error) {
 
 	if len(b.modelRoutingRules) > 0 {
 		engine.modelRoutingRules = b.modelRoutingRules
+	}
+
+	if b.handoffStore != nil {
+		engine.handoffStore = b.handoffStore
 	}
 
 	engine.wireOrchestration()

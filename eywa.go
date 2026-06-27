@@ -67,6 +67,10 @@ type (
 	// PIIKind identifies a category of PII recognised by OutputGuardConfig.RedactPII.
 	PIIKind = helpers.PIIKind
 
+	// HandoffConfig enables a Spirit to transfer control of a conversation to a peer Spirit.
+	// Set it on a Spirit and wire a HandoffStore via WeaveBuilder.WithHandoffStore.
+	HandoffConfig = entities.HandoffConfig
+
 	// ProgressPolicy configures reasoning-loop stall detection.
 	// Set on WeaveBuilder.WithProgressPolicy.
 	ProgressPolicy = orchestrator.ProgressPolicy
@@ -292,6 +296,10 @@ var (
 	// suppression. Use for single-instance deployments and tests. For multi-instance production
 	// use redis.NewIdempotencyStore from the redis sub-module.
 	NewInMemoryIdempotencyStore = orchestrator.NewInMemoryIdempotencyStore
+
+	// NewInMemoryHandoffStore returns an in-process HandoffStore for single-instance deployments and
+	// tests. For multi-instance production use the redis or mongo HandoffStore adapters.
+	NewInMemoryHandoffStore = orchestrator.NewInMemoryHandoffStore
 )
 
 // PII kinds recognised by OutputGuardConfig.RedactPII. An empty PIIKinds slice redacts all of them.
@@ -299,4 +307,11 @@ const (
 	PIIEmail      = helpers.PIIEmail
 	PIICreditCard = helpers.PIICreditCard
 	PIIPhone      = helpers.PIIPhone
+)
+
+// Context-transfer modes for HandoffConfig.ContextTransfer.
+const (
+	HandoffContextSession = entities.HandoffContextSession
+	HandoffContextSummary = entities.HandoffContextSummary
+	HandoffContextNone    = entities.HandoffContextNone
 )
