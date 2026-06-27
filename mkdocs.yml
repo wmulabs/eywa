@@ -1,0 +1,55 @@
+site_name: Eywa
+site_description: Production-grade, event-driven AI agent orchestration for Go
+site_url: https://wmulabs.github.io/eywa/
+repo_url: https://github.com/wmulabs/eywa
+repo_name: wmulabs/eywa
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: deep purple
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: deep purple
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - search.suggest
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.superfences
+  - pymdownx.highlight
+  - pymdownx.details
+
+nav:
+  - Home: index.md
+  - Concepts:
+      - Core concepts: concepts.md
+      - Architecture: architecture.md
+  - Guides:
+      - Builder: builder.md
+      - Multi-agent: multi-agent.md
+      - Reasoning loop: reasoning.md
+      - Durable execution: durable-execution.md
+      - Guardrails: guardrails.md
+      - Authentication: authentication.md
+      - REST API: rest-api.md
+      - Scaling: scaling.md
+      - Operations: operations.md
+  - Reference:
+      - Sub-modules: sub-modules.md
+  - Compare: comparison.md
