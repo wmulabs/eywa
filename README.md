@@ -180,6 +180,10 @@ go get github.com/wmulabs/eywa/gcp/gemini         # Gemini: image/audio/document
 
 ## 🚀 Quick Start
 
+> **Fastest start:** clone the **[eywa-starter](https://github.com/wmulabs/eywa-starter)** template — a
+> ready-to-run hexagonal project (Gemini Spirit, actions, scouts, REST server, `docker compose` for
+> Mongo+Redis). `git clone`, set your key, and you have a working agent in minutes.
+
 > **No infrastructure?** Use `eywa.NewNoOpBond()` for local development and single-instance
 > prototyping — no Redis required. For production multi-instance deployments, use
 > `redis.NewBondManager()` and MongoDB repositories.
