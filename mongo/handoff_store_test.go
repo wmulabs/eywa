@@ -16,6 +16,37 @@ func newHandoffStore(mt *mtest.T) *HandoffStore {
 	}
 }
 
+func TestNewHandoffStore_Constructor(t *testing.T) {
+	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
+	mt.Run("ctor", func(mt *mtest.T) {
+		// Index creation failure is swallowed (logged) — exercises the ensureIndexes error branch.
+		mt.AddMockResponses(mtest.CreateCommandErrorResponse(mtest.CommandError{Code: 10, Message: "fail"}))
+		if NewHandoffStore(mt.DB) == nil {
+			t.Fatal("expected non-nil store")
+		}
+	})
+}
+
+func TestHandoffStore_GetActiveSpirit_Error(t *testing.T) {
+	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
+	mt.Run("get error", func(mt *mtest.T) {
+		mt.AddMockResponses(mtest.CreateCommandErrorResponse(mtest.CommandError{Code: 10, Message: "fail"}))
+		if _, err := newHandoffStore(mt).GetActiveSpirit(context.Background(), "user:1"); err == nil {
+			t.Error("expected error")
+		}
+	})
+}
+
+func TestHandoffStore_ClearActiveSpirit_Error(t *testing.T) {
+	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
+	mt.Run("clear error", func(mt *mtest.T) {
+		mt.AddMockResponses(mtest.CreateCommandErrorResponse(mtest.CommandError{Code: 10, Message: "fail"}))
+		if err := newHandoffStore(mt).ClearActiveSpirit(context.Background(), "user:1"); err == nil {
+			t.Error("expected error")
+		}
+	})
+}
+
 func TestHandoffStore_GetActiveSpirit_Found(t *testing.T) {
 	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
 	mt.Run("found", func(mt *mtest.T) {

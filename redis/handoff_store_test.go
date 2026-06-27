@@ -52,6 +52,23 @@ func TestHandoffStore_Overwrite(t *testing.T) {
 	}
 }
 
+func TestHandoffStore_Errors(t *testing.T) {
+	ctx := context.Background()
+	client, mr := newHandoffClient(t)
+	store := NewHandoffStore(client, time.Minute)
+	mr.Close() // force connection errors on every command
+
+	if _, err := store.GetActiveSpirit(ctx, "user:1"); err == nil {
+		t.Error("expected get error when redis is down")
+	}
+	if err := store.SetActiveSpirit(ctx, "user:1", "billing"); err == nil {
+		t.Error("expected set error when redis is down")
+	}
+	if err := store.ClearActiveSpirit(ctx, "user:1"); err == nil {
+		t.Error("expected clear error when redis is down")
+	}
+}
+
 func TestHandoffStore_TTLExpiry(t *testing.T) {
 	ctx := context.Background()
 	client, mr := newHandoffClient(t)
