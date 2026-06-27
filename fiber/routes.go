@@ -24,11 +24,14 @@ type RouteDeps struct {
 	OperatorAuth   *eywa.OperatorAuth  // Mode 2: built-in operator JWT (also enables POST /api/v1/auth/token)
 	TokenValidator eywa.TokenValidator // Mode 3: external JWT / JWKS
 
-	// EventAuth, when non-empty, requires inbound event requests (POST /api/v1/events/:event_key and
-	// its /stream and /async variants) to present a valid bearer token accepted by one of these
-	// validators — typically an app-token validator (see AppTokenRepo). Empty leaves event ingestion
-	// open (webhook-style), which is the default. Health checks stay open regardless.
-	EventAuth []eywa.TokenValidator
+	// EventAuth and EventVerifiers gate inbound event requests (POST /api/v1/events/:event_key and its
+	// /stream and /async variants). EventAuth accepts a bearer token (e.g. an app-token validator);
+	// EventVerifiers authenticate from the full request — headers + raw body — for signature schemes
+	// (HMAC, provider webhook signatures). A request is accepted if ANY configured validator or
+	// verifier accepts it. Both empty leaves event ingestion open (webhook-style), the default. Health
+	// checks stay open regardless.
+	EventAuth      []eywa.TokenValidator
+	EventVerifiers []eywa.RequestVerifier
 
 	// AppTokenRepo enables managing revocable app tokens at /api/v1/app-tokens (create/list/revoke),
 	// behind the management auth. Pair it with EventAuth: eywa.NewAppTokenValidator(repo).
@@ -110,11 +113,12 @@ func registerOpenRoutes(app *fiberlib.App, weave *eywa.Weave, deps RouteDeps) {
 	app.Get("/health", health.Health)
 	app.Get("/ready", health.Ready)
 
-	// Event auth is optional: when EventAuth is set, each event route runs the auth middleware first.
-	// withEventAuth returns a fresh handler chain per route so the shared prefix is not mutated.
+	// Event auth is optional: when any validator/verifier is set, each event route runs the combined
+	// event-auth middleware first. withEventAuth returns a fresh chain per route so the shared prefix
+	// is not mutated.
 	var eventMW []fiberlib.Handler
-	if len(deps.EventAuth) > 0 {
-		eventMW = []fiberlib.Handler{middleware.AuthMiddleware(deps.EventAuth...)}
+	if len(deps.EventAuth) > 0 || len(deps.EventVerifiers) > 0 {
+		eventMW = []fiberlib.Handler{eventAuthMiddleware(deps.EventAuth, deps.EventVerifiers)}
 	}
 	withEventAuth := func(final fiberlib.Handler) []fiberlib.Handler {
 		chain := make([]fiberlib.Handler, 0, len(eventMW)+1)

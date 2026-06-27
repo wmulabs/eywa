@@ -1,25 +1,28 @@
 # 🌐 REST API Reference
 
-Eywa exposes two distinct API surfaces via the `fiber` sub-module, each serving a different audience.
-
-| API | Function | Audience |
-|-----|----------|----------|
-| **Event API** | `RegisterRoutes` | Your application backend — sends Pulses into the Weave |
-| **Management API** | `RegisterManagementRoutes` | Operators and dashboards — inspect, configure, take over |
-
----
-
-## Event API — `RegisterRoutes`
-
-For receiving events from external sources and routing them into the Weave.
+A single registrar mounts every route via the `fiber` sub-module:
 
 ```go
-eywafiber.RegisterRoutes(app, weave, spiritRepo, echoRepo)
+eywafiber.RegisterRoutes(app, weave, eywafiber.RouteDeps{ /* repos + auth */ })
 ```
 
-No authentication by default — secure these routes at the infrastructure level (VPC, Cloud Armor, etc.) or add middleware manually.
+Routes fall into three buckets:
 
-> **Security:** `RegisterRoutes` also mounts Spirit CRUD endpoints (`POST/PUT/DELETE /api/v1/spirits`) without authentication. Spirit system prompts are a critical attack surface — an unauthenticated write is prompt injection at the infrastructure level. **Never expose `RegisterRoutes` to the public internet without auth.** For operator-facing management, use `RegisterManagementRoutes` instead.
+| Bucket | Routes | Auth |
+|--------|--------|------|
+| **Open** | `GET /health`, `/ready`; `POST /api/v1/events/:event_key` (+ `/stream`, `/async`) | none by default; events optionally gated (see below) |
+| **Management** | Spirit CRUD, messages, scheduling, chronicle/analytics, echoes, event-configurations, engine config, HTTP tools, Vigil, Rites, imprints, app-tokens, SSE | **always** behind auth |
+| **Internal** | `POST /internal/execute-event` (Keeper callback) | `RouteDeps.InternalMiddleware` (e.g. OIDC) |
+
+Each management group is mounted only when its backing repository is set in `RouteDeps`. Providing a
+protected repository without an auth validator **fails closed** (returns an error).
+
+**Authentication is covered in full in [authentication.md](authentication.md)** — two axes (management
+auth + event auth), app tokens, and channel signature verification. This page is the endpoint reference.
+
+> **Spirit CRUD is authenticated.** `POST/PUT/DELETE /api/v1/spirits` is mounted only when
+> `RouteDeps.SpiritRepo` is set, and always behind the management auth — a system prompt is a critical
+> attack surface (infrastructure-level prompt injection). Leave `SpiritRepo` unset to not expose it.
 
 ---
 
@@ -190,33 +193,33 @@ Cancel a pending Ritual.
 
 Keeper callback — called by Cloud Tasks to execute a scheduled or async Pulse. Not for external use.
 
-Protected with `WithInternalMiddleware` (OIDC verification in production):
+Protected with `RouteDeps.InternalMiddleware` (OIDC verification in production):
 
 ```go
-eywafiber.RegisterRoutes(app, weave, spiritRepo, echoRepo,
-    eywafiber.WithInternalMiddleware(
+eywafiber.RegisterRoutes(app, weave, eywafiber.RouteDeps{
+    InternalMiddleware: []fiber.Handler{
         cloudtasks.NewCloudTasksOIDCMiddleware(os.Getenv("SERVICE_URL")),
-    ),
-)
+    },
+})
 ```
 
 ---
 
-## Management API — `RegisterManagementRoutes`
+## Management routes
 
-For operators, dashboards, and tooling that inspect and control the Weave at runtime.
+The management routes (Spirit CRUD, chronicle, echoes, config, Vigil, Rites, app-tokens, SSE, …) are
+mounted on `RouteDeps` and **always sit behind auth**. Configure one or more modes — a request is
+accepted if any validator accepts the `Authorization: Bearer <token>` header (the static API key uses
+the **Bearer** scheme too, not a separate `ApiKey` scheme):
 
-```go
-eywafiber.RegisterManagementRoutes(app, weave, eywafiber.ManagementDeps{...})
-```
-
-All routes require authentication. Three auth modes — configure one or more:
-
-| Mode | Config field | Token format |
-|------|-------------|--------------|
-| Static API key | `APIKeys map[string]string` | `Authorization: ApiKey <key>` |
+| Mode | RouteDeps field | Token format |
+|------|-----------------|--------------|
+| Static API key | `APIKeys map[string]string` | `Authorization: Bearer <key>` |
 | Built-in operator JWT | `OperatorAuth *eywa.OperatorAuth` | `Authorization: Bearer <jwt>` |
 | External JWT / JWKS | `TokenValidator eywa.TokenValidator` | `Authorization: Bearer <jwt>` |
+
+See [authentication.md](authentication.md) for the full model (management vs. event auth, app tokens,
+channel signatures).
 
 ---
 
@@ -224,27 +227,22 @@ All routes require authentication. Three auth modes — configure one or more:
 
 ### Authentication Flow
 
-The Management API uses JWT Bearer tokens. Get a token with your credentials, then include it
-in all subsequent requests as `Authorization: Bearer <token>`.
+Send `Authorization: Bearer <token>` on every management request. With a static API key the token is
+the key itself; with operator JWT, obtain one from the login endpoint:
 
 ```bash
-# Step 1: Get a token
+# Operator JWT (when OperatorAuth is configured):
 TOKEN=$(curl -s -X POST https://your-service.run.app/api/v1/auth/token \
   -H "Content-Type: application/json" \
   -d '{"username": "admin", "password": "your-password"}' \
   | jq -r '.token')
 
-# Step 2: Use the token in subsequent requests
 curl -H "Authorization: Bearer $TOKEN" \
   https://your-service.run.app/api/v1/spirits
 
-# Tokens expire after the configured TTL (default: 24h).
-# Re-authenticate when you receive 401 Unauthorized.
-```
-
-**API Key alternative:** If configured with `WithAPIKey`, pass the key as:
-```
-Authorization: ApiKey your-api-key
+# With a static API key, skip the login step:
+curl -H "Authorization: Bearer $ADMIN_KEY" \
+  https://your-service.run.app/api/v1/spirits
 ```
 
 ---
@@ -254,7 +252,7 @@ Authorization: ApiKey your-api-key
 Obtain a JWT from the built-in operator system.
 
 > [!NOTE]
-> Only available when `OperatorAuth` is set in `ManagementDeps`.
+> Only available when `OperatorAuth` is set in `RouteDeps`.
 
 **Body:**
 ```json
@@ -1029,7 +1027,7 @@ Reload event configurations from the database into the in-memory ConfigCache. Us
 Real-time event streams backed by Redis PubSub. All instances publish to the same channels — every subscriber on any instance receives the event.
 
 > [!NOTE]
-> Only available when `PubSub` is set in `ManagementDeps`.
+> Only available when `PubSub` is set in `RouteDeps`.
 
 **Heartbeat:** `: ping` comment line every 30 seconds — keeps connections alive through proxies.
 

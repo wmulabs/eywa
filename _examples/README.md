@@ -165,4 +165,6 @@ mongosh --eval 'use eywa_example; db.dropDatabase()'
 - [Architecture](../docs/architecture.md) — pipeline, hexagonal structure, core entities
 - [Builder Reference](../docs/builder.md) — every WeaveBuilder option
 - [Concepts & Interfaces](../docs/concepts.md) — implement Action, Scout, Pathfinder, Voice, Receptor
+- [Authentication & Security](../docs/authentication.md) — management vs. event auth, app tokens, webhook signatures
+- [REST API](../docs/rest-api.md) — endpoint reference
 - [Sub-modules](../docs/sub-modules.md) — MongoDB, Redis, GCP, Fiber, WhatsApp setup

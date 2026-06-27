@@ -211,7 +211,7 @@ Channels used by eywa:
 - `eywa:echoes:{memoryKey}` — per-session events
 
 ```go
-eywafiber.RegisterManagementRoutes(app, weave, eywafiber.ManagementDeps{
+eywafiber.RegisterRoutes(app, weave, eywafiber.RouteDeps{
     PubSub: eywaredis.NewPubSub(client),
     // ...
 })
@@ -425,6 +425,10 @@ Mounts the full REST API on a Fiber application.
 
 ### RegisterRoutes
 
+A single registrar takes a `RouteDeps` struct. Open routes (health + events) mount with an empty
+struct; each management group mounts when its repo is set, always behind auth. See
+[authentication.md](authentication.md) for the full model.
+
 ```go
 import (
     "github.com/gofiber/fiber/v2"
@@ -433,7 +437,11 @@ import (
 
 app := fiber.New()
 
-eywafiber.RegisterRoutes(app, weave, spiritRepo, echoRepo)
+eywafiber.RegisterRoutes(app, weave, eywafiber.RouteDeps{
+    APIKeys:    map[string]string{adminKey: "admin"}, // required to expose management routes
+    SpiritRepo: spiritRepo,                            // authenticated Spirit CRUD
+    EchoRepo:   echoRepo,
+})
 
 app.Listen(":8080")
 ```
@@ -446,12 +454,11 @@ import (
     "github.com/wmulabs/eywa/gcp/cloudtasks"
 )
 
-eywafiber.RegisterRoutes(
-    app, weave, spiritRepo, echoRepo,
-    eywafiber.WithInternalMiddleware(
+eywafiber.RegisterRoutes(app, weave, eywafiber.RouteDeps{
+    InternalMiddleware: []fiber.Handler{
         cloudtasks.NewCloudTasksOIDCMiddleware(os.Getenv("SERVICE_URL")),
-    ),
-)
+    },
+})
 ```
 
 ### Route Reference
@@ -473,10 +480,17 @@ eywafiber.RegisterRoutes(
 | `POST` | `/api/v1/spirits/:name/activate` | Activate specific Spirit version |
 | `POST` | `/api/v1/spirits/:name/deactivate` | Deactivate Spirit |
 | `GET` | `/api/v1/messages?memory_key=...` | Query Echo message history |
+| `POST/GET` | `/api/v1/app-tokens` · `DELETE /api/v1/app-tokens/:id` | Mint / list / revoke event app-tokens |
 | `POST` | `/internal/execute-event` | Keeper callback — processes scheduled Pulses |
 
+Management routes also include chronicle/analytics, echoes, event-configurations, engine config, HTTP
+tools, Vigil, Rites, imprints, operators, and SSE — see [rest-api.md](rest-api.md) for the full list.
+
 > [!NOTE]
-> Async routes (`.../async` and `/api/v1/schedule`) are only registered when `weave.GetAsyncDispatcher()` and `weave.GetRitualManager()` are configured respectively.
+> Health and event routes are open by default; **all management routes (Spirit CRUD, messages, schedule,
+> app-tokens, etc.) require auth** and mount only when their repo is set in `RouteDeps`. Async routes
+> (`.../async`, `/api/v1/schedule`) need `weave.GetAsyncDispatcher()` / `GetRitualManager()`. Event
+> ingestion can be gated with `EventAuth` / `EventVerifiers` — see [authentication.md](authentication.md).
 
 ---
 
@@ -509,10 +523,9 @@ The Keeper creates Cloud Tasks that POST to `{TargetBaseURL}/internal/execute-ev
 
 ```go
 oidcMiddleware := cloudtasks.NewCloudTasksOIDCMiddleware(os.Getenv("SERVICE_URL"))
-eywafiber.RegisterRoutes(
-    app, weave, spiritRepo, echoRepo,
-    eywafiber.WithInternalMiddleware(oidcMiddleware),
-)
+eywafiber.RegisterRoutes(app, weave, eywafiber.RouteDeps{
+    InternalMiddleware: []fiber.Handler{oidcMiddleware},
+})
 ```
 
 > [!TIP]

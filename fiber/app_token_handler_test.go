@@ -3,8 +3,13 @@ package fiber
 import (
 	"bytes"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"strconv"
 	"testing"
+	"time"
 
 	fiberlib "github.com/gofiber/fiber/v2"
 	eywa "github.com/wmulabs/eywa"
@@ -159,6 +164,40 @@ func TestEventAuth_RequiresToken(t *testing.T) {
 	if resp2.StatusCode == 401 {
 		t.Error("valid token must pass event auth")
 	}
+}
+
+func TestEventVerifiers_HMACGatesEvents(t *testing.T) {
+	secret := "ingest-secret"
+	app := fiberlib.New(fiberlib.Config{DisableStartupMessage: true})
+	if err := RegisterRoutes(app, minimalTestWeave(t), RouteDeps{
+		EventVerifiers: []eywa.RequestVerifier{eywa.NewHMACVerifier(secret)},
+	}); err != nil {
+		t.Fatalf("register: %v", err)
+	}
+
+	body := []byte(`{"user":"u"}`)
+
+	// No signature → 401.
+	resp, _ := app.Test(plainRequest("POST", "/api/v1/events/chat", bytes.NewReader(body)))
+	if resp.StatusCode != 401 {
+		t.Fatalf("want 401 without a signature, got %d", resp.StatusCode)
+	}
+
+	// Valid signature → auth passes (non-401).
+	ts := time.Now().Unix()
+	req := plainRequest("POST", "/api/v1/events/chat", bytes.NewReader(body))
+	req.Header.Set("X-Eywa-Signature", signEywa(secret, ts, body))
+	req.Header.Set("Content-Type", "application/json")
+	resp2, _ := app.Test(req)
+	if resp2.StatusCode == 401 {
+		t.Error("valid HMAC signature must pass event auth")
+	}
+}
+
+func signEywa(secret string, ts int64, body []byte) string {
+	mac := hmac.New(sha256.New, []byte(secret))
+	mac.Write([]byte(strconv.FormatInt(ts, 10) + "." + string(body)))
+	return "t=" + strconv.FormatInt(ts, 10) + ",v1=" + hex.EncodeToString(mac.Sum(nil))
 }
 
 func TestEventAuth_OpenWhenUnset(t *testing.T) {
