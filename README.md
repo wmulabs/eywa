@@ -654,11 +654,12 @@ ledgerRepo := eywamongo.NewLedgerRepository(db)
 
 // Set a monthly budget with downgrade on exceed
 ledgerRepo.SetBudget(ctx, eywa.TokenBudget{
-    SpiritID:          "assistant",
-    MonthlyTokenLimit: 100_000,
-    OnExceed:          "downgrade", // "block" | "downgrade" | "alert"
-    DowngradeModel:    eywa.SpiritModel{Provider: "openai", Model: "gpt-4o-mini"},
-    AlertThreshold:    0.8,
+    SpiritName:           "assistant",
+    MonthlyTokenLimit:    100_000,
+    OnExceed:             "downgrade", // "block" | "downgrade" | "alert" — at the hard limit
+    DowngradeModel:       eywa.SpiritModel{Provider: "openai", Model: "gpt-4o-mini"},
+    AlertThreshold:       0.8,
+    DowngradeAtThreshold: true, // proactively switch to DowngradeModel at 80%, before the limit
 })
 
 // Auto-route to cheaper models based on request characteristics

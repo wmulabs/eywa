@@ -218,6 +218,72 @@ func TestCostEnforcementStep_ThresholdAlert_FiresHook(t *testing.T) {
 	}
 }
 
+func TestCostEnforcementStep_ThresholdDowngrade_ChangesModel(t *testing.T) {
+	cheapModel := entities.SpiritModel{Model: "gpt-3.5-turbo"}
+	repo := &stubLedgerRepo{
+		budget: entities.TokenBudget{
+			MonthlyTokenLimit:    100,
+			AlertThreshold:       0.8,
+			DowngradeModel:       cheapModel,
+			DowngradeAtThreshold: true,
+		},
+		usage: entities.LedgerEntry{TokensUsed: 90}, // above threshold, under limit
+	}
+	step := NewCostEnforcementStep(repo, nil, time.Second, testLogger(t))
+	state := costState(&entities.Spirit{Name: "bot", ModelConfig: entities.SpiritModel{Model: "gpt-4"}})
+
+	if err := step.Execute(context.Background(), state); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if state.Spirit.ModelConfig.Model != "gpt-3.5-turbo" {
+		t.Errorf("expected proactive downgrade, got %s", state.Spirit.ModelConfig.Model)
+	}
+	if state.Skipped {
+		t.Error("proactive downgrade must not skip the turn")
+	}
+}
+
+func TestCostEnforcementStep_ThresholdDowngrade_DisabledByDefault(t *testing.T) {
+	repo := &stubLedgerRepo{
+		budget: entities.TokenBudget{
+			MonthlyTokenLimit: 100,
+			AlertThreshold:    0.8,
+			DowngradeModel:    entities.SpiritModel{Model: "gpt-3.5-turbo"},
+			// DowngradeAtThreshold left false
+		},
+		usage: entities.LedgerEntry{TokensUsed: 90},
+	}
+	step := NewCostEnforcementStep(repo, nil, time.Second, testLogger(t))
+	state := costState(&entities.Spirit{Name: "bot", ModelConfig: entities.SpiritModel{Model: "gpt-4"}})
+
+	if err := step.Execute(context.Background(), state); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if state.Spirit.ModelConfig.Model != "gpt-4" {
+		t.Errorf("model must stay unchanged when DowngradeAtThreshold is off, got %s", state.Spirit.ModelConfig.Model)
+	}
+}
+
+func TestCostEnforcementStep_ThresholdDowngrade_NoModelConfigured_NoOp(t *testing.T) {
+	repo := &stubLedgerRepo{
+		budget: entities.TokenBudget{
+			MonthlyTokenLimit:    100,
+			AlertThreshold:       0.8,
+			DowngradeAtThreshold: true, // but no DowngradeModel
+		},
+		usage: entities.LedgerEntry{TokensUsed: 90},
+	}
+	step := NewCostEnforcementStep(repo, nil, time.Second, testLogger(t))
+	state := costState(&entities.Spirit{Name: "bot", ModelConfig: entities.SpiritModel{Model: "gpt-4"}})
+
+	if err := step.Execute(context.Background(), state); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if state.Spirit.ModelConfig.Model != "gpt-4" {
+		t.Errorf("model must stay unchanged with no DowngradeModel, got %s", state.Spirit.ModelConfig.Model)
+	}
+}
+
 // --- LedgerUpdateStep ---
 
 func TestLedgerUpdateStep_NilLedger_NoOp(t *testing.T) {

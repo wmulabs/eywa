@@ -8,6 +8,11 @@ type TokenBudget struct {
 	OnExceed          string      `bson:"on_exceed" json:"on_exceed"` // "block"|"downgrade"|"alert"
 	DowngradeModel    SpiritModel `bson:"downgrade_model,omitempty" json:"downgrade_model,omitempty"`
 	AlertThreshold    float64     `bson:"alert_threshold,omitempty" json:"alert_threshold,omitempty"` // 0.0–1.0
+	// DowngradeAtThreshold switches the Spirit to DowngradeModel once usage reaches AlertThreshold,
+	// before the hard limit is hit — slowing the burn proactively. Requires AlertThreshold and
+	// DowngradeModel to be set. Disabled by default; independent of OnExceed (which still governs
+	// behaviour at the hard limit).
+	DowngradeAtThreshold bool `bson:"downgrade_at_threshold,omitempty" json:"downgrade_at_threshold,omitempty"`
 }
 
 type LedgerEntry struct {
