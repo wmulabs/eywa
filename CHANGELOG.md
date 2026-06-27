@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.40.0](https://github.com/wmulabs/eywa/compare/v1.39.0...v1.40.0) (2026-06-27)
+
+
+### Features
+
+* **openai:** Azure OpenAI provider via NewAzureOracle ([#169](https://github.com/wmulabs/eywa/issues/169)) ([bfcd273](https://github.com/wmulabs/eywa/commit/bfcd2738aca2552e6525b6905e6840771e45fe5b))
+
 ## [1.39.0](https://github.com/wmulabs/eywa/compare/v1.38.0...v1.39.0) (2026-06-27)
 
 
