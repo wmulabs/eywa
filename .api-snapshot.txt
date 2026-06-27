@@ -110,6 +110,13 @@ const (
     redacts all of them.
 
 const (
+	HandoffContextSession = entities.HandoffContextSession
+	HandoffContextSummary = entities.HandoffContextSummary
+	HandoffContextNone    = entities.HandoffContextNone
+)
+    Context-transfer modes for HandoffConfig.ContextTransfer.
+
+const (
 	RoleUser      = ports.RoleUser
 	RoleAssistant = ports.RoleAssistant
 	RoleSystem    = ports.RoleSystem
@@ -323,6 +330,10 @@ var (
 	// suppression. Use for single-instance deployments and tests. For multi-instance production
 	// use redis.NewIdempotencyStore from the redis sub-module.
 	NewInMemoryIdempotencyStore = orchestrator.NewInMemoryIdempotencyStore
+
+	// NewInMemoryHandoffStore returns an in-process HandoffStore for single-instance deployments and
+	// tests. For multi-instance production use the redis or mongo HandoffStore adapters.
+	NewInMemoryHandoffStore = orchestrator.NewInMemoryHandoffStore
 )
 var (
 	// GenerateID returns a new random unique identifier string.
@@ -718,12 +729,23 @@ type HTTPToolRepository = ports.HTTPToolRepository
 type HTTPToolTestResult = orchestrator.HTTPToolTestResult
     HTTPToolTestResult holds the outcome of a single HTTPTool test execution.
 
+type HandoffConfig = entities.HandoffConfig
+    HandoffConfig enables a Spirit to transfer control of a conversation
+    to a peer Spirit. Set it on a Spirit and wire a HandoffStore via
+    WeaveBuilder.WithHandoffStore.
+
 type HandoffMode = orchestrator.HandoffMode
     HandoffMode selects the action taken on a low-confidence turn.
 
 type HandoffPolicy = orchestrator.HandoffPolicy
     HandoffPolicy configures confidence-gated human takeover. Set on
     WeaveBuilder.WithHandoffPolicy.
+
+type HandoffStore = ports.HandoffStore
+    HandoffStore persists which Spirit owns a conversation after a peer handoff,
+    so subsequent Pulses route to it. Wire via WeaveBuilder.WithHandoffStore.
+    Use NewInMemoryHandoffStore for single-instance, or the redis/mongo adapters
+    for multi-instance deployments.
 
 type IdempotencyStore = ports.IdempotencyStore
     IdempotencyStore is the duplicate-suppression port. It records processed

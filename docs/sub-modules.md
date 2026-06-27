@@ -197,6 +197,15 @@ builder.
     WithVigilConfig(eywa.VigilConfig{InactivityTimeout: 30 * time.Minute})
 ```
 
+### Handoff Store
+
+```go
+handoffStore := eywaredis.NewHandoffStore(client, time.Hour) // ttl 0 = no expiry
+builder.WithHandoffStore(handoffStore)
+```
+
+Implements `eywa.HandoffStore` — pins the active Spirit per session after a peer handoff so subsequent Pulses route to it across instances. The mongo adapter (`eywamongo.NewHandoffStore(db)`) is durable; the in-memory one (`eywa.NewInMemoryHandoffStore()`) suits single-instance. See [Multi-agent](multi-agent.md).
+
 ### PubSub
 
 ```go

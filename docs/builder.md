@@ -181,6 +181,14 @@ builder.WithOutputGuard(eywa.OutputGuardConfig{
 
 Sanitizes the final response before it is persisted, delivered, and audited: PII redaction plus a denylist that replaces matched responses wholesale. Disabled by default. See [Guardrails](guardrails.md) for coverage notes on streamed and notifier turns.
 
+### WithHandoffStore
+
+```go
+builder.WithHandoffStore(eywa.NewInMemoryHandoffStore()) // or eywaredis/eywamongo.NewHandoffStore
+```
+
+Enables peer-to-peer Spirit handoff: a Spirit with `HandoffConfig` can transfer the conversation to a peer, which the store pins so subsequent turns route to it. Without a store, handoff is disabled. See [Multi-agent](multi-agent.md).
+
 ### WithMessageInbox + WithInboxMinWindow
 
 ```go

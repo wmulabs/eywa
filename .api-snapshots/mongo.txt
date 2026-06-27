@@ -3,6 +3,7 @@ package mongo // import "github.com/wmulabs/eywa/mongo"
 
 FUNCTIONS
 
+func NewHandoffStore(db *mongo.Database) eywa.HandoffStore
 func NewImprintRepository(db *mongo.Database) eywa.ImprintRepository
 func NewLedgerRepository(db *mongo.Database) eywa.LedgerRepository
 func NewLoreRepository(db *mongo.Database) eywa.LoreRepository
@@ -136,6 +137,19 @@ func (r *HTTPToolRepository) List(ctx context.Context) ([]eywa.HTTPTool, error)
 func (r *HTTPToolRepository) Save(ctx context.Context, tool eywa.HTTPTool) error
 
 func (r *HTTPToolRepository) Update(ctx context.Context, tool eywa.HTTPTool) error
+
+type HandoffStore struct {
+	// Has unexported fields.
+}
+    HandoffStore implements eywa.HandoffStore using a MongoDB collection keyed
+    by session. It records which Spirit owns a conversation after a handoff so
+    subsequent Pulses route to it across instances.
+
+func (s *HandoffStore) ClearActiveSpirit(ctx context.Context, sessionKey string) error
+
+func (s *HandoffStore) GetActiveSpirit(ctx context.Context, sessionKey string) (string, error)
+
+func (s *HandoffStore) SetActiveSpirit(ctx context.Context, sessionKey, spiritName string) error
 
 type ImprintRepository struct {
 	// Has unexported fields.
