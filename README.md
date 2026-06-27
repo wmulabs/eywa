@@ -1053,6 +1053,8 @@ Eywa is built on **hexagonal architecture** (ports & adapters). The domain has z
 Every external system is behind a port (interface). The `_examples/` directory shows how to compose these adapters for real workloads.
 
 **Guides:**
+- [Eywa vs other Go frameworks](docs/comparison.md) — honest comparison with Eino, Genkit Go, LangChainGo
+- [Multi-agent](docs/multi-agent.md) — Pathfinder, summon, and handoff
 - [Scaling & Failure Scenarios](docs/scaling.md)
 - [Operations Guide](docs/operations.md)
 
