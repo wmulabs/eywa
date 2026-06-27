@@ -8,6 +8,7 @@ included. Not just an LLM wrapper: the hard parts of running an agent under real
 
 ## Start here
 
+- **[eywa-starter](https://github.com/wmulabs/eywa-starter)** — clone the template for a ready-to-run hexagonal project; a working agent in minutes.
 - **[Core concepts](concepts.md)** — Weave, Spirit, Pulse, Oracle, and the rest of the glossary.
 - **[Architecture](architecture.md)** — hexagonal ports & adapters, the pipeline, the reasoning loop.
 - **[Builder](builder.md)** — wire a Weave with the fluent `WeaveBuilder` API.
