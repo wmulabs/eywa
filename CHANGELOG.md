@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.44.0](https://github.com/wmulabs/eywa/compare/v1.43.0...v1.44.0) (2026-06-28)
+
+
+### Features
+
+* **telegram:** Telegram Bot API channel ([#182](https://github.com/wmulabs/eywa/issues/182)) ([429d5fe](https://github.com/wmulabs/eywa/commit/429d5fecfb887e0db0e6112fcaca450c33c159d0))
+
 ## [1.43.0](https://github.com/wmulabs/eywa/compare/v1.42.0...v1.43.0) (2026-06-27)
 
 
