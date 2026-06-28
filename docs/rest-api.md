@@ -104,6 +104,16 @@ Content-Type: application/json
 
 ---
 
+### `POST /api/v1/events/:event_key/stream`
+
+Process a Pulse and stream the response back as **Server-Sent Events** (`Content-Type: text/event-stream`). The body is the same as the synchronous endpoint; the connection emits answer tokens as they are generated, then a terminal event.
+
+**Body:** same as synchronous endpoint.
+
+**200 — SSE stream:** each line is an SSE `data:` frame with the partial answer; the stream ends after the final assembled response. Event auth (when configured) applies, same as the other event routes.
+
+---
+
 ### `POST /api/v1/events/:event_key/async`
 
 Dispatch a Pulse to the Keeper for background processing. Returns immediately — the Pulse is processed by a Cloud Tasks callback.
@@ -299,6 +309,55 @@ Returns all registered engine components. Use this to populate configuration for
   "receptors":   ["whatsapp_360dialog", "telegram"]
 }
 ```
+
+---
+
+## App Tokens
+
+Revocable tokens that authenticate inbound event requests (pair with `RouteDeps.EventAuth`). Mounted when `AppTokenRepo` is configured; behind management auth.
+
+### `POST /api/v1/app-tokens`
+
+Mint a token. The plaintext `token` is returned **only here** — store it now; only its hash is persisted.
+
+**Body:**
+```json
+{ "name": "telegram-webhook", "ttl_seconds": 2592000 }
+```
+`ttl_seconds` 0 (or omitted) = never expires.
+
+**201 — created:**
+```json
+{ "id": "tok_abc123", "name": "telegram-webhook", "token": "eywa_at_…", "expires_at": "2026-07-27T00:00:00Z" }
+```
+
+### `GET /api/v1/app-tokens`
+
+List tokens (metadata only — the secret hash is never serialized).
+
+```json
+{ "items": [ { "id": "tok_abc123", "name": "telegram-webhook", "expires_at": "…", "is_active": true } ] }
+```
+
+### `DELETE /api/v1/app-tokens/:id`
+
+Revoke a token. **204** on success, **404** if not found.
+
+---
+
+## Messages
+
+### `GET /api/v1/messages`
+
+Read persisted conversation messages (Echo). Mounted when `EchoRepo` is configured.
+
+**Query:** `memory_key` **or** `subject_key` (at least one required); `limit` (default applied), `offset` (default 0).
+
+**200:**
+```json
+{ "items": [ { "role": "user", "content": "…", "timestamp": "…" } ], "total": 42, "limit": 50, "offset": 0 }
+```
+**400** when neither `memory_key` nor `subject_key` is provided.
 
 ---
 
