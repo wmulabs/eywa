@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.45.0](https://github.com/wmulabs/eywa/compare/v1.44.0...v1.45.0) (2026-06-28)
+
+
+### Features
+
+* **slack:** Slack Events API channel ([#184](https://github.com/wmulabs/eywa/issues/184)) ([cd992f2](https://github.com/wmulabs/eywa/commit/cd992f2be566c996c58f6ccf456411924017ea48))
+
 ## [1.44.0](https://github.com/wmulabs/eywa/compare/v1.43.0...v1.44.0) (2026-06-28)
 
 
