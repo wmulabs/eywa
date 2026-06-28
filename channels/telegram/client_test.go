@@ -65,6 +65,14 @@ func TestClient_DownloadFile_Success(t *testing.T) {
 	}
 }
 
+func TestClient_DownloadFile_TransportError(t *testing.T) {
+	c := NewClient("tok")
+	c.baseURL = "http://127.0.0.1:0" // invalid port -> getFile dial error
+	if _, err := c.DownloadFile(context.Background(), "fid"); err == nil {
+		t.Error("expected transport error on getFile")
+	}
+}
+
 func TestClient_DownloadFile_Errors(t *testing.T) {
 	cases := map[string]http.HandlerFunc{
 		"getFile status": func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusInternalServerError) },
