@@ -108,6 +108,20 @@ func TestInbound_Convert_DownloadsFileBytes(t *testing.T) {
 	}
 }
 
+func TestInbound_Convert_SkipsNonMapFile(t *testing.T) {
+	raw := messageCallback(map[string]any{
+		"type": "message", "channel": "C1", "text": "hi",
+		"files": []any{"not-a-map", map[string]any{"id": "F1", "mimetype": "image/png"}},
+	})
+	pulses, err := NewInbound(nil).Convert(context.Background(), "e", raw)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(pulses[0].Attachments) != 1 {
+		t.Errorf("non-map file entry must be skipped, got %d attachments", len(pulses[0].Attachments))
+	}
+}
+
 func TestArtifactType(t *testing.T) {
 	cases := map[string]string{
 		"image/png":       "image",

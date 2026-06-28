@@ -35,6 +35,15 @@ func req(ts, sig string, body []byte) eywa.VerifiableRequest {
 	return eywa.VerifiableRequest{Header: h, Body: body}
 }
 
+func TestNewSignatureVerifier(t *testing.T) {
+	v := NewSignatureVerifier("secret")
+	ts := strconv.FormatInt(time.Now().Unix(), 10)
+	body := []byte(`{"type":"event_callback"}`)
+	if _, err := v.Verify(context.Background(), req(ts, signed("secret", ts, body), body)); err != nil {
+		t.Fatalf("constructor-built verifier must validate a fresh request: %v", err)
+	}
+}
+
 func TestSignatureVerifier_Valid(t *testing.T) {
 	now := time.Unix(1700000000, 0)
 	ts := strconv.FormatInt(now.Unix(), 10)

@@ -66,6 +66,12 @@ func TestVoice_SendResponse_APIError(t *testing.T) {
 	}
 }
 
+func TestVoice_SendResponse_NilEvent(t *testing.T) {
+	if err := NewVoice(NewClient("t")).SendResponse(context.Background(), nil, "hi"); err == nil {
+		t.Error("expected error for nil event")
+	}
+}
+
 func TestVoice_NameAndMetadata(t *testing.T) {
 	v := NewVoice(NewClient("t"))
 	if v.GetName() != "slack" || !v.ShouldAutoRespond() {
