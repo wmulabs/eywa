@@ -743,5 +743,31 @@ verifier := telegram.NewSecretTokenVerifier(os.Getenv("TELEGRAM_WEBHOOK_SECRET")
 - **Outbound:** `sendMessage` via the Bot API (fixed host — no SSRF surface; response body is bounded).
 - **Auth:** constant-time compare of the `X-Telegram-Bot-Api-Secret-Token` header.
 
-> [!NOTE]
-> Slack is on the roadmap with the same shape (Receptor + Voice + signed-request verifier).
+---
+
+## 💬 channels/slack
+
+```bash
+go get github.com/wmulabs/eywa/channels/slack
+```
+
+Slack Events API channel. Implements `eywa.Receptor` (event_callback → Pulse), `eywa.Voice` (chat.postMessage), a `RequestVerifier` for Slack's signed requests, and a helper for the url_verification handshake.
+
+```go
+import "github.com/wmulabs/eywa/channels/slack"
+
+client := slack.NewClient(os.Getenv("SLACK_BOT_TOKEN"))
+
+weave.RegisterReceptor("slack", slack.NewInbound(client)) // client enables file downloads
+voiceRegistry.Register(slack.NewVoice(client))
+
+// Event auth: HMAC over "v0:<timestamp>:<body>", replay-protected.
+verifier := slack.NewSignatureVerifier(os.Getenv("SLACK_SIGNING_SECRET"))
+```
+
+- **Inbound:** message events map `event.channel` to the MemoryKey (`slack:<channel>`), `event.text` to the user message, `event_id` to the idempotency key. Files become attachments — bytes are fetched from `url_private` with the bot token (restricted to `slack.com` hosts). Bot-authored messages are ignored.
+- **Outbound:** `chat.postMessage` (bearer token); Slack's `ok:false` responses surface as errors.
+- **Auth:** constant-time HMAC-SHA256 over `v0:<timestamp>:<rawBody>`; requests older than 5 minutes are rejected (replay protection).
+
+> [!IMPORTANT]
+> **URL verification:** Slack's one-time handshake must be echoed in the HTTP response, which the Receptor cannot do. At the start of your Slack webhook route, call `slack.URLVerificationChallenge(rawBody)` — if it returns `ok`, respond 200 with the challenge string; otherwise proceed to normal event ingestion.

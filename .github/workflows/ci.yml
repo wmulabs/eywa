@@ -91,6 +91,7 @@ jobs:
         module:
           - channels/whatsapp
           - channels/telegram
+          - channels/slack
           - providers/anthropic
           - providers/openai
           - providers/gemini
@@ -176,7 +177,7 @@ jobs:
       - name: Govulncheck sub-modules
         run: |
           for mod in fiber mongo redis mcp \
-            channels/whatsapp channels/telegram \
+            channels/whatsapp channels/telegram channels/slack \
             providers/anthropic providers/openai providers/gemini providers/ollama \
             providers/bedrock providers/vertexai providers/weaviate \
             providers/pgvector providers/pinecone providers/qdrant \
@@ -250,7 +251,7 @@ jobs:
 
       - name: Lint sub-modules
         run: |
-          SUBMODULES="channels/whatsapp channels/telegram fiber gcp/cloudtasks gcp/gcs gcp/gemini mcp mongo observability/langfuse providers/anthropic providers/bedrock providers/gemini providers/ollama providers/openai providers/pgvector providers/pinecone providers/qdrant providers/vertexai providers/weaviate redis"
+          SUBMODULES="channels/whatsapp channels/telegram channels/slack fiber gcp/cloudtasks gcp/gcs gcp/gemini mcp mongo observability/langfuse providers/anthropic providers/bedrock providers/gemini providers/ollama providers/openai providers/pgvector providers/pinecone providers/qdrant providers/vertexai providers/weaviate redis"
           for mod in $SUBMODULES; do
             echo "=== Linting $mod ==="
             (cd "$mod" && golangci-lint run ./... --timeout 5m) || exit 1
