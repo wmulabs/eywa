@@ -55,7 +55,7 @@ jobs:
 
           # Update root eywa reference in each sub-module
           for mod in fiber mongo redis mcp \
-            channels/whatsapp \
+            channels/whatsapp channels/telegram \
             providers/anthropic providers/openai providers/gemini providers/ollama \
             providers/bedrock providers/vertexai providers/weaviate \
             providers/qdrant providers/pgvector providers/pinecone \
@@ -72,7 +72,7 @@ jobs:
       - name: Run go mod tidy in sub-modules
         run: |
           for mod in fiber mongo redis mcp \
-            channels/whatsapp \
+            channels/whatsapp channels/telegram \
             providers/anthropic providers/openai providers/gemini providers/ollama \
             providers/bedrock providers/vertexai providers/weaviate \
             providers/qdrant providers/pgvector providers/pinecone \
@@ -94,7 +94,7 @@ jobs:
         run: |
           VERSION="${{ needs.release-please.outputs.version }}"
           for mod in fiber mongo redis mcp \
-            channels/whatsapp \
+            channels/whatsapp channels/telegram \
             providers/anthropic providers/openai providers/gemini providers/ollama \
             providers/bedrock providers/vertexai providers/weaviate \
             providers/qdrant providers/pgvector providers/pinecone \
