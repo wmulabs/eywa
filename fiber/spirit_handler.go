@@ -22,50 +22,28 @@ func (h *SpiritManagementHandler) CreateSpirit(c *fiber.Ctx) error {
 
 	log := newLogger()
 
-	var req struct {
-		Name                      string               `json:"name"`
-		Description               string               `json:"description"`
-		Specialization            string               `json:"specialization"`
-		SystemPrompt              string               `json:"system_prompt"`
-		EnforceVoiceDelivery      bool                 `json:"enforce_voice_delivery,omitempty"`
-		VoiceDeliveryInstructions string               `json:"voice_delivery_instructions,omitempty"`
-		BusinessErrorInstructions string               `json:"business_error_instructions,omitempty"`
-		AllowedActions            []eywa.AllowedAction `json:"allowed_actions"`
-		ModelConfig               eywa.SpiritModel     `json:"model_config"`
-		Metadata                  map[string]any       `json:"metadata"`
-	}
-
-	if err := c.BodyParser(&req); err != nil {
+	// Bind the full Spirit, not a field whitelist: a whitelist drifts out of sync and silently
+	// drops newly-added config. Identity and lifecycle stay server-owned (set below / in the repo).
+	var spirit eywa.Spirit
+	if err := c.BodyParser(&spirit); err != nil {
 		log.Errorw("failed to parse request", "error", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"success": false, "error": "Invalid request format"})
 	}
 
-	if errs := resthttp.ValidateSpiritCreate(req.Name, req.SystemPrompt, req.ModelConfig); errs.HasErrors() {
+	if errs := resthttp.ValidateSpiritCreate(spirit.Name, spirit.SystemPrompt, spirit.ModelConfig); errs.HasErrors() {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"success": false, "error": "Validation failed", "details": errs.Errors})
 	}
 
-	spirit := &eywa.Spirit{
-		ID:                        uuid.New().String(),
-		Name:                      req.Name,
-		Description:               req.Description,
-		Specialization:            req.Specialization,
-		SystemPrompt:              req.SystemPrompt,
-		EnforceVoiceDelivery:      req.EnforceVoiceDelivery,
-		VoiceDeliveryInstructions: req.VoiceDeliveryInstructions,
-		BusinessErrorInstructions: req.BusinessErrorInstructions,
-		AllowedActions:            req.AllowedActions,
-		ModelConfig:               req.ModelConfig,
-		Metadata:                  req.Metadata,
-		CreatedBy:                 c.Get("X-User-ID", "system"),
-	}
+	spirit.ID = uuid.New().String()
+	spirit.CreatedBy = c.Get("X-User-ID", "system")
 
-	if err := h.spiritRepo.Create(ctx, spirit); err != nil {
+	if err := h.spiritRepo.Create(ctx, &spirit); err != nil {
 		log.Errorw("failed to create spirit", "error", err)
 		return resthttp.ErrorResponse(c, err)
 	}
 
-	log.Infow("spirit created", "name", req.Name, "id", spirit.ID)
-	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"success": true, "spirit": spirit})
+	log.Infow("spirit created", "name", spirit.Name, "id", spirit.ID)
+	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"success": true, "spirit": &spirit})
 }
 
 func (h *SpiritManagementHandler) GetSpirit(c *fiber.Ctx) error {
@@ -91,44 +69,23 @@ func (h *SpiritManagementHandler) UpdateSpirit(c *fiber.Ctx) error {
 	log := newLogger()
 	name := c.Params("name")
 
-	var req struct {
-		Description               string               `json:"description"`
-		Specialization            string               `json:"specialization"`
-		SystemPrompt              string               `json:"system_prompt"`
-		EnforceVoiceDelivery      bool                 `json:"enforce_voice_delivery,omitempty"`
-		VoiceDeliveryInstructions string               `json:"voice_delivery_instructions,omitempty"`
-		BusinessErrorInstructions string               `json:"business_error_instructions,omitempty"`
-		AllowedActions            []eywa.AllowedAction `json:"allowed_actions"`
-		ModelConfig               eywa.SpiritModel     `json:"model_config"`
-		Metadata                  map[string]any       `json:"metadata"`
-	}
-
-	if err := c.BodyParser(&req); err != nil {
+	// Full bind (see CreateSpirit); the repository owns version/lifecycle on insert.
+	var spirit eywa.Spirit
+	if err := c.BodyParser(&spirit); err != nil {
 		log.Errorw("failed to parse request", "error", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"success": false, "error": "Invalid request format"})
 	}
 
-	if errs := resthttp.ValidateSpiritUpdate(req.SystemPrompt, req.ModelConfig); errs.HasErrors() {
+	if errs := resthttp.ValidateSpiritUpdate(spirit.SystemPrompt, spirit.ModelConfig); errs.HasErrors() {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"success": false, "error": "Validation failed", "details": errs.Errors})
 	}
 
-	spirit := &eywa.Spirit{
-		Name:                      name,
-		Description:               req.Description,
-		Specialization:            req.Specialization,
-		SystemPrompt:              req.SystemPrompt,
-		EnforceVoiceDelivery:      req.EnforceVoiceDelivery,
-		VoiceDeliveryInstructions: req.VoiceDeliveryInstructions,
-		BusinessErrorInstructions: req.BusinessErrorInstructions,
-		AllowedActions:            req.AllowedActions,
-		ModelConfig:               req.ModelConfig,
-		Metadata:                  req.Metadata,
-		CreatedBy:                 c.Get("X-User-ID", "system"),
-	}
+	spirit.Name = name
+	spirit.CreatedBy = c.Get("X-User-ID", "system")
 
 	changeLog := c.Get("X-Change-Log", "Spirit updated via API")
 
-	updated, err := h.spiritRepo.Update(ctx, name, spirit, changeLog)
+	updated, err := h.spiritRepo.Update(ctx, name, &spirit, changeLog)
 	if err != nil {
 		log.Errorw("failed to update spirit", "error", err, "name", name)
 		return resthttp.ErrorResponse(c, err)

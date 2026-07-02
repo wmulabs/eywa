@@ -144,30 +144,31 @@ func (r *SpiritRepository) Update(ctx context.Context, spiritName string, spirit
 		return nil, fmt.Errorf("failed to deactivate current version: %w", err)
 	}
 
-	newVersion := &eywa.Spirit{
-		Name:           spiritName,
-		Version:        current.Version + 1,
-		IsActive:       true,
-		IsDeleted:      false,
-		Description:    spirit.Description,
-		Specialization: spirit.Specialization,
-		SystemPrompt:   spirit.SystemPrompt,
-		AllowedActions: spirit.AllowedActions,
-		ModelConfig:    spirit.ModelConfig,
-		Metadata:       spirit.Metadata,
-		CreatedAt:      eywa.NowUTC(),
-		CreatedBy:      spirit.CreatedBy,
-		ChangeLog:      changeLog,
-	}
+	// Copy the whole struct, not a field whitelist: a whitelist silently drops newly-added Spirit
+	// fields on update. Server-owned identity/lifecycle/audit fields are re-stamped below.
+	newVersion := *spirit
+	newVersion.ID = "" // new document per version; omitempty lets Mongo assign a fresh _id
+	newVersion.Name = spiritName
+	newVersion.Version = current.Version + 1
+	newVersion.IsActive = true
+	newVersion.IsDeleted = false
+	newVersion.CreatedAt = eywa.NowUTC()
+	newVersion.ChangeLog = changeLog
+	// Audit fields are server-owned: never trust client-supplied values on the new version.
+	newVersion.UpdatedAt = time.Time{}
+	newVersion.UpdatedBy = ""
+	newVersion.DeletedAt = nil
+	newVersion.DeletedBy = ""
+	newVersion.DeactivatedAt = nil
 
-	result, err := r.collection.InsertOne(ctx, newVersion)
+	result, err := r.collection.InsertOne(ctx, &newVersion)
 	if err != nil {
 		r.logger.Errorw("failed to create new version", "error", err, "name", spiritName)
 		return nil, fmt.Errorf("failed to create new version: %w", err)
 	}
 
 	r.logger.Infow("spirit updated", "id", result.InsertedID, "name", spiritName, "version", newVersion.Version)
-	return newVersion, nil
+	return &newVersion, nil
 }
 
 func (r *SpiritRepository) FindActiveByName(ctx context.Context, spiritName string) (*eywa.Spirit, error) {
