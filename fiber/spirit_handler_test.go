@@ -17,6 +17,7 @@ var errInternal = errors.New("internal error")
 
 type stubSpiritRepository struct {
 	spirit        *eywa.Spirit
+	updated       *eywa.Spirit // captures the spirit passed to Update
 	spirits       []*eywa.Spirit
 	count         int64
 	createErr     error
@@ -40,10 +41,11 @@ func (s *stubSpiritRepository) Update(_ context.Context, _ string, sp *eywa.Spir
 	if s.updateErr != nil {
 		return nil, s.updateErr
 	}
+	s.updated = sp
 	if s.spirit == nil {
 		s.spirit = sp
 	}
-	return s.spirit, nil
+	return sp, nil
 }
 func (s *stubSpiritRepository) FindByID(_ context.Context, _ string) (*eywa.Spirit, error) {
 	return s.spirit, s.findErr
@@ -122,6 +124,59 @@ func TestSpiritHandler_Create_Returns201(t *testing.T) {
 	json.NewDecoder(resp.Body).Decode(&body) //nolint:errcheck
 	if body["spirit"] == nil {
 		t.Error("expected spirit in response")
+	}
+}
+
+// Regression: the handler must bind the full Spirit, not a partial whitelist. Previously type,
+// type-specific configs, handoff, reasoning overrides, lore, and scouts were silently dropped.
+func TestSpiritHandler_Create_PersistsFullConfig(t *testing.T) {
+	repo := &stubSpiritRepository{}
+	weave := minimalTestWeave(t)
+	app := buildSpiritTestApp(repo, weave)
+
+	body, _ := json.Marshal(map[string]any{
+		"name":                  "configured_spirit",
+		"system_prompt":         "You are a helpful assistant that answers questions.",
+		"model_config":          map[string]any{"provider": "openai", "model": "gpt-4", "draft_model": "gpt-4o-mini"},
+		"type":                  "conversational",
+		"require_scouts":        []string{"user_profile"},
+		"lore_ids":              []string{"lore_kb"},
+		"conversational_config": map[string]any{"cross_channel_memory": true},
+		"handoff_config": map[string]any{
+			"allowed_targets":  []string{"billing_spirit"},
+			"context_transfer": "summary",
+			"max_handoffs":     2,
+		},
+	})
+	req := authedRequest("POST", "/api/v1/spirits", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.StatusCode != 201 {
+		t.Fatalf("want 201, got %d", resp.StatusCode)
+	}
+	if repo.spirit == nil {
+		t.Fatal("repo did not receive the spirit")
+	}
+	if repo.spirit.Type != eywa.SpiritTypeConversational {
+		t.Errorf("type dropped: got %q", repo.spirit.Type)
+	}
+	if repo.spirit.ModelConfig.DraftModel != "gpt-4o-mini" {
+		t.Errorf("draft_model dropped: got %q", repo.spirit.ModelConfig.DraftModel)
+	}
+	if len(repo.spirit.RequireScouts) != 1 || repo.spirit.RequireScouts[0] != "user_profile" {
+		t.Errorf("require_scouts dropped: got %v", repo.spirit.RequireScouts)
+	}
+	if len(repo.spirit.LoreIDs) != 1 || repo.spirit.LoreIDs[0] != "lore_kb" {
+		t.Errorf("lore_ids dropped: got %v", repo.spirit.LoreIDs)
+	}
+	if !repo.spirit.ConversationalConfig.CrossChannelMemory {
+		t.Error("conversational_config dropped")
+	}
+	if len(repo.spirit.HandoffConfig.AllowedTargets) != 1 || repo.spirit.HandoffConfig.ContextTransfer != "summary" {
+		t.Errorf("handoff_config dropped: got %+v", repo.spirit.HandoffConfig)
 	}
 }
 
@@ -212,6 +267,47 @@ func TestSpiritHandler_Update_Returns200(t *testing.T) {
 	resp, _ := app.Test(req)
 	if resp.StatusCode != 200 {
 		t.Errorf("want 200, got %d", resp.StatusCode)
+	}
+}
+
+// Regression: Update must also bind the full Spirit so the new version carries every config field
+// (the Mongo repo copies the whole struct into the new version).
+func TestSpiritHandler_Update_PersistsFullConfig(t *testing.T) {
+	repo := &stubSpiritRepository{spirit: &eywa.Spirit{ID: "s1", Name: "configured_spirit", Version: 2}}
+	weave := minimalTestWeave(t)
+	app := buildSpiritTestApp(repo, weave)
+
+	body, _ := json.Marshal(map[string]any{
+		"system_prompt": "Updated system prompt for tests.",
+		"model_config":  map[string]any{"provider": "openai", "model": "gpt-4"},
+		"type":          "orchestrator",
+		"orchestrator_config": map[string]any{
+			"mode":              "logic",
+			"logic_router_name": "intent_router",
+			"sub_spirits":       []string{"billing_spirit"},
+		},
+		"handoff_config": map[string]any{"allowed_targets": []string{"billing_spirit"}},
+	})
+	req := authedRequest("PUT", "/api/v1/spirits/configured_spirit", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.StatusCode != 200 {
+		t.Fatalf("want 200, got %d", resp.StatusCode)
+	}
+	if repo.updated == nil {
+		t.Fatal("repo did not receive the updated spirit")
+	}
+	if repo.updated.Type != eywa.SpiritTypeOrchestrator {
+		t.Errorf("type dropped on update: got %q", repo.updated.Type)
+	}
+	if repo.updated.OrchestratorConfig.Mode != "logic" || repo.updated.OrchestratorConfig.LogicRouterName != "intent_router" {
+		t.Errorf("orchestrator_config dropped on update: got %+v", repo.updated.OrchestratorConfig)
+	}
+	if len(repo.updated.HandoffConfig.AllowedTargets) != 1 {
+		t.Errorf("handoff_config dropped on update: got %+v", repo.updated.HandoffConfig)
 	}
 }
 

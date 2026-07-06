@@ -198,6 +198,48 @@ func TestSpiritRepository_Update_Success(t *testing.T) {
 	})
 }
 
+// The new version must carry every configured field (whole-struct copy) while server-owned audit
+// fields are zeroed regardless of what the caller supplied.
+func TestSpiritRepository_Update_CarriesConfigAndZeroesAudit(t *testing.T) {
+	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
+	mt.Run("carries config, zeroes audit", func(mt *mtest.T) {
+		mt.AddMockResponses(
+			mtest.CreateCursorResponse(0, "db.spirits", mtest.FirstBatch, spiritDoc("bot", 3, true)),
+			bson.D{{Key: "ok", Value: 1}, {Key: "n", Value: 1}, {Key: "nModified", Value: 1}},
+			bson.D{{Key: "ok", Value: 1}, {Key: "n", Value: 1}},
+		)
+
+		deletedAt := eywa.NowUTC()
+		incoming := &eywa.Spirit{
+			Type:          eywa.SpiritTypeOrchestrator,
+			LoreIDs:       []string{"kb"},
+			HandoffConfig: eywa.HandoffConfig{AllowedTargets: []string{"billing"}},
+			// Audit fields a client must never be able to forge on the new version.
+			UpdatedBy:     "attacker",
+			DeletedBy:     "attacker",
+			DeletedAt:     &deletedAt,
+			DeactivatedAt: &deletedAt,
+		}
+
+		updated, err := newSpiritRepo(mt).Update(context.Background(), "bot", incoming, "v4")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if updated.Version != 4 || !updated.IsActive || updated.IsDeleted {
+			t.Errorf("lifecycle not stamped: version=%d active=%v deleted=%v", updated.Version, updated.IsActive, updated.IsDeleted)
+		}
+		if updated.Type != eywa.SpiritTypeOrchestrator || len(updated.LoreIDs) != 1 ||
+			len(updated.HandoffConfig.AllowedTargets) != 1 {
+			t.Errorf("config dropped on new version: %+v", updated)
+		}
+		if updated.UpdatedBy != "" || updated.DeletedBy != "" || updated.DeletedAt != nil || updated.DeactivatedAt != nil {
+			t.Errorf("audit fields not zeroed: updatedBy=%q deletedBy=%q deletedAt=%v deactivatedAt=%v",
+				updated.UpdatedBy, updated.DeletedBy, updated.DeletedAt, updated.DeactivatedAt)
+		}
+	})
+}
+
 func TestSpiritRepository_ListActive_Success(t *testing.T) {
 	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
 	mt.Run("list", func(mt *mtest.T) {
