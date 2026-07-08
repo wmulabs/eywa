@@ -1,6 +1,6 @@
 module github.com/wmulabs/eywa/observability/langfuse
 
-go 1.26.4
+go 1.26.5
 
 require (
 	go.opentelemetry.io/otel v1.44.0

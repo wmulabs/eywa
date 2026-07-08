@@ -1,6 +1,6 @@
 module github.com/wmulabs/eywa/gcp/cloudtasks
 
-go 1.26.4
+go 1.26.5
 
 require (
 	cloud.google.com/go/cloudtasks v1.18.0

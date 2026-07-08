@@ -1,6 +1,6 @@
 module github.com/wmulabs/eywa/providers/weaviate
 
-go 1.26.4
+go 1.26.5
 
 require (
 	github.com/weaviate/weaviate v1.38.2
