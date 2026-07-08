@@ -1,6 +1,6 @@
 module github.com/wmulabs/eywa/providers/openai
 
-go 1.26.4
+go 1.26.5
 
 require (
 	github.com/openai/openai-go v1.12.0
