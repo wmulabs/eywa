@@ -5,7 +5,7 @@ go 1.26.4
 require (
 	github.com/alicebob/miniredis/v2 v2.38.0
 	github.com/go-redis/redis_rate/v10 v10.0.1
-	github.com/go-redsync/redsync/v4 v4.16.0
+	github.com/go-redsync/redsync/v4 v4.17.0
 	github.com/redis/go-redis/extra/redisotel/v9 v9.21.0
 	github.com/redis/go-redis/v9 v9.21.0
 	github.com/wmulabs/eywa v1.45.1
@@ -18,8 +18,6 @@ require (
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
-	github.com/hashicorp/errwrap v1.1.0 // indirect
-	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/nyaruka/phonenumbers v1.8.0 // indirect
 	github.com/redis/go-redis/extra/rediscmd/v9 v9.21.0 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
