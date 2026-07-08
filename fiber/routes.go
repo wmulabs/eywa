@@ -2,9 +2,11 @@ package fiber
 
 import (
 	"errors"
+	"strings"
 	"time"
 
 	fiberlib "github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/limiter"
 	eywa "github.com/wmulabs/eywa"
 	"github.com/wmulabs/eywa/fiber/middleware"
@@ -71,6 +73,12 @@ type RouteDeps struct {
 	// InternalMiddleware guards POST /internal/execute-event (the Keeper/Cloud Tasks callback), e.g.
 	// an OIDC verifier. The callback is registered openly without it — set it before exposing publicly.
 	InternalMiddleware []fiberlib.Handler
+
+	// CORSOrigins lists origins allowed to call the API from a browser (e.g. a management SPA on
+	// another origin: "https://cockpit.example.com"). Empty keeps CORS off — browsers block
+	// cross-origin calls, which is the safe default for server-to-server deployments. Bearer auth
+	// still applies; CORS only lets the browser send the request.
+	CORSOrigins []string
 }
 
 // RegisterRoutes mounts every Eywa HTTP route onto app. Open routes: GET /health, /ready and
@@ -83,6 +91,15 @@ type RouteDeps struct {
 // At least one auth validator (APIKeys, OperatorAuth, or TokenValidator) is required to expose any
 // protected route. Providing a protected repository without a validator fails closed with an error.
 func RegisterRoutes(app *fiberlib.App, weave *eywa.Weave, deps RouteDeps) error {
+	// Registered before any route so preflights (OPTIONS) and every response get the CORS headers.
+	if len(deps.CORSOrigins) > 0 {
+		app.Use(cors.New(cors.Config{
+			AllowOrigins: strings.Join(deps.CORSOrigins, ","),
+			AllowMethods: "GET,POST,PUT,DELETE,OPTIONS",
+			AllowHeaders: "Authorization,Content-Type,X-Change-Log,X-User-ID",
+		}))
+	}
+
 	registerOpenRoutes(app, weave, deps)
 
 	validators := buildValidatorChain(deps)
