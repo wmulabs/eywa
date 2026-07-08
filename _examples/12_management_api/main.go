@@ -74,12 +74,22 @@ func main() {
 	vigilRepo := eywaredis.NewVigilRepository(redisConn.GetClient(), serviceName, environment)
 	riteRepo := eywamongo.NewRiteRepository(db)
 	operatorRepo := eywamongo.NewOperatorRepository(db)
+	imprintRepo := eywamongo.NewImprintRepository(db)
+	appTokenRepo := eywamongo.NewAppTokenRepository(db)
 	bond := eywaredis.NewBondManager(redisConn.GetClient())
+	pubSub := eywaredis.NewRedisPubSub(redisConn.GetClient())
 
 	// OperatorAuth: built-in operator management + JWT issuer.
 	// JWTSecret is used to sign operator tokens.
 	jwtSecret := getEnv("JWT_SECRET", "dev-secret-change-in-production")
 	operatorAuth := eywa.NewOperatorAuth(operatorRepo, []byte(jwtSecret))
+
+	// Seed the first admin operator so a fresh install can log in (creating operators via the API
+	// requires an admin JWT — chicken and egg). Idempotent: skipped if the email already exists.
+	seedAdminOperator(ctx, operatorRepo,
+		getEnv("ADMIN_EMAIL", "admin@eywa.local"),
+		getEnv("ADMIN_PASSWORD", "change-me-now"),
+	)
 
 	// WeaveConfig: hot-reload event configurations from MongoDB.
 	// LinkRepository stores event→spirit configurations; ConfigCache caches them in memory.
@@ -165,6 +175,18 @@ func main() {
 
 		// Approval Flows
 		RiteRepo: riteRepo,
+
+		// Long-term memory management
+		ImprintRepo: imprintRepo,
+
+		// Webhook auth tokens
+		AppTokenRepo: appTokenRepo,
+
+		// Real-time SSE (rites/vigil/echo streams)
+		PubSub: pubSub,
+
+		// Browser SPA (eywa-cockpit) runs on another origin — allow it.
+		CORSOrigins: []string{getEnv("CORS_ORIGIN", "http://localhost:3000")},
 	}
 
 	// One registrar: open event/health routes + token-protected management API.
@@ -196,6 +218,31 @@ func main() {
 	<-quit
 	fmt.Println("\nShutting down...")
 	app.Shutdown() //nolint:errcheck
+}
+
+func seedAdminOperator(ctx context.Context, repo eywa.OperatorRepository, email, password string) {
+	if _, err := repo.FindByEmail(ctx, email); err == nil {
+		return // already seeded
+	}
+	hash, err := eywa.HashPassword(password)
+	if err != nil {
+		log.Printf("seed admin: hash password: %v", err)
+		return
+	}
+	op := &eywa.Operator{
+		ID:           fmt.Sprintf("op_%d", time.Now().UnixNano()),
+		Name:         "Admin",
+		Email:        email,
+		Role:         "admin",
+		PasswordHash: hash,
+		IsActive:     true,
+		CreatedAt:    time.Now().UTC(),
+	}
+	if err := repo.Create(ctx, op); err != nil {
+		log.Printf("seed admin: %v", err)
+		return
+	}
+	fmt.Printf("Seeded admin operator: %s\n", email)
 }
 
 func mustEnv(key string) string {
