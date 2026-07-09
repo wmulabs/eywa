@@ -141,3 +141,33 @@ func TestLoreStore_Delete_Error(t *testing.T) {
 		}
 	})
 }
+
+func TestLoreStore_ListChunks_Success(t *testing.T) {
+	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
+	mt.Run("success", func(mt *mtest.T) {
+		count := mtest.CreateCursorResponse(0, "db.c", mtest.FirstBatch, bson.D{{Key: "n", Value: int32(2)}})
+		chunkA := bson.D{{Key: "_id", Value: "c1"}, {Key: "lore_id", Value: "lore-a"}, {Key: "content", Value: "alpha"}}
+		chunkB := bson.D{{Key: "_id", Value: "c2"}, {Key: "lore_id", Value: "lore-a"}, {Key: "content", Value: "beta"}}
+		find := mtest.CreateCursorResponse(0, "db.c", mtest.FirstBatch, chunkA, chunkB)
+		mt.AddMockResponses(count, find)
+
+		chunks, total, err := newLoreStore(mt).ListChunks(context.Background(), "lore-a", 50, 0)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if total != 2 || len(chunks) != 2 || chunks[0].Content != "alpha" {
+			t.Errorf("unexpected result: total=%d chunks=%+v", total, chunks)
+		}
+	})
+}
+
+func TestLoreStore_ListChunks_CountError(t *testing.T) {
+	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
+	mt.Run("count error", func(mt *mtest.T) {
+		mt.AddMockResponses(mtest.CreateCommandErrorResponse(mtest.CommandError{Code: 10, Message: "fail"}))
+
+		if _, _, err := newLoreStore(mt).ListChunks(context.Background(), "lore-a", 50, 0); err == nil {
+			t.Error("expected error")
+		}
+	})
+}

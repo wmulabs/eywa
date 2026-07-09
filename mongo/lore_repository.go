@@ -110,6 +110,20 @@ func (r *LoreRepository) GetByIDs(ctx context.Context, ids []string) ([]eywa.Lor
 	return lores, nil
 }
 
+func (r *LoreRepository) List(ctx context.Context) ([]eywa.Lore, error) {
+	cursor, err := r.collection.Find(ctx, bson.M{})
+	if err != nil {
+		return nil, fmt.Errorf("list lores: %w", err)
+	}
+	defer cursor.Close(ctx) //nolint:errcheck
+
+	var lores []eywa.Lore
+	if err := cursor.All(ctx, &lores); err != nil {
+		return nil, fmt.Errorf("decode lores: %w", err)
+	}
+	return lores, nil
+}
+
 func (r *LoreRepository) Update(ctx context.Context, lore eywa.Lore) error {
 	lore.UpdatedAt = time.Now().UTC()
 	_, err := r.collection.ReplaceOne(ctx, bson.M{"_id": lore.ID}, lore)

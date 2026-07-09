@@ -126,3 +126,58 @@ func TestLedgerRepository_SetBudget_Success(t *testing.T) {
 		}
 	})
 }
+
+func TestLedgerRepository_ListMonthUsage_Success(t *testing.T) {
+	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
+	mt.Run("success", func(mt *mtest.T) {
+		docA := bson.D{{Key: "spirit_name", Value: "bot-a"}, {Key: "month", Value: "2026-07"}, {Key: "tokens_used", Value: int64(500)}}
+		docB := bson.D{{Key: "spirit_name", Value: "bot-b"}, {Key: "month", Value: "2026-07"}, {Key: "tokens_used", Value: int64(200)}}
+		mt.AddMockResponses(mtest.CreateCursorResponse(0, "db.c", mtest.FirstBatch, docA, docB))
+
+		entries, err := newLedgerRepo(mt).ListMonthUsage(context.Background(), "2026-07")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(entries) != 2 || entries[0].SpiritName != "bot-a" {
+			t.Errorf("unexpected entries: %+v", entries)
+		}
+	})
+}
+
+func TestLedgerRepository_ListMonthUsage_Error(t *testing.T) {
+	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
+	mt.Run("error", func(mt *mtest.T) {
+		mt.AddMockResponses(mtest.CreateCommandErrorResponse(mtest.CommandError{Code: 10, Message: "fail"}))
+
+		if _, err := newLedgerRepo(mt).ListMonthUsage(context.Background(), "2026-07"); err == nil {
+			t.Error("expected error")
+		}
+	})
+}
+
+func TestLedgerRepository_ListBudgets_Success(t *testing.T) {
+	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
+	mt.Run("success", func(mt *mtest.T) {
+		doc := bson.D{{Key: "spirit_name", Value: "bot"}, {Key: "monthly_token_limit", Value: int64(1000)}, {Key: "on_exceed", Value: "alert"}}
+		mt.AddMockResponses(mtest.CreateCursorResponse(0, "db.c", mtest.FirstBatch, doc))
+
+		budgets, err := newLedgerRepo(mt).ListBudgets(context.Background())
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(budgets) != 1 || budgets[0].MonthlyTokenLimit != 1000 {
+			t.Errorf("unexpected budgets: %+v", budgets)
+		}
+	})
+}
+
+func TestLedgerRepository_ListBudgets_Error(t *testing.T) {
+	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
+	mt.Run("error", func(mt *mtest.T) {
+		mt.AddMockResponses(mtest.CreateCommandErrorResponse(mtest.CommandError{Code: 10, Message: "fail"}))
+
+		if _, err := newLedgerRepo(mt).ListBudgets(context.Background()); err == nil {
+			t.Error("expected error")
+		}
+	})
+}

@@ -231,3 +231,31 @@ func TestLoreRepository_Delete_Error(t *testing.T) {
 		}
 	})
 }
+
+func TestLoreRepository_List_Success(t *testing.T) {
+	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
+	mt.Run("success", func(mt *mtest.T) {
+		docA := bson.D{{Key: "_id", Value: "lore-a"}, {Key: "name", Value: "faq"}}
+		docB := bson.D{{Key: "_id", Value: "lore-b"}, {Key: "name", Value: "policies"}}
+		mt.AddMockResponses(mtest.CreateCursorResponse(0, "db.c", mtest.FirstBatch, docA, docB))
+
+		lores, err := newLoreRepo(mt).List(context.Background())
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(lores) != 2 || lores[0].Name != "faq" {
+			t.Errorf("unexpected lores: %+v", lores)
+		}
+	})
+}
+
+func TestLoreRepository_List_Error(t *testing.T) {
+	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
+	mt.Run("error", func(mt *mtest.T) {
+		mt.AddMockResponses(mtest.CreateCommandErrorResponse(mtest.CommandError{Code: 10, Message: "fail"}))
+
+		if _, err := newLoreRepo(mt).List(context.Background()); err == nil {
+			t.Error("expected error")
+		}
+	})
+}

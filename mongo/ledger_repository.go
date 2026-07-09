@@ -87,6 +87,20 @@ func (r *LedgerRepository) GetMonthUsage(ctx context.Context, spiritName string,
 	return entry, nil
 }
 
+func (r *LedgerRepository) ListMonthUsage(ctx context.Context, month string) ([]eywa.LedgerEntry, error) {
+	cursor, err := r.entries.Find(ctx, bson.M{"month": month})
+	if err != nil {
+		return nil, fmt.Errorf("list ledger entries: %w", err)
+	}
+	defer cursor.Close(ctx) //nolint:errcheck
+
+	var entries []eywa.LedgerEntry
+	if err := cursor.All(ctx, &entries); err != nil {
+		return nil, fmt.Errorf("decode ledger entries: %w", err)
+	}
+	return entries, nil
+}
+
 func (r *LedgerRepository) GetBudget(ctx context.Context, spiritName string) (eywa.TokenBudget, error) {
 	filter := bson.M{"spirit_name": spiritName}
 
@@ -112,4 +126,18 @@ func (r *LedgerRepository) SetBudget(ctx context.Context, budget eywa.TokenBudge
 		return fmt.Errorf("upsert ledger entry: %w", err)
 	}
 	return nil
+}
+
+func (r *LedgerRepository) ListBudgets(ctx context.Context) ([]eywa.TokenBudget, error) {
+	cursor, err := r.budgets.Find(ctx, bson.M{})
+	if err != nil {
+		return nil, fmt.Errorf("list ledger budgets: %w", err)
+	}
+	defer cursor.Close(ctx) //nolint:errcheck
+
+	var budgets []eywa.TokenBudget
+	if err := cursor.All(ctx, &budgets); err != nil {
+		return nil, fmt.Errorf("decode ledger budgets: %w", err)
+	}
+	return budgets, nil
 }

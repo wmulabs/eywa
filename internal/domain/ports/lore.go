@@ -12,6 +12,7 @@ type LoreRepository interface {
 	GetByName(ctx context.Context, name string) (entities.Lore, error)
 	GetBySpiritID(ctx context.Context, spiritID string) ([]entities.Lore, error)
 	GetByIDs(ctx context.Context, ids []string) ([]entities.Lore, error)
+	List(ctx context.Context) ([]entities.Lore, error)
 	Update(ctx context.Context, lore entities.Lore) error
 	Delete(ctx context.Context, id string) error
 }
