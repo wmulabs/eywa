@@ -75,6 +75,9 @@ func main() {
 	riteRepo := eywamongo.NewRiteRepository(db)
 	operatorRepo := eywamongo.NewOperatorRepository(db)
 	imprintRepo := eywamongo.NewImprintRepository(db)
+	ledgerRepo := eywamongo.NewLedgerRepository(db)
+	loreRepo := eywamongo.NewLoreRepository(db)
+	loreStore := eywamongo.NewLoreStore(db)
 	appTokenRepo := eywamongo.NewAppTokenRepository(db)
 	bond := eywaredis.NewBondManager(redisConn.GetClient())
 	pubSub := eywaredis.NewRedisPubSub(redisConn.GetClient())
@@ -178,6 +181,14 @@ func main() {
 
 		// Long-term memory management
 		ImprintRepo: imprintRepo,
+
+		// Cost/usage views + budget management
+		LedgerRepo: ledgerRepo,
+
+		// Lore management. Document ingest and the query tester additionally require a LoreEmbedder
+		// on the Weave (WeaveBuilder.WithLoreEmbedder) — wire one before using those two endpoints.
+		LoreRepo:  loreRepo,
+		LoreStore: loreStore,
 
 		// Webhook auth tokens
 		AppTokenRepo: appTokenRepo,
