@@ -167,6 +167,15 @@ type RouteDeps struct {
 	// Imprint management — GET/DELETE /api/v1/imprints.
 	ImprintRepo eywa.ImprintRepository
 
+	// LedgerRepo enables cost/usage views and budget management at /api/v1/ledger and /api/v1/budgets.
+	LedgerRepo eywa.LedgerRepository
+
+	// LoreRepo enables Lore management at /api/v1/lores. LoreStore additionally enables vector cleanup
+	// on delete and chunk listing (when the store supports it); document ingest and the query tester
+	// are mounted when weave is non-nil (they delegate to Weave.IngestLore / Weave.SearchLore).
+	LoreRepo  eywa.LoreRepository
+	LoreStore eywa.LoreStore
+
 	// InternalMiddleware guards POST /internal/execute-event (the Keeper/Cloud Tasks callback), e.g.
 	// an OIDC verifier. The callback is registered openly without it — set it before exposing publicly.
 	InternalMiddleware []fiberlib.Handler

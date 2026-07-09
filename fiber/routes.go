@@ -70,6 +70,15 @@ type RouteDeps struct {
 	// Imprint management — GET/DELETE /api/v1/imprints.
 	ImprintRepo eywa.ImprintRepository
 
+	// LedgerRepo enables cost/usage views and budget management at /api/v1/ledger and /api/v1/budgets.
+	LedgerRepo eywa.LedgerRepository
+
+	// LoreRepo enables Lore management at /api/v1/lores. LoreStore additionally enables vector cleanup
+	// on delete and chunk listing (when the store supports it); document ingest and the query tester
+	// are mounted when weave is non-nil (they delegate to Weave.IngestLore / Weave.SearchLore).
+	LoreRepo  eywa.LoreRepository
+	LoreStore eywa.LoreStore
+
 	// InternalMiddleware guards POST /internal/execute-event (the Keeper/Cloud Tasks callback), e.g.
 	// an OIDC verifier. The callback is registered openly without it — set it before exposing publicly.
 	InternalMiddleware []fiberlib.Handler
@@ -282,6 +291,37 @@ func registerProtectedRoutes(api fiberlib.Router, weave *eywa.Weave, deps RouteD
 		imprints.Delete("/:id", ih.delete)
 	}
 
+	if deps.LedgerRepo != nil {
+		lh := newLedgerHandler(deps.LedgerRepo)
+		api.Get("/ledger", lh.listMonthUsage)
+		budgets := api.Group("/budgets")
+		budgets.Get("", lh.listBudgets)
+		budgets.Get("/:spiritName", lh.getBudget)
+		budgets.Put("/:spiritName", lh.setBudget)
+	}
+
+	if deps.LoreRepo != nil {
+		// Ingest and query delegate to the Weave (embedding); mounted only when it is wired.
+		var ingestor loreIngestor
+		var searcher loreSearcher
+		if weave != nil {
+			ingestor = weave
+			searcher = weave
+		}
+		lrh := newLoreHandler(deps.LoreRepo, deps.LoreStore, ingestor, searcher)
+		lores := api.Group("/lores")
+		lores.Get("", lrh.list)
+		lores.Post("", lrh.create)
+		lores.Get("/:id", lrh.getByID)
+		lores.Put("/:id", lrh.update)
+		lores.Delete("/:id", lrh.delete)
+		lores.Get("/:id/chunks", lrh.listChunks)
+		if weave != nil {
+			lores.Post("/:id/documents", lrh.ingestDocument)
+			lores.Post("/:id/query", lrh.query)
+		}
+	}
+
 	if deps.PubSub != nil {
 		sse := newSSEHandler(deps.PubSub, deps.RiteRepo, deps.VigilRepo)
 		sseGroup := api.Group("/sse")
@@ -335,5 +375,7 @@ func hasProtectedDeps(deps RouteDeps) bool {
 		deps.VigilRepo != nil ||
 		deps.RiteRepo != nil ||
 		deps.ImprintRepo != nil ||
+		deps.LedgerRepo != nil ||
+		deps.LoreRepo != nil ||
 		deps.PubSub != nil
 }
