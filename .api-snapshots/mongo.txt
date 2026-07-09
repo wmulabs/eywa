@@ -175,6 +175,10 @@ func (r *LedgerRepository) GetMonthUsage(ctx context.Context, spiritName string,
 
 func (r *LedgerRepository) IncrementUsage(ctx context.Context, spiritName string, tokens int64, costUSD float64) error
 
+func (r *LedgerRepository) ListBudgets(ctx context.Context) ([]eywa.TokenBudget, error)
+
+func (r *LedgerRepository) ListMonthUsage(ctx context.Context, month string) ([]eywa.LedgerEntry, error)
+
 func (r *LedgerRepository) SetBudget(ctx context.Context, budget eywa.TokenBudget) error
 
 type LinkRepository struct {
@@ -207,6 +211,8 @@ func (r *LoreRepository) GetByName(ctx context.Context, name string) (eywa.Lore,
 
 func (r *LoreRepository) GetBySpiritID(ctx context.Context, spiritID string) ([]eywa.Lore, error)
 
+func (r *LoreRepository) List(ctx context.Context) ([]eywa.Lore, error)
+
 func (r *LoreRepository) Update(ctx context.Context, lore eywa.Lore) error
 
 type LoreStore struct {
@@ -217,6 +223,10 @@ type LoreStore struct {
     "lore_embedding_index" on the embedding field.
 
 func (s *LoreStore) Delete(ctx context.Context, loreID string) error
+
+func (s *LoreStore) ListChunks(ctx context.Context, loreID string, limit, offset int) ([]eywa.LoreChunk, int64, error)
+    ListChunks pages stored chunks for management screens. Embeddings are
+    projected out — they are large and never serialized over the management API.
 
 func (s *LoreStore) Search(ctx context.Context, loreID string, queryVec []float32, topK int, minScore float64) ([]eywa.LoreChunk, error)
 

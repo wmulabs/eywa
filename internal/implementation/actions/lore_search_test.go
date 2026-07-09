@@ -36,6 +36,9 @@ func (r *stubLoreRepo) GetBySpiritID(context.Context, string) ([]entities.Lore, 
 func (r *stubLoreRepo) GetByIDs(context.Context, []string) ([]entities.Lore, error) {
 	panic("not implemented")
 }
+func (r *stubLoreRepo) List(context.Context) ([]entities.Lore, error) {
+	return nil, nil
+}
 
 func (r *stubLoreRepo) Update(context.Context, entities.Lore) error {
 	panic("not implemented")

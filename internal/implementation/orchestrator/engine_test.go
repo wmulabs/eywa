@@ -575,6 +575,10 @@ func (s *stubErrLoreRepo) GetBySpiritID(_ context.Context, _ string) ([]entities
 func (s *stubErrLoreRepo) GetByIDs(_ context.Context, _ []string) ([]entities.Lore, error) {
 	return nil, s.err
 }
+func (s *stubErrLoreRepo) List(_ context.Context) ([]entities.Lore, error) {
+	return nil, nil
+}
+
 func (s *stubErrLoreRepo) Update(_ context.Context, _ entities.Lore) error { return s.err }
 func (s *stubErrLoreRepo) Delete(_ context.Context, _ string) error        { return s.err }
 
@@ -614,6 +618,10 @@ func (s *stubLoreRepoWithData) GetBySpiritID(_ context.Context, _ string) ([]ent
 func (s *stubLoreRepoWithData) GetByIDs(_ context.Context, _ []string) ([]entities.Lore, error) {
 	return nil, nil
 }
+func (s *stubLoreRepoWithData) List(_ context.Context) ([]entities.Lore, error) {
+	return nil, nil
+}
+
 func (s *stubLoreRepoWithData) Update(_ context.Context, _ entities.Lore) error { return nil }
 func (s *stubLoreRepoWithData) Delete(_ context.Context, _ string) error        { return nil }
 
