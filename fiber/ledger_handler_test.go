@@ -155,3 +155,51 @@ func TestLedgerHandler_RequiresAuth(t *testing.T) {
 		}
 	}
 }
+
+func TestLedgerHandler_RepoErrors_Return500(t *testing.T) {
+	repo := &stubLedgerRepository{err: errInternal}
+	app := buildLedgerTestApp(t, repo)
+
+	for _, target := range []string{"/api/v1/ledger", "/api/v1/budgets", "/api/v1/budgets/bot"} {
+		resp, _ := app.Test(authedRequest("GET", target, nil))
+		if resp.StatusCode != 500 {
+			t.Errorf("GET %s: want 500, got %d", target, resp.StatusCode)
+		}
+	}
+}
+
+func TestLedgerHandler_SetBudget_InvalidJSON_Returns400(t *testing.T) {
+	app := buildLedgerTestApp(t, &stubLedgerRepository{})
+
+	req := authedRequest("PUT", "/api/v1/budgets/bot", bytes.NewReader([]byte("not-json")))
+	req.Header.Set("Content-Type", "application/json")
+	resp, _ := app.Test(req)
+	if resp.StatusCode != 400 {
+		t.Errorf("want 400, got %d", resp.StatusCode)
+	}
+}
+
+func TestLedgerHandler_SetBudget_RepoError_Returns500(t *testing.T) {
+	app := buildLedgerTestApp(t, &stubLedgerRepository{err: errInternal})
+
+	b, _ := json.Marshal(map[string]any{"monthly_token_limit": 1000, "on_exceed": "alert"})
+	req := authedRequest("PUT", "/api/v1/budgets/bot", bytes.NewReader(b))
+	req.Header.Set("Content-Type", "application/json")
+	resp, _ := app.Test(req)
+	if resp.StatusCode != 500 {
+		t.Errorf("want 500, got %d", resp.StatusCode)
+	}
+}
+
+func TestLedgerHandler_EmptyCollections_ReturnEmptyArrays(t *testing.T) {
+	app := buildLedgerTestApp(t, &stubLedgerRepository{}) // nil entries/budgets
+
+	resp, _ := app.Test(authedRequest("GET", "/api/v1/ledger", nil))
+	if resp.StatusCode != 200 {
+		t.Errorf("ledger: want 200, got %d", resp.StatusCode)
+	}
+	resp, _ = app.Test(authedRequest("GET", "/api/v1/budgets", nil))
+	if resp.StatusCode != 200 {
+		t.Errorf("budgets: want 200, got %d", resp.StatusCode)
+	}
+}

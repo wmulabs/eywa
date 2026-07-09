@@ -171,3 +171,28 @@ func TestLoreStore_ListChunks_CountError(t *testing.T) {
 		}
 	})
 }
+
+func TestLoreStore_ListChunks_FindError(t *testing.T) {
+	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
+	mt.Run("find error", func(mt *mtest.T) {
+		count := mtest.CreateCursorResponse(0, "db.c", mtest.FirstBatch, bson.D{{Key: "n", Value: int32(1)}})
+		mt.AddMockResponses(count, mtest.CreateCommandErrorResponse(mtest.CommandError{Code: 10, Message: "fail"}))
+
+		if _, _, err := newLoreStore(mt).ListChunks(context.Background(), "lore-a", 50, 0); err == nil {
+			t.Error("expected error")
+		}
+	})
+}
+
+func TestLoreStore_ListChunks_DecodeError(t *testing.T) {
+	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
+	mt.Run("decode error", func(mt *mtest.T) {
+		count := mtest.CreateCursorResponse(0, "db.c", mtest.FirstBatch, bson.D{{Key: "n", Value: int32(1)}})
+		bad := bson.D{{Key: "_id", Value: "c1"}, {Key: "content", Value: int32(42)}}
+		mt.AddMockResponses(count, mtest.CreateCursorResponse(0, "db.c", mtest.FirstBatch, bad))
+
+		if _, _, err := newLoreStore(mt).ListChunks(context.Background(), "lore-a", 50, 0); err == nil {
+			t.Error("expected decode error")
+		}
+	})
+}

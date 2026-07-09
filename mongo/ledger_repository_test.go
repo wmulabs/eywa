@@ -181,3 +181,28 @@ func TestLedgerRepository_ListBudgets_Error(t *testing.T) {
 		}
 	})
 }
+
+func TestLedgerRepository_ListMonthUsage_DecodeError(t *testing.T) {
+	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
+	mt.Run("decode error", func(mt *mtest.T) {
+		// tokens_used with a non-numeric type forces cursor.All to fail decoding.
+		bad := bson.D{{Key: "spirit_name", Value: "bot"}, {Key: "tokens_used", Value: "not-a-number"}}
+		mt.AddMockResponses(mtest.CreateCursorResponse(0, "db.c", mtest.FirstBatch, bad))
+
+		if _, err := newLedgerRepo(mt).ListMonthUsage(context.Background(), "2026-07"); err == nil {
+			t.Error("expected decode error")
+		}
+	})
+}
+
+func TestLedgerRepository_ListBudgets_DecodeError(t *testing.T) {
+	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
+	mt.Run("decode error", func(mt *mtest.T) {
+		bad := bson.D{{Key: "spirit_name", Value: "bot"}, {Key: "monthly_token_limit", Value: "not-a-number"}}
+		mt.AddMockResponses(mtest.CreateCursorResponse(0, "db.c", mtest.FirstBatch, bad))
+
+		if _, err := newLedgerRepo(mt).ListBudgets(context.Background()); err == nil {
+			t.Error("expected decode error")
+		}
+	})
+}

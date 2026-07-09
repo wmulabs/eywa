@@ -315,3 +315,134 @@ func TestLoreRoutes_RequireAuth(t *testing.T) {
 		t.Errorf("want 200 with token, got %d", resp.StatusCode)
 	}
 }
+
+func TestLoreHandler_Update_Returns200(t *testing.T) {
+	app := buildLoreTestApp(t, newLoreHandler(&stubLoreRepository{}, nil, nil, nil))
+
+	b, _ := json.Marshal(map[string]any{"name": "faq", "chunk_size": 800})
+	req := authedRequest("PUT", "/api/v1/lores/l1", bytes.NewReader(b))
+	req.Header.Set("Content-Type", "application/json")
+	resp, _ := app.Test(req)
+	if resp.StatusCode != 200 {
+		t.Errorf("want 200, got %d", resp.StatusCode)
+	}
+}
+
+func TestLoreHandler_Update_NotFound_Returns404(t *testing.T) {
+	app := buildLoreTestApp(t, newLoreHandler(&stubLoreRepository{err: eywa.ErrNotFound}, nil, nil, nil))
+
+	b, _ := json.Marshal(map[string]any{"name": "faq"})
+	req := authedRequest("PUT", "/api/v1/lores/ghost", bytes.NewReader(b))
+	req.Header.Set("Content-Type", "application/json")
+	resp, _ := app.Test(req)
+	if resp.StatusCode != 404 {
+		t.Errorf("want 404, got %d", resp.StatusCode)
+	}
+}
+
+func TestLoreHandler_InvalidJSON_Returns400(t *testing.T) {
+	h := newLoreHandler(&stubLoreRepository{}, nil, &stubIngestor{}, &stubSearcher{})
+	app := buildLoreTestApp(t, h)
+
+	for _, tc := range []struct{ method, target string }{
+		{"POST", "/api/v1/lores"},
+		{"PUT", "/api/v1/lores/l1"},
+		{"POST", "/api/v1/lores/l1/documents"},
+		{"POST", "/api/v1/lores/l1/query"},
+	} {
+		req := authedRequest(tc.method, tc.target, bytes.NewReader([]byte("not-json")))
+		req.Header.Set("Content-Type", "application/json")
+		resp, _ := app.Test(req)
+		if resp.StatusCode != 400 {
+			t.Errorf("%s %s: want 400, got %d", tc.method, tc.target, resp.StatusCode)
+		}
+	}
+}
+
+func TestLoreHandler_RepoErrors_Return500(t *testing.T) {
+	broken := &stubLoreRepository{err: errors.New("db down")}
+	store := &stubListingStore{}
+	store.err = errors.New("store down")
+	h := newLoreHandler(broken, store, nil, nil)
+	app := buildLoreTestApp(t, h)
+
+	for _, tc := range []struct{ method, target string }{
+		{"GET", "/api/v1/lores"},
+		{"GET", "/api/v1/lores/l1"},
+		{"DELETE", "/api/v1/lores/l1"},
+		{"GET", "/api/v1/lores/l1/chunks"},
+	} {
+		resp, _ := app.Test(authedRequest(tc.method, tc.target, nil))
+		if resp.StatusCode != 500 {
+			t.Errorf("%s %s: want 500, got %d", tc.method, tc.target, resp.StatusCode)
+		}
+	}
+}
+
+func TestLoreHandler_Create_RepoError_Returns500(t *testing.T) {
+	app := buildLoreTestApp(t, newLoreHandler(&stubLoreRepository{err: errors.New("db down")}, nil, nil, nil))
+
+	b, _ := json.Marshal(map[string]any{"name": "faq"})
+	req := authedRequest("POST", "/api/v1/lores", bytes.NewReader(b))
+	req.Header.Set("Content-Type", "application/json")
+	resp, _ := app.Test(req)
+	if resp.StatusCode != 500 {
+		t.Errorf("want 500, got %d", resp.StatusCode)
+	}
+}
+
+func TestLoreHandler_Query_EngineFailure_Returns502(t *testing.T) {
+	app := buildLoreTestApp(t, newLoreHandler(&stubLoreRepository{}, nil, nil, &stubSearcher{err: errors.New("embedder down")}))
+
+	b, _ := json.Marshal(map[string]any{"query": "algo"})
+	req := authedRequest("POST", "/api/v1/lores/l1/query", bytes.NewReader(b))
+	req.Header.Set("Content-Type", "application/json")
+	resp, _ := app.Test(req)
+	if resp.StatusCode != 502 {
+		t.Errorf("want 502, got %d", resp.StatusCode)
+	}
+}
+
+func TestLoreHandler_GetByID_Found_Returns200(t *testing.T) {
+	repo := &stubLoreRepository{lore: eywa.Lore{ID: "l1", Name: "faq"}}
+	app := buildLoreTestApp(t, newLoreHandler(repo, nil, nil, nil))
+
+	resp, _ := app.Test(authedRequest("GET", "/api/v1/lores/l1", nil))
+	if resp.StatusCode != 200 {
+		t.Errorf("want 200, got %d", resp.StatusCode)
+	}
+}
+
+func TestLoreHandler_Update_RepoError_Returns500(t *testing.T) {
+	app := buildLoreTestApp(t, newLoreHandler(&stubLoreRepository{err: errors.New("db down")}, nil, nil, nil))
+
+	b, _ := json.Marshal(map[string]any{"name": "faq"})
+	req := authedRequest("PUT", "/api/v1/lores/l1", bytes.NewReader(b))
+	req.Header.Set("Content-Type", "application/json")
+	resp, _ := app.Test(req)
+	if resp.StatusCode != 500 {
+		t.Errorf("want 500, got %d", resp.StatusCode)
+	}
+}
+
+func TestLoreHandler_EmptyCollections_ReturnEmptyArrays(t *testing.T) {
+	store := &stubListingStore{}                                            // nil chunks, zero total
+	h := newLoreHandler(&stubLoreRepository{}, store, nil, &stubSearcher{}) // nil lores/chunks
+	app := buildLoreTestApp(t, h)
+
+	resp, _ := app.Test(authedRequest("GET", "/api/v1/lores", nil))
+	if resp.StatusCode != 200 {
+		t.Errorf("list: want 200, got %d", resp.StatusCode)
+	}
+	resp, _ = app.Test(authedRequest("GET", "/api/v1/lores/l1/chunks", nil))
+	if resp.StatusCode != 200 {
+		t.Errorf("chunks: want 200, got %d", resp.StatusCode)
+	}
+	b, _ := json.Marshal(map[string]any{"query": "algo"})
+	req := authedRequest("POST", "/api/v1/lores/l1/query", bytes.NewReader(b))
+	req.Header.Set("Content-Type", "application/json")
+	resp, _ = app.Test(req)
+	if resp.StatusCode != 200 {
+		t.Errorf("query: want 200, got %d", resp.StatusCode)
+	}
+}

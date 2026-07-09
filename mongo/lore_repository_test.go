@@ -259,3 +259,15 @@ func TestLoreRepository_List_Error(t *testing.T) {
 		}
 	})
 }
+
+func TestLoreRepository_List_DecodeError(t *testing.T) {
+	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
+	mt.Run("decode error", func(mt *mtest.T) {
+		bad := bson.D{{Key: "_id", Value: "l1"}, {Key: "chunk_size", Value: "not-a-number"}}
+		mt.AddMockResponses(mtest.CreateCursorResponse(0, "db.c", mtest.FirstBatch, bad))
+
+		if _, err := newLoreRepo(mt).List(context.Background()); err == nil {
+			t.Error("expected decode error")
+		}
+	})
+}
