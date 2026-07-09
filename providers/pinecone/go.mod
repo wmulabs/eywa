@@ -4,7 +4,7 @@ go 1.26.5
 
 require (
 	github.com/pinecone-io/go-pinecone/v3 v3.1.0
-	github.com/wmulabs/eywa v1.45.1
+	github.com/wmulabs/eywa v1.46.0
 	google.golang.org/protobuf v1.36.11
 )
 

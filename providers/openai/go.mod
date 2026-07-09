@@ -4,7 +4,7 @@ go 1.26.5
 
 require (
 	github.com/openai/openai-go v1.12.0
-	github.com/wmulabs/eywa v1.45.1
+	github.com/wmulabs/eywa v1.46.0
 )
 
 require (

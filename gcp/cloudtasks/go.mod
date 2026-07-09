@@ -5,7 +5,7 @@ go 1.26.5
 require (
 	cloud.google.com/go/cloudtasks v1.18.0
 	github.com/gofiber/fiber/v2 v2.52.14
-	github.com/wmulabs/eywa v1.45.1
+	github.com/wmulabs/eywa v1.46.0
 	google.golang.org/api v0.287.1
 	google.golang.org/grpc v1.82.0
 	google.golang.org/protobuf v1.36.11
