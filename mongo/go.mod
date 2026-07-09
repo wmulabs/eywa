@@ -3,7 +3,7 @@ module github.com/wmulabs/eywa/mongo
 go 1.26.5
 
 require (
-	github.com/wmulabs/eywa v1.46.0
+	github.com/wmulabs/eywa v1.47.0
 	go.mongodb.org/mongo-driver v1.17.9
 	go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/mongo/otelmongo v0.69.0
 	go.opentelemetry.io/otel/trace v1.44.0

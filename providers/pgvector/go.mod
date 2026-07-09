@@ -5,7 +5,7 @@ go 1.26.5
 require (
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/pashagolub/pgxmock/v4 v4.9.0
-	github.com/wmulabs/eywa v1.46.0
+	github.com/wmulabs/eywa v1.47.0
 )
 
 require (
