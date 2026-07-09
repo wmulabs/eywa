@@ -7,6 +7,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.uber.org/zap"
 
 	eywa "github.com/wmulabs/eywa"
@@ -97,4 +98,33 @@ func (s *LoreStore) Delete(ctx context.Context, loreID string) error {
 		return fmt.Errorf("delete lore chunks: %w", err)
 	}
 	return nil
+}
+
+// ListChunks pages stored chunks for management screens. Embeddings are projected out — they are
+// large and never serialized over the management API.
+func (s *LoreStore) ListChunks(ctx context.Context, loreID string, limit, offset int) ([]eywa.LoreChunk, int64, error) {
+	filter := bson.M{"lore_id": loreID}
+
+	total, err := s.collection.CountDocuments(ctx, filter)
+	if err != nil {
+		return nil, 0, fmt.Errorf("count lore chunks: %w", err)
+	}
+
+	opts := options.Find().
+		SetProjection(bson.M{"embedding": 0}).
+		SetSort(bson.D{{Key: "_id", Value: 1}}).
+		SetSkip(int64(offset)).
+		SetLimit(int64(limit))
+
+	cursor, err := s.collection.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list lore chunks: %w", err)
+	}
+	defer cursor.Close(ctx) //nolint:errcheck
+
+	var chunks []eywa.LoreChunk
+	if err := cursor.All(ctx, &chunks); err != nil {
+		return nil, 0, fmt.Errorf("decode lore chunks: %w", err)
+	}
+	return chunks, total, nil
 }

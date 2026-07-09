@@ -38,6 +38,14 @@ func (r *stubLedgerRepo) SetBudget(_ context.Context, _ entities.TokenBudget) er
 	panic("not implemented")
 }
 
+func (r *stubLedgerRepo) ListMonthUsage(_ context.Context, _ string) ([]entities.LedgerEntry, error) {
+	return nil, nil
+}
+
+func (r *stubLedgerRepo) ListBudgets(_ context.Context) ([]entities.TokenBudget, error) {
+	return nil, nil
+}
+
 type stubCostAlertHook struct {
 	mu              sync.Mutex
 	thresholdCalled bool

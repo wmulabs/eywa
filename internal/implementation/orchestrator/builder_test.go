@@ -978,6 +978,10 @@ func (s *stubBuilderLoreRepo) GetBySpiritID(_ context.Context, _ string) ([]enti
 func (s *stubBuilderLoreRepo) GetByIDs(_ context.Context, _ []string) ([]entities.Lore, error) {
 	return nil, nil
 }
+func (s *stubBuilderLoreRepo) List(_ context.Context) ([]entities.Lore, error) {
+	return nil, nil
+}
+
 func (s *stubBuilderLoreRepo) Update(_ context.Context, _ entities.Lore) error { return nil }
 func (s *stubBuilderLoreRepo) Delete(_ context.Context, _ string) error        { return nil }
 
@@ -1021,6 +1025,14 @@ func (s *stubBuilderLedgerRepo) GetBudget(_ context.Context, _ string) (entities
 }
 func (s *stubBuilderLedgerRepo) SetBudget(_ context.Context, _ entities.TokenBudget) error {
 	return nil
+}
+
+func (s *stubBuilderLedgerRepo) ListMonthUsage(_ context.Context, _ string) ([]entities.LedgerEntry, error) {
+	return nil, nil
+}
+
+func (s *stubBuilderLedgerRepo) ListBudgets(_ context.Context) ([]entities.TokenBudget, error) {
+	return nil, nil
 }
 
 type stubBuilderCostAlertHook struct{}

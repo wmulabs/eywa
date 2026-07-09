@@ -766,6 +766,100 @@ Delete a single stored fact.
 
 ---
 
+## Ledger (Cost & Usage)
+
+Mounted when `LedgerRepo` is configured; behind management auth.
+
+### `GET /api/v1/ledger`
+
+Monthly token usage and estimated cost per Spirit.
+
+**Query params:** `month` ("2026-07"; default = current month UTC).
+
+**200:**
+```json
+{
+  "month": "2026-07",
+  "items": [
+    { "spirit_name": "support_spirit", "month": "2026-07", "tokens_used": 45000, "est_cost_usd": 0.85, "updated_at": "..." }
+  ],
+  "total_tokens": 45000,
+  "total_cost_usd": 0.85
+}
+```
+
+### `GET /api/v1/budgets` · `GET /api/v1/budgets/:spiritName`
+
+List all budgets / get one. `404` when the Spirit has no budget configured.
+
+### `PUT /api/v1/budgets/:spiritName`
+
+Create or replace a Spirit's budget. `spirit_name` comes from the URL (a mismatching body value is a 400).
+
+**Body:**
+```json
+{
+  "monthly_token_limit": 1000000,
+  "on_exceed": "downgrade",
+  "downgrade_model": { "provider": "openai", "model": "gpt-4o-mini" },
+  "alert_threshold": 0.8,
+  "downgrade_at_threshold": true
+}
+```
+
+Validation: `monthly_token_limit` > 0; `on_exceed` ∈ `block` | `downgrade` | `alert`
+(`downgrade` requires `downgrade_model.provider` + `model`); `alert_threshold` ∈ [0,1].
+
+**200:** the saved budget. **400** on validation failure.
+
+---
+
+## Lore (Knowledge Base)
+
+Mounted when `LoreRepo` is configured; behind management auth. Document ingestion and the query
+tester additionally require the Weave (they delegate to `Weave.IngestLore` / `Weave.SearchLore`,
+which need a `LoreEmbedder`).
+
+### `GET /api/v1/lores` · `POST /api/v1/lores` · `GET/PUT/DELETE /api/v1/lores/:id`
+
+Standard CRUD. `POST` requires a unique `name` (**409** on duplicates) and generates the id when
+empty. `DELETE` also removes the Lore's vectors from the store (best-effort).
+
+**Lore body:**
+```json
+{ "name": "faq", "description": "Product FAQ", "spirit_ids": ["support_spirit"], "chunk_size": 500, "overlap": 50 }
+```
+
+### `POST /api/v1/lores/:id/documents`
+
+Ingest one document — the engine chunks, embeds, and upserts synchronously.
+
+**Body:**
+```json
+{ "text": "…", "document_id": "faq-v2", "metadata": { "source": "handbook" }, "no_chunk": false }
+```
+`document_id` (optional) makes re-ingestion upsert in place. `no_chunk` indexes the whole text as
+one vector (record mode).
+
+**201:** `{ "lore_id": "...", "document_id": "..." }` · **400** missing text · **502** embedder/store failure.
+
+### `GET /api/v1/lores/:id/chunks`
+
+Paginated stored chunks (embeddings are never serialized). **Query:** `limit` (50), `offset` (0).
+
+**200:** `{ "items": [LoreChunk], "total": n, "limit": l, "offset": o }` ·
+**501** when the configured store cannot enumerate chunks (pure vector databases).
+
+### `POST /api/v1/lores/:id/query`
+
+Query tester — embeds the query and searches the Lore.
+
+**Body:** `{ "query": "how do refunds work?", "top_k": 5, "min_score": 0.7 }` (`query` required).
+
+**200:** `{ "items": [LoreChunk with score] }` · **502** on embedder failure.
+
+---
+
 ## Vigil (Human Takeover)
 
 ### `GET /api/v1/vigil`
