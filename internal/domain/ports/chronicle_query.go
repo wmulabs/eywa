@@ -19,25 +19,25 @@ type ChronicleListOptions struct {
 }
 
 type TokenSeries struct {
-	Date             time.Time
-	SpiritName       string
-	PromptTokens     int
-	CompletionTokens int
+	Date             time.Time `json:"date"`
+	SpiritName       string    `json:"spirit_name"`
+	PromptTokens     int       `json:"prompt_tokens"`
+	CompletionTokens int       `json:"completion_tokens"`
 }
 
 type ActionStats struct {
-	ActionName   string
-	CallCount    int
-	ErrorCount   int
-	AvgLatencyMs float64
-	P95LatencyMs float64
+	ActionName   string  `json:"action_name"`
+	CallCount    int     `json:"call_count"`
+	ErrorCount   int     `json:"error_count"`
+	AvgLatencyMs float64 `json:"avg_latency_ms"`
+	P95LatencyMs float64 `json:"p95_latency_ms"`
 }
 
 type SpiritStats struct {
-	SpiritName    string
-	AvgIterations float64
-	ErrorRate     float64
-	AvgDurationMs float64
+	SpiritName    string  `json:"spirit_name"`
+	AvgIterations float64 `json:"avg_iterations"`
+	ErrorRate     float64 `json:"error_rate"`
+	AvgDurationMs float64 `json:"avg_duration_ms"`
 }
 
 type ChronicleQueryRepository interface {

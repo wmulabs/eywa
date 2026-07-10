@@ -446,3 +446,21 @@ func TestLoreHandler_EmptyCollections_ReturnEmptyArrays(t *testing.T) {
 		t.Errorf("query: want 200, got %d", resp.StatusCode)
 	}
 }
+
+// Regression: the create response must carry real timestamps (the repo stamps only its own copy).
+func TestLoreHandler_Create_ResponseCarriesTimestamps(t *testing.T) {
+	app := buildLoreTestApp(t, newLoreHandler(&stubLoreRepository{}, nil, nil, nil))
+
+	b, _ := json.Marshal(map[string]any{"name": "faq"})
+	req := authedRequest("POST", "/api/v1/lores", bytes.NewReader(b))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	var lore eywa.Lore
+	json.NewDecoder(resp.Body).Decode(&lore) //nolint:errcheck
+	if lore.CreatedAt.IsZero() || lore.UpdatedAt.IsZero() {
+		t.Errorf("timestamps missing: created=%v updated=%v", lore.CreatedAt, lore.UpdatedAt)
+	}
+}
