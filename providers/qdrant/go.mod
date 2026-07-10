@@ -4,7 +4,7 @@ go 1.26.5
 
 require (
 	github.com/qdrant/go-client v1.18.3
-	github.com/wmulabs/eywa v1.47.0
+	github.com/wmulabs/eywa v1.47.1
 )
 
 require (

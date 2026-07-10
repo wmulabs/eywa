@@ -4,7 +4,7 @@ go 1.26.5
 
 require (
 	github.com/twilio/twilio-go v1.30.9
-	github.com/wmulabs/eywa v1.47.0
+	github.com/wmulabs/eywa v1.47.1
 )
 
 require (
