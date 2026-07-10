@@ -244,7 +244,7 @@ the key itself; with operator JWT, obtain one from the login endpoint:
 # Operator JWT (when OperatorAuth is configured):
 TOKEN=$(curl -s -X POST https://your-service.run.app/api/v1/auth/token \
   -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "your-password"}' \
+  -d '{"email": "admin@example.com", "password": "your-password"}' \
   | jq -r '.token')
 
 curl -H "Authorization: Bearer $TOKEN" \
@@ -266,21 +266,18 @@ Obtain a JWT from the built-in operator system.
 
 **Body:**
 ```json
-{ "username": "admin", "password": "secret" }
+{ "email": "admin@example.com", "password": "secret" }
 ```
 
 **200:**
 ```json
 {
   "token":      "eyJhbGci...",
-  "expires_at": "2026-05-20T12:00:00Z",
-  "operator": {
-    "id":       "op_123",
-    "username": "admin",
-    "role":     "admin"
-  }
+  "expires_at": "2026-05-20T12:00:00Z"
 }
 ```
+
+> Identity (operator id + role) travels in the JWT claims (`sub`, `role`) — the body carries only the token.
 
 ---
 
@@ -512,7 +509,7 @@ List all operators.
 **200:**
 ```json
 {
-  "operators": [{ "id": "...", "username": "...", "role": "admin|operator", "is_active": true }],
+  "items": [{ "id": "...", "name": "...", "email": "...", "role": "admin|operator", "is_active": true }],
   "total": 3
 }
 ```
@@ -525,7 +522,7 @@ Create a new operator.
 
 **Body:**
 ```json
-{ "username": "alice", "password": "secure123", "role": "operator" }
+{ "name": "Alice", "email": "alice@example.com", "password": "secure123", "role": "operator" }
 ```
 
 **201:**
@@ -551,32 +548,16 @@ List interaction records.
 
 | Param | Type | Default | Description |
 |-------|------|---------|-------------|
+| `page` | int | 1 | Page number |
 | `limit` | int | 50 | Max results |
-| `offset` | int | 0 | Pagination offset |
-| `status` | string | — | Filter: `success`, `error`, `rate_limited`, etc. |
-| `spirit` | string | — | Filter by Spirit name |
+| `spirit_name` | string | — | Filter by Spirit name |
 | `memory_key` | string | — | Filter by MemoryKey |
-| `from` | RFC3339 | — | Start of time range |
-| `to` | RFC3339 | — | End of time range |
+| `has_error` | bool | — | `true` filters to non-success statuses |
+| `min_iterations` | int | — | Minimum reasoning iterations |
+| `date_from` | RFC3339 | — | Start of time range |
+| `date_to` | RFC3339 | — | End of time range |
 
-**200:**
-```json
-{
-  "items": [
-    {
-      "id":          "chron_xyz",
-      "memory_key":  "whatsapp:+5511999999999",
-      "spirit":      "support_spirit",
-      "status":      "success",
-      "tokens_in":   450,
-      "tokens_out":  123,
-      "duration_ms": 1840,
-      "created_at":  "2026-05-19T10:00:00Z"
-    }
-  ],
-  "total": 1250
-}
-```
+**200:** `{ "items": [ Chronicle ], "total": 1250, "page": 1, "limit": 50 }` — each Chronicle carries `id`, `memory_key`, `event_key`, `timestamp`, and the nested `event`, `spirit`, `processing` (status, iterations, final response), and `token_usage` (reasoning/media/total breakdowns) objects.
 
 ---
 
@@ -592,19 +573,18 @@ Full interaction detail including thread messages, Actions called, and step timi
 
 Token usage aggregated by period.
 
-**Query params:** `period` (`today`, `7d`, `30d`), `group_by` (`day`, `hour`, `spirit`).
+**Query params:** `date_from` + `date_to` (RFC3339, both required), `granularity` (`day` default), `spirit_name` (optional filter).
 
 **200:**
 ```json
 {
-  "total_tokens_in":  45000,
-  "total_tokens_out": 12000,
-  "total_cost_usd":   0.85,
-  "series": [
-    { "date": "2026-05-19", "tokens_in": 6200, "tokens_out": 1800, "cost_usd": 0.12 }
+  "data": [
+    { "date": "2026-05-19T00:00:00Z", "spirit_name": "support_spirit", "prompt_tokens": 6200, "completion_tokens": 1800 }
   ]
 }
 ```
+
+> For USD cost, use `GET /api/v1/ledger` — analytics aggregates tokens only.
 
 ---
 
@@ -612,13 +592,13 @@ Token usage aggregated by period.
 
 Most-called Actions.
 
-**Query params:** `period`, `limit` (default 10).
+**Query params:** `date_from` + `date_to` (RFC3339, both required), `spirit_name` (optional).
 
 **200:**
 ```json
 {
-  "actions": [
-    { "name": "track_order", "call_count": 842, "error_rate": 0.02 }
+  "data": [
+    { "action_name": "track_order", "call_count": 842, "error_count": 17, "avg_latency_ms": 210.5, "p95_latency_ms": 480.0 }
   ]
 }
 ```
@@ -629,19 +609,13 @@ Most-called Actions.
 
 Usage breakdown by Spirit.
 
-**Query params:** `period`.
+**Query params:** `date_from` + `date_to` (RFC3339, both required).
 
 **200:**
 ```json
 {
-  "spirits": [
-    {
-      "name":         "support_spirit",
-      "interactions": 1240,
-      "tokens_in":    38000,
-      "tokens_out":   9500,
-      "avg_duration_ms": 1600
-    }
+  "data": [
+    { "spirit_name": "support_spirit", "avg_iterations": 2.4, "error_rate": 0.02, "avg_duration_ms": 1600 }
   ]
 }
 ```
@@ -654,24 +628,26 @@ Usage breakdown by Spirit.
 
 List conversation sessions with pagination and filtering.
 
-**Query params:** `limit`, `offset`, `spirit`, `status` (`active`, `ended`), `cursor`.
+**Query params:** `page`, `limit`, `date_from`, `date_to` (RFC3339).
 
 **200:**
 ```json
 {
-  "sessions": [
+  "items": [
     {
-      "memory_key":    "whatsapp:+5511999999999",
-      "spirit":        "support_spirit",
-      "message_count": 12,
-      "last_message":  "2026-05-19T10:00:00Z",
-      "has_vigil":     false
+      "memory_key":       "whatsapp:+5511999999999",
+      "last_spirit_name": "support_spirit",
+      "message_count":    12,
+      "last_message_at":  "2026-05-19T10:00:00Z"
     }
   ],
   "total": 340,
-  "cursor": "..."
+  "page": 1,
+  "limit": 50
 }
 ```
+
+> Vigil state is not embedded — cross-reference `GET /api/v1/vigil`.
 
 ---
 
@@ -679,17 +655,7 @@ List conversation sessions with pagination and filtering.
 
 Session detail with recent messages.
 
-**200:**
-```json
-{
-  "memory_key": "whatsapp:+5511999999999",
-  "messages": [
-    { "role": "user",      "content": "What's my order status?", "created_at": "..." },
-    { "role": "assistant", "content": "Order #4821 is out for delivery.", "created_at": "..." }
-  ],
-  "vigil": null
-}
-```
+**200:** a single SessionSummary (same shape as the list items), 404 when unknown. Messages come from `GET /api/v1/echoes?memory_key=...`.
 
 ---
 
@@ -699,12 +665,13 @@ Inject a message into a session (used by Vigil — operator sends message direct
 
 **Body:**
 ```json
-{ "content": "Hi, I'm taking over from the AI. How can I help?" }
+{ "content": "Hi, I'm taking over from the AI. How can I help?", "operator_id": "op_123", "subject_key": "default" }
 ```
+`content` and `operator_id` are required.
 
-**200:**
+**201:**
 ```json
-{ "success": true }
+{ "message_id": "..." }
 ```
 
 ---
@@ -957,12 +924,12 @@ Send a message as the operator (Vigil must be active on this session).
 
 List Rites with optional status filter.
 
-**Query params:** `status` (`pending`, `approved`, `rejected`, `expired`), `limit`, `offset`, `cursor`.
+**Query params:** `status` (`pending`, `approved`, `rejected`, `expired`), `memory_key`, `page`, `limit`.
 
 **200:**
 ```json
 {
-  "rites": [
+  "items": [
     {
       "id":          "rite_xyz",
       "memory_key":  "whatsapp:+5511999999999",
@@ -992,12 +959,13 @@ Approve a Rite. The Spirit resumes execution and proceeds with the approved acti
 
 **Body:**
 ```json
-{ "note": "Verified — refund approved" }
+{ "operator_id": "op_123", "note": "Verified — refund approved" }
 ```
+`operator_id` is required.
 
 **200:**
 ```json
-{ "success": true }
+{ "id": "rite_xyz", "status": "approved" }
 ```
 
 ---
@@ -1008,12 +976,12 @@ Reject a Rite. The Spirit receives the decision and responds to the user accordi
 
 **Body:**
 ```json
-{ "note": "Outside return window — rejected" }
+{ "operator_id": "op_123", "note": "Outside return window — rejected" }
 ```
 
 **200:**
 ```json
-{ "success": true }
+{ "id": "rite_xyz", "status": "rejected" }
 ```
 
 ---
@@ -1027,14 +995,20 @@ List all registered event type → Spirit links.
 **200:**
 ```json
 {
-  "configurations": [
+  "items": [
     {
-      "event_type":     "customer_message",
-      "default_agent":  "support_spirit",
-      "allowed_agents": ["support_spirit", "billing_spirit"],
-      "scouts":         ["user_profile", "order_context"],
-      "pathfinder":     "content_pathfinder",
-      "voice":          "whatsapp"
+      "event_type":             "customer_message",
+      "default_spirit":         "support_spirit",
+      "allowed_spirits":        ["support_spirit", "billing_spirit"],
+      "require_scouts":         ["user_profile", "order_context"],
+      "pathfinder_name":        "content_pathfinder",
+      "voice_name":             "whatsapp",
+      "channel_name":           "whatsapp",
+      "inbound_converter_name": "",
+      "ingestion_timeout_ms":   30000,
+      "processing_timeout_ms":  120000,
+      "guards":                 [],
+      "metadata":               {}
     }
   ]
 }
@@ -1078,7 +1052,7 @@ List all configured HTTP tools.
 **200:**
 ```json
 {
-  "tools": [
+  "items": [
     {
       "id":          "tool_abc",
       "name":        "get_order_status",

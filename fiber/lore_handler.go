@@ -3,6 +3,7 @@ package fiber
 import (
 	"context"
 	"errors"
+	"time"
 
 	fiberlib "github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
@@ -62,6 +63,10 @@ func (h *loreHandler) create(c *fiberlib.Ctx) error {
 	if lore.ID == "" {
 		lore.ID = uuid.New().String()
 	}
+	// The repo stamps its own copy (value receiver) — stamp here too so the response carries them.
+	now := time.Now().UTC()
+	lore.CreatedAt = now
+	lore.UpdatedAt = now
 
 	if err := h.repo.Create(c.Context(), lore); err != nil {
 		return resthttp.ErrorResponse(c, err)
@@ -86,6 +91,7 @@ func (h *loreHandler) update(c *fiberlib.Ctx) error {
 		return c.Status(fiberlib.StatusBadRequest).JSON(fiberlib.Map{"error": "invalid request body"})
 	}
 	lore.ID = c.Params("id")
+	lore.UpdatedAt = time.Now().UTC()
 
 	if err := h.repo.Update(c.Context(), lore); err != nil {
 		if errors.Is(err, eywa.ErrNotFound) {
