@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.47.1](https://github.com/wmulabs/eywa/compare/v1.47.0...v1.47.1) (2026-07-10)
+
+
+### Bug Fixes
+
+* **api:** snake_case json tags, lore response timestamps, truthful REST docs ([#202](https://github.com/wmulabs/eywa/issues/202)) ([1552e6e](https://github.com/wmulabs/eywa/commit/1552e6e399fd9d7802364065f3b9ab66862460cf))
+
 ## [1.47.0](https://github.com/wmulabs/eywa/compare/v1.46.0...v1.47.0) (2026-07-09)
 
 
